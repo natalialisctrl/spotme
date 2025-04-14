@@ -19,6 +19,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
   // Authentication routes
+  // Social auth endpoint for linking accounts
+  app.post('/api/auth/social-link', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const { provider, firebaseUid } = req.body;
+      
+      if (!provider || !firebaseUid) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+      
+      // Check if this Firebase UID is already linked to another account
+      const existingLinkedUser = await storage.getUserByFirebaseUid(firebaseUid);
+      if (existingLinkedUser && existingLinkedUser.id !== req.session.userId) {
+        return res.status(409).json({ message: 'This social account is already linked to another user' });
+      }
+      
+      // Link the social account to the current user
+      const updatedUser = await storage.linkSocialAccount(req.session.userId, provider, firebaseUid);
+      
+      if (!updatedUser) {
+        return res.status(500).json({ message: 'Failed to link social account' });
+      }
+      
+      // Don't return password in response
+      const { password, ...userWithoutPassword } = updatedUser;
+      return res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error linking social account:", error);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
   app.post('/api/auth/register', async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
