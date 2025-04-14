@@ -1,5 +1,9 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// Create a client
+const queryClient = new QueryClient();
 
 function BasicApp() {
   return (
@@ -27,11 +31,15 @@ function BasicApp() {
         width: '100%'
       }}>
         <p style={{ textAlign: 'center' }}>
-          Testing basic React rendering
+          Testing with QueryClientProvider
         </p>
       </div>
     </div>
   );
 }
 
-createRoot(document.getElementById("root")!).render(<BasicApp />);
+createRoot(document.getElementById("root")!).render(
+  <QueryClientProvider client={queryClient}>
+    <BasicApp />
+  </QueryClientProvider>
+);
