@@ -1,37 +1,39 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { SimpleAuthProvider, useSimpleAuth } from "./context/SimpleAuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // Create a client
 const queryClient = new QueryClient();
 
 function AuthTest() {
-  const { isLoggedIn, setLoggedIn } = useSimpleAuth();
+  const { user, loading, login, logout } = useAuth();
   
   return (
     <div style={{ marginTop: '20px', textAlign: 'center' }}>
       <div style={{ 
         padding: '1rem',
-        background: isLoggedIn ? '#d1fae5' : '#fee2e2',
+        background: user ? '#d1fae5' : '#fee2e2',
         borderRadius: '0.5rem',
         marginBottom: '1rem'
       }}>
-        <p>Auth Status: {isLoggedIn ? 'Logged In' : 'Logged Out'}</p>
+        <p>Auth Status: {user ? `Logged in as ${user.name}` : 'Logged Out'}</p>
       </div>
       
       <button 
-        onClick={() => setLoggedIn(!isLoggedIn)}
+        onClick={() => user ? logout() : login('demo', 'password')}
+        disabled={loading}
         style={{
           background: '#3b82f6',
           color: 'white',
           border: 'none',
           padding: '0.5rem 1rem',
           borderRadius: '0.25rem',
-          cursor: 'pointer'
+          cursor: loading ? 'wait' : 'pointer',
+          opacity: loading ? 0.7 : 1
         }}
       >
-        {isLoggedIn ? 'Log Out' : 'Log In'}
+        {loading ? 'Processing...' : user ? 'Log Out' : 'Log In (demo)'}
       </button>
     </div>
   );
@@ -63,7 +65,7 @@ function BasicApp() {
         width: '100%'
       }}>
         <p style={{ textAlign: 'center', marginBottom: '1rem' }}>
-          Testing with Auth Provider
+          Testing with Real AuthContext
         </p>
         
         <AuthTest />
@@ -74,8 +76,8 @@ function BasicApp() {
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
-    <SimpleAuthProvider>
+    <AuthProvider>
       <BasicApp />
-    </SimpleAuthProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
