@@ -1,0 +1,63 @@
+Overview:
+Build a dynamic web application that connects gym-goers in real time. The app will allow users to enable geolocation, select their workout focus (e.g., legs, arms, chest), and find potential gym partners based on multiple criteria such as location, gender, experience level, and compatibility quiz responses. Once a match is made and approved by both parties, users can message each other using a built-in real-time chat system.
+
+Key Features:
+
+User Location & Mapping:
+
+Utilize the browser’s geolocation API to determine the user’s current location.
+
+Integrate with a mapping service (e.g., Mapbox or Google Maps) to display nearby gym-goers.
+
+Gym-Based Matching:
+
+First, display users who attend the same gym as the current user.
+
+If no matches are found at the same gym, extend the search to users within a 5-mile radius.
+
+Workout & Filtering Options:
+
+Workout Selection: Allow users to select the workout they’re focusing on for the day (e.g., legs, arms, chest, cardio).
+
+Gender Filter: Enable users to refine their search by viewing only women or only men.
+
+Experience Level: Provide a field for users to indicate their gym experience (years of attendance or experience level such as beginner, intermediate, advanced) to match users with similar backgrounds.
+
+Compatibility Quiz (Optional):
+
+Include an onboarding quiz that asks key questions to capture fitness preferences and workout habits (e.g., "What’s your favorite thing to hit?" and "How long is your usual workout?").
+
+Use these quiz responses to further refine the matching algorithm and ensure more compatible gym partnerships.
+
+Connection and Communication:
+
+Allow users to send connection requests based on the selected filters.
+
+Once both users approve the connection, unlock a real-time messaging interface using WebSockets or a real-time database (e.g., Firebase).
+
+User Experience & Design:
+
+Design the UI with a vibrant, energetic color palette (e.g., electric blues, energetic reds, vibrant greens) to reflect a fitness and active lifestyle.
+
+Ensure a responsive, mobile-first design that is intuitive and easy to navigate.
+
+Technology Stack (Suggested):
+
+Frontend:
+
+Framework: React.js (or similar) for building a dynamic and responsive user interface.
+
+Styling: Consider using Tailwind CSS or another modern CSS framework for quick theming.
+
+Backend:
+
+Node.js for server-side logic, or use Firebase for a serverless approach that supports real-time data handling.
+
+APIs & Integrations:
+
+Geolocation API for accessing user location data.
+
+Map API (Mapbox or Google Maps) for displaying user locations.
+
+WebSockets or Firebase Realtime Database for implementing the real-time chat system.
+
