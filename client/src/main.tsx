@@ -1,9 +1,41 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SimpleAuthProvider, useSimpleAuth } from "./context/SimpleAuthContext";
 
 // Create a client
 const queryClient = new QueryClient();
+
+function AuthTest() {
+  const { isLoggedIn, setLoggedIn } = useSimpleAuth();
+  
+  return (
+    <div style={{ marginTop: '20px', textAlign: 'center' }}>
+      <div style={{ 
+        padding: '1rem',
+        background: isLoggedIn ? '#d1fae5' : '#fee2e2',
+        borderRadius: '0.5rem',
+        marginBottom: '1rem'
+      }}>
+        <p>Auth Status: {isLoggedIn ? 'Logged In' : 'Logged Out'}</p>
+      </div>
+      
+      <button 
+        onClick={() => setLoggedIn(!isLoggedIn)}
+        style={{
+          background: '#3b82f6',
+          color: 'white',
+          border: 'none',
+          padding: '0.5rem 1rem',
+          borderRadius: '0.25rem',
+          cursor: 'pointer'
+        }}
+      >
+        {isLoggedIn ? 'Log Out' : 'Log In'}
+      </button>
+    </div>
+  );
+}
 
 function BasicApp() {
   return (
@@ -30,9 +62,11 @@ function BasicApp() {
         maxWidth: '400px',
         width: '100%'
       }}>
-        <p style={{ textAlign: 'center' }}>
-          Testing with QueryClientProvider
+        <p style={{ textAlign: 'center', marginBottom: '1rem' }}>
+          Testing with Auth Provider
         </p>
+        
+        <AuthTest />
       </div>
     </div>
   );
@@ -40,6 +74,8 @@ function BasicApp() {
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
-    <BasicApp />
+    <SimpleAuthProvider>
+      <BasicApp />
+    </SimpleAuthProvider>
   </QueryClientProvider>
 );
