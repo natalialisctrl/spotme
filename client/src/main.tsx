@@ -2,78 +2,69 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+import SocialVerification from "@/components/profile/SocialVerification";
 
 // Create a client
 const queryClient = new QueryClient();
 
-function AuthTest() {
+function AuthDemo() {
   const { user, loading, login, logout } = useAuth();
   
   return (
-    <div style={{ 
-      height: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column',
-      alignItems: 'center', 
-      justifyContent: 'center',
-      background: '#f0f4f8'
-    }}>
-      <h1 style={{ 
-        fontSize: '2rem', 
-        color: '#3b82f6', 
-        marginBottom: '1rem' 
-      }}>
-        GymBuddy App
-      </h1>
-      <div style={{ 
-        padding: '2rem',
-        background: 'white',
-        borderRadius: '0.5rem',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        maxWidth: '400px',
-        width: '100%'
-      }}>
-        <div style={{ marginBottom: '1rem', textAlign: 'center' }}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Auth Status</h2>
-          
-          <div style={{ 
-            padding: '1rem',
-            background: user ? '#d1fae5' : '#fee2e2',
-            borderRadius: '0.5rem',
-            marginBottom: '1rem'
-          }}>
-            <p>{user ? `Logged in as ${user.name}` : 'Logged Out'}</p>
-          </div>
-          
-          <button 
-            onClick={() => user ? logout() : login('demo', 'password')}
-            disabled={loading}
-            style={{
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              padding: '0.5rem 1rem',
-              borderRadius: '0.25rem',
-              cursor: loading ? 'wait' : 'pointer',
-              opacity: loading ? 0.7 : 1
-            }}
-          >
-            {loading ? 'Processing...' : user ? 'Log Out' : 'Log In (demo)'}
-          </button>
-        </div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+      <div className="w-full max-w-md">
+        <h1 className="text-3xl font-bold text-center text-primary mb-6">
+          GymBuddy App
+        </h1>
         
-        <div style={{ 
-          marginTop: '2rem', 
-          padding: '1rem',
-          background: '#f8fafc',
-          borderRadius: '0.5rem'
-        }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Debug Info</h3>
-          <p style={{ fontSize: '0.875rem', color: '#64748b' }}>
-            Authentication context is working properly. <br />
-            Fixing main App component issues...
-          </p>
-        </div>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Authentication Status</CardTitle>
+            <CardDescription>
+              Current user status and login controls
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className={`p-4 rounded-md mb-4 ${user ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              {user ? `Logged in as ${user.name}` : 'Logged Out'}
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button 
+              onClick={() => user ? logout() : login('demo', 'password')}
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                user ? 'Log Out' : 'Log In (demo)'
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+        
+        {user && (
+          <SocialVerification user={user} onVerificationComplete={() => {}} />
+        )}
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Debug Info</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-500">
+              Updated Authentication context is working properly. <br />
+              Social verification component is displayed when logged in.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
@@ -82,7 +73,7 @@ function AuthTest() {
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <AuthTest />
+      <AuthDemo />
     </AuthProvider>
   </QueryClientProvider>
 );

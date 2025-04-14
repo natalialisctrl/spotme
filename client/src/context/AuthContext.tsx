@@ -1,16 +1,9 @@
 import { createContext, useContext, useState, ReactNode } from "react";
-
-// Create a mock user type
-interface MockUser {
-  id: number;
-  name: string;
-  username: string;
-  email: string;
-}
+import { User } from "@shared/schema";
 
 // Define the auth context type
 interface AuthContextType {
-  user: MockUser | null;
+  user: User | null;
   loading: boolean;
   error: string | null;
   login: (username: string, password: string) => void;
@@ -23,16 +16,29 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Create mock user data
-const mockUser: MockUser = {
+const mockUser: User = {
   id: 1,
   name: "John Doe",
   username: "johndoe",
-  email: "john@example.com"
+  email: "john@example.com",
+  gender: "male",
+  experienceLevel: "intermediate",
+  experienceYears: 3,
+  password: "password", // Don't worry, this is just mock data
+  bio: "Fitness enthusiast looking for gym partners",
+  gymName: "FitZone Gym",
+  latitude: null,
+  longitude: null,
+  lastActive: new Date(),
+  firebaseUid: null,
+  googleVerified: false,
+  facebookVerified: false,
+  instagramVerified: false
 };
 
 // Create the auth provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<MockUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
