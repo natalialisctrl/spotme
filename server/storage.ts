@@ -10,9 +10,14 @@ export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, userData: Partial<User>): Promise<User | undefined>;
   updateUserLocation(id: number, location: UpdateLocation): Promise<User | undefined>;
+  
+  // Social media verification operations
+  linkSocialAccount(userId: number, provider: string, firebaseUid: string): Promise<User | undefined>;
   
   // Workout focus operations
   getWorkoutFocus(userId: number): Promise<WorkoutFocus | undefined>;
@@ -138,6 +143,44 @@ export class MemStorage implements IStorage {
       }
     }
     return undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    for (const user of this.users.values()) {
+      if (user.email === email) {
+        return user;
+      }
+    }
+    return undefined;
+  }
+
+  async getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined> {
+    for (const user of this.users.values()) {
+      if (user.firebaseUid === firebaseUid) {
+        return user;
+      }
+    }
+    return undefined;
+  }
+
+  async linkSocialAccount(userId: number, provider: string, firebaseUid: string): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    
+    const updates: Partial<User> = { firebaseUid };
+    
+    // Set the appropriate verification flag based on the provider
+    if (provider === 'google') {
+      updates.googleVerified = true;
+    } else if (provider === 'facebook') {
+      updates.facebookVerified = true;
+    } else if (provider === 'instagram') {
+      updates.instagramVerified = true;
+    }
+    
+    const updatedUser = { ...user, ...updates };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
   }
 
   async createUser(user: InsertUser): Promise<User> {
