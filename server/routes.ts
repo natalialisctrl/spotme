@@ -553,6 +553,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: 'Failed to generate personality insights' });
     }
   });
+  
+  // Special endpoint for saving AI insights to profile
+  app.post('/api/save-personality-insights', async (req, res) => {
+    // Check authentication
+    console.log("Saving insights session info:", {
+      hasSession: !!req.session,
+      userId: req.session?.userId,
+      isAuthenticated: req.isAuthenticated(),
+      hasUser: !!req.user
+    });
+    
+    if (!req.session || !req.session.userId) {
+      if (req.isAuthenticated() && req.user) {
+        // Fallback to user ID from authenticated request
+        req.session.userId = req.user.id;
+        console.log("Set session userId from authenticated user:", req.session.userId);
+      } else {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+    }
+    
+    try {
+      const { insights } = req.body;
+      
+      if (!insights) {
+        return res.status(400).json({ message: 'Missing insights data' });
+      }
+      
+      // Prepare update data
+      const updateData = {
+        aiGeneratedInsights: typeof insights === 'string' ? insights : JSON.stringify(insights)
+      };
+      
+      console.log(`Saving insights for user ${req.session.userId}`, updateData);
+      
+      // Update user with AI insights
+      const user = await storage.updateUser(req.session.userId, updateData);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Don't return password in response
+      const { password, ...userWithoutPassword } = user;
+      return res.json(userWithoutPassword);
+    } catch (error) {
+      console.error('Error saving personality insights:', error);
+      return res.status(500).json({ message: 'Failed to save personality insights' });
+    }
+  });
 
   return httpServer;
 }

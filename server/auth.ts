@@ -87,6 +87,12 @@ export function setupAuth(app: Express) {
       req.login(user, (err) => {
         if (err) return next(err);
         
+        // Set userId in session
+        if (req.session) {
+          req.session.userId = user.id;
+          console.log("Session userId set during registration:", req.session.userId);
+        }
+        
         // Don't send password back to client
         const { password, ...userWithoutPassword } = user;
         res.status(201).json(userWithoutPassword);
@@ -98,6 +104,12 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
+    // Set userId in session
+    if (req.session) {
+      req.session.userId = req.user!.id;
+      console.log("Session userId set during login:", req.session.userId);
+    }
+    
     // Don't send password back to client
     const { password, ...userWithoutPassword } = req.user as SelectUser;
     res.status(200).json(userWithoutPassword);
@@ -111,10 +123,26 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    // Debug session info
+    console.log("Session info:", {
+      hasSession: !!req.session,
+      userId: req.session?.userId,
+      isAuthenticated: req.isAuthenticated(),
+      hasUser: !!req.user
+    });
+    
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
     
     // Don't send password back to client
     const { password, ...userWithoutPassword } = req.user as SelectUser;
+    
+    // Ensure userId is set in session
+    if (req.session && !req.session.userId) {
+      req.session.userId = userWithoutPassword.id;
+    }
+    
     res.json(userWithoutPassword);
   });
 }

@@ -52,21 +52,12 @@ const ProfileSetup: FC = () => {
     try {
       setStep('saving');
       
-      // Update user profile with AI insights
-      const updateData = {
-        bio: `${insights.workoutStyle} ${insights.partnerPreferences}`,
-        aiGeneratedInsights: JSON.stringify(insights)
-      };
+      // Use our new special endpoint for saving insights
+      await apiRequest('POST', '/api/save-personality-insights', {
+        insights: insights
+      });
       
-      console.log(`Attempting to update user ${user.id} with insights`);
-      
-      // Make sure we have the latest user data
-      await checkAuth();
-      
-      // Then update the user profile
-      await apiRequest('PATCH', `/api/users/${user.id}`, updateData);
-      
-      // Refresh user data again
+      // Refresh user data
       await checkAuth();
       
       toast({
