@@ -129,6 +129,20 @@ export class MemStorage implements IStorage {
         })
       },
       {
+        username: "newuser",
+        password: "password123",
+        email: "newuser@spotme.com",
+        name: "New User",
+        gender: "non-binary",
+        experienceLevel: "beginner",
+        experienceYears: 0,
+        bio: "Just starting my fitness journey and looking for guidance",
+        gymName: "Community Fitness Center",
+        latitude: 37.7650,
+        longitude: -122.4230,
+        aiGeneratedInsights: null
+      },
+      {
         username: "sarah_fit",
         password: "password123",
         email: "sarah@example.com",
