@@ -50,13 +50,27 @@ const SocialVerification: FC<SocialVerificationProps> = ({ user, onVerificationC
       
       // Refresh user data
       onVerificationComplete();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Google verification error:", err);
-      setError(err instanceof Error ? err.message : 'Failed to verify with Google');
+      
+      let errorMessage = 'Failed to verify with Google';
+      
+      // Handle specific Firebase errors
+      if (err?.code === 'auth/configuration-not-found') {
+        errorMessage = 'Firebase OAuth needs to be configured in the Firebase console. Please add authorized domains in Firebase Authentication settings.';
+      } else if (err?.code === 'auth/popup-blocked') {
+        errorMessage = 'Popup was blocked by your browser. Please enable popups for this site.';
+      } else if (err?.code === 'auth/popup-closed-by-user') {
+        errorMessage = 'Authentication was cancelled. Please try again.';
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       
       toast({
         title: "Verification failed",
-        description: err instanceof Error ? err.message : 'Could not verify your Google account',
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
