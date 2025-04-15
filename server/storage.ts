@@ -257,7 +257,11 @@ export class MemStorage implements IStorage {
 
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const user = this.users.get(id);
+    if (!user) {
+      console.warn(`User with ID ${id} not found in memory storage`);
+    }
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
@@ -330,10 +334,41 @@ export class MemStorage implements IStorage {
 
   async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
     const user = this.users.get(id);
-    if (!user) return undefined;
+    if (!user) {
+      console.warn(`Attempted to update non-existent user with ID ${id}`);
+      return undefined;
+    }
+    
+    // Log the update operation
+    console.log(`Updating user ${id}:`, {
+      beforeUpdate: {
+        name: user.name,
+        email: user.email,
+        hasInsights: !!user.aiGeneratedInsights,
+        insightsLength: user.aiGeneratedInsights?.length || 0
+      },
+      updateData: {
+        name: userData.name,
+        email: userData.email,
+        hasNewInsights: !!userData.aiGeneratedInsights,
+        newInsightsLength: userData.aiGeneratedInsights?.length || 0
+      }
+    });
     
     const updatedUser = { ...user, ...userData };
     this.users.set(id, updatedUser);
+    
+    // Verify the update was successful
+    const verifyUser = this.users.get(id);
+    console.log(`User ${id} after update:`, {
+      updateSuccess: !!verifyUser,
+      name: verifyUser?.name,
+      email: verifyUser?.email,
+      hasInsights: !!verifyUser?.aiGeneratedInsights,
+      insightsLength: verifyUser?.aiGeneratedInsights?.length || 0,
+      dataMatches: verifyUser?.aiGeneratedInsights === userData.aiGeneratedInsights
+    });
+    
     return updatedUser;
   }
 
