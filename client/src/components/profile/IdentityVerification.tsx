@@ -1,4 +1,4 @@
-import { FC, useState, useEffect } from 'react';
+import { FC, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,12 +10,12 @@ import { apiRequest } from '@/lib/queryClient';
 import { signInWithGoogle, getCurrentUser } from '@/lib/firebase';
 import { User } from '@shared/schema';
 
-interface SocialVerificationProps {
+interface IdentityVerificationProps {
   user: User;
   onVerificationComplete: () => void;
 }
 
-const SocialVerification: FC<SocialVerificationProps> = ({ user, onVerificationComplete }) => {
+const IdentityVerification: FC<IdentityVerificationProps> = ({ user, onVerificationComplete }) => {
   const [isVerifying, setIsVerifying] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -153,11 +153,11 @@ const SocialVerification: FC<SocialVerificationProps> = ({ user, onVerificationC
         </div>
         
         <p className="text-xs text-muted-foreground mt-4">
-          Note: We never post to your social media accounts. Verification only confirms your identity.
+          Note: We never post to your accounts. Verification only confirms your identity.
         </p>
       </CardContent>
     </Card>
   );
 };
 
-export default SocialVerification;
+export default IdentityVerification;

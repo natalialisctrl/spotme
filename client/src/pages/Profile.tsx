@@ -12,7 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Save } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { workoutTypes } from "@shared/schema";
-import SocialVerification from "@/components/profile/SocialVerification";
+import IdentityVerification from "@/components/profile/IdentityVerification";
 
 const Profile: FC = () => {
   const { user, checkAuth } = useAuth();
@@ -245,7 +245,7 @@ const Profile: FC = () => {
         )}
       </Card>
 
-      <SocialVerification user={user} onVerificationComplete={checkAuth} />
+      <IdentityVerification user={user} onVerificationComplete={checkAuth} />
 
       <Card>
         <CardHeader>

@@ -5,7 +5,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import SocialVerification from "@/components/profile/SocialVerification";
+import IdentityVerification from "@/components/profile/IdentityVerification";
 
 // Create a client
 const queryClient = new QueryClient();
