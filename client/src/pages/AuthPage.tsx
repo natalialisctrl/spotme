@@ -1,6 +1,6 @@
 import { FC, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/use-auth';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -47,7 +47,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const AuthPage: FC = () => {
   const [, navigate] = useLocation();
-  const { user, login, register: registerUser, loading, error } = useAuth();
+  const { user, loginMutation, registerMutation, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("login");
   
   useEffect(() => {
@@ -61,8 +61,8 @@ const AuthPage: FC = () => {
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: '',
-      password: ''
+      username: 'demo',
+      password: 'password'
     }
   });
   
@@ -82,12 +82,12 @@ const AuthPage: FC = () => {
   
   // Login form submission
   const onLoginSubmit = (values: LoginFormValues) => {
-    login(values.username, values.password);
+    loginMutation.mutate(values);
   };
   
   // Register form submission
   const onRegisterSubmit = (values: RegisterFormValues) => {
-    registerUser(values);
+    registerMutation.mutate(values);
   };
   
   return (
@@ -143,12 +143,12 @@ const AuthPage: FC = () => {
                       )}
                     />
                     
-                    {error && (
-                      <div className="text-red-500 text-sm">{error}</div>
+                    {loginMutation.error && (
+                      <div className="text-red-500 text-sm">{loginMutation.error.message}</div>
                     )}
                     
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? (
+                    <Button type="submit" className="w-full" disabled={loginMutation.isPending || isLoading}>
+                      {(loginMutation.isPending || isLoading) ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Signing in...
@@ -279,12 +279,12 @@ const AuthPage: FC = () => {
                       />
                     </div>
                     
-                    {error && (
-                      <div className="text-red-500 text-sm">{error}</div>
+                    {registerMutation.error && (
+                      <div className="text-red-500 text-sm">{registerMutation.error.message}</div>
                     )}
                     
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? (
+                    <Button type="submit" className="w-full" disabled={registerMutation.isPending || isLoading}>
+                      {(registerMutation.isPending || isLoading) ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Creating account...
