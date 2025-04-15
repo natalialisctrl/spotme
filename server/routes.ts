@@ -545,9 +545,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Missing required quiz responses' });
       }
       
-      // Generate insights using OpenAI
-      const insights = await generatePersonalityInsights(quizResponses);
-      return res.json(insights);
+      try {
+        // First try to generate insights using OpenAI
+        const insights = await generatePersonalityInsights(quizResponses);
+        return res.json(insights);
+      } catch (openaiError) {
+        console.error("OpenAI API error, using fallback:", openaiError);
+        
+        // Fallback to generated insights based on the quiz responses
+        const fallbackInsights = {
+          workoutStyle: `${quizResponses.fitnessLevel} focused on ${quizResponses.preferredActivities}`,
+          motivationTips: [
+            `Schedule workouts at ${quizResponses.schedule} when you have the most energy`,
+            `Find activities that match your preferred style: ${quizResponses.preferredActivities}`,
+            `Set goals aligned with your aspirations: ${quizResponses.fitnessGoals}`
+          ],
+          recommendedGoals: [
+            `Improve in ${quizResponses.preferredActivities} consistently`,
+            `Build a sustainable ${quizResponses.schedule} routine`,
+            `Focus on ${quizResponses.fitnessGoals} with measurable milestones`
+          ],
+          partnerPreferences: `Someone who also enjoys ${quizResponses.preferredActivities} and is motivated by ${quizResponses.motivationFactors}`
+        };
+        
+        return res.json(fallbackInsights);
+      }
     } catch (error) {
       console.error('Error generating personality insights:', error);
       return res.status(500).json({ message: 'Failed to generate personality insights' });
@@ -588,12 +610,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Saving insights for user ${req.session.userId}`, updateData);
       
+      // Get user before update for comparison
+      const beforeUser = await storage.getUser(req.session.userId);
+      console.log("User before update:", {
+        id: beforeUser?.id,
+        hasInsights: !!beforeUser?.aiGeneratedInsights,
+        insightsLength: beforeUser?.aiGeneratedInsights ? beforeUser.aiGeneratedInsights.length : 0
+      });
+      
       // Update user with AI insights
       const user = await storage.updateUser(req.session.userId, updateData);
       
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
+      
+      // Log the updated user
+      console.log("User after update:", {
+        id: user.id,
+        hasInsights: !!user.aiGeneratedInsights,
+        insightsLength: user.aiGeneratedInsights ? user.aiGeneratedInsights.length : 0,
+        updateSuccess: beforeUser?.aiGeneratedInsights !== user.aiGeneratedInsights
+      });
       
       // Don't return password in response
       const { password, ...userWithoutPassword } = user;

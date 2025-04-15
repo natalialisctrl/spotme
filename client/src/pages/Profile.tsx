@@ -279,7 +279,23 @@ const Profile: FC = () => {
             <div className="space-y-4">
               {(() => {
                 try {
-                  const insights = JSON.parse(user.aiGeneratedInsights);
+                  // Log the raw insights data for debugging
+                  console.log("Raw AI insights data:", user.aiGeneratedInsights);
+                  
+                  // Parse the insights data
+                  let insights;
+                  if (typeof user.aiGeneratedInsights === 'string') {
+                    insights = JSON.parse(user.aiGeneratedInsights);
+                  } else {
+                    insights = user.aiGeneratedInsights;
+                  }
+                  
+                  console.log("Parsed insights:", insights);
+                  
+                  if (!insights || !insights.workoutStyle) {
+                    throw new Error("Invalid insights data");
+                  }
+                  
                   return (
                     <>
                       <div className="space-y-1">
@@ -290,7 +306,7 @@ const Profile: FC = () => {
                       <div className="space-y-1">
                         <h3 className="text-md font-semibold">Motivation Tips</h3>
                         <ul className="list-disc pl-5 text-gray-700 space-y-1">
-                          {insights.motivationTips.map((tip: string, index: number) => (
+                          {Array.isArray(insights.motivationTips) && insights.motivationTips.map((tip: string, index: number) => (
                             <li key={index}>{tip}</li>
                           ))}
                         </ul>
@@ -303,9 +319,11 @@ const Profile: FC = () => {
                     </>
                   );
                 } catch (e) {
+                  console.error("Error displaying AI insights:", e, user.aiGeneratedInsights);
                   return (
                     <div className="text-center text-gray-500">
                       <p>Your AI profile data needs to be updated. Click "Regenerate Profile" to create a new one.</p>
+                      <p className="text-xs mt-2 text-red-400">Error: {String(e)}</p>
                     </div>
                   );
                 }
