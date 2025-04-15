@@ -102,14 +102,14 @@ const FindPartners: FC = () => {
 
   return (
     <>
-      <WorkoutSelection onSelectWorkout={handleWorkoutSelect} />
-      <MapView 
+      {user && <WorkoutSelection onSelectWorkout={handleWorkoutSelect} />}
+      {user && <MapView 
         nearbyUsers={nearbyUsers} 
         currentUser={user}
         filterParams={filterParams}
         onUpdateFilters={handleUpdateFilters}
-      />
-      <PartnersList filterParams={filterParams} />
+      />}
+      {user && <PartnersList filterParams={filterParams} />}
     </>
   );
 };
