@@ -2,16 +2,22 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import AuthPage from "@/pages/AuthPage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import IdentityVerification from "@/components/profile/IdentityVerification";
+import { useState } from "react";
 
 // Create a client
 const queryClient = new QueryClient();
 
 function AuthDemo() {
   const { user, loading, login, logout } = useAuth();
+  const [showLoginForm, setShowLoginForm] = useState(false);
+  
+  if (showLoginForm) {
+    return <AuthPage />;
+  }
   
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
@@ -31,38 +37,31 @@ function AuthDemo() {
             <div className={`p-4 rounded-md mb-4 ${user ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
               {user ? `Logged in as ${user.name}` : 'Logged Out'}
             </div>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              onClick={() => user ? logout() : login('demo', 'password')}
-              disabled={loading}
-              className="w-full"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                user ? 'Log Out' : 'Log In (demo)'
-              )}
-            </Button>
-          </CardFooter>
-        </Card>
-        
-        {user && (
-          <IdentityVerification user={user} onVerificationComplete={() => {}} />
-        )}
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Debug Info</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-500">
-              Updated Authentication context is working properly. <br />
-              Identity verification component is displayed when logged in.
-            </p>
+            
+            <div className="flex flex-col space-y-4">
+              <Button 
+                onClick={() => user ? logout() : login('demo', 'password')}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  user ? 'Log Out' : 'Quick Login (demo)'
+                )}
+              </Button>
+              
+              <Button 
+                onClick={() => setShowLoginForm(true)}
+                variant="outline"
+                className="w-full"
+              >
+                Show Custom Login Form
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
