@@ -51,7 +51,7 @@ function AuthDemo() {
         </Card>
         
         {user && (
-          <SocialVerification user={user} onVerificationComplete={() => {}} />
+          <IdentityVerification user={user} onVerificationComplete={() => {}} />
         )}
         
         <Card>
@@ -61,7 +61,7 @@ function AuthDemo() {
           <CardContent>
             <p className="text-sm text-gray-500">
               Updated Authentication context is working properly. <br />
-              Social verification component is displayed when logged in.
+              Identity verification component is displayed when logged in.
             </p>
           </CardContent>
         </Card>
