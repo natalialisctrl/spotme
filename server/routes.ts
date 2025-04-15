@@ -17,9 +17,14 @@ const activeConnections = new Map<number, WebSocket>();
 
 import { setupAuth } from "./auth";
 
+import express from 'express';
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
   const httpServer = createServer(app);
+  
+  // Serve static files from public directory
+  app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
   
   // Set up authentication routes
   setupAuth(app);
