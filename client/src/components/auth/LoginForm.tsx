@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { loginSchema } from "@shared/schema";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -17,9 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 
 const LoginForm: FC = () => {
-  const { login } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const { loginMutation } = useAuth();
+  
   // Create form with validation schema
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -29,15 +28,8 @@ const LoginForm: FC = () => {
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof loginSchema>) => {
-    try {
-      setIsSubmitting(true);
-      await login(values.username, values.password);
-    } catch (error) {
-      console.error("Login error:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
+  const onSubmit = (values: z.infer<typeof loginSchema>) => {
+    loginMutation.mutate(values);
   };
 
   return (
@@ -69,8 +61,8 @@ const LoginForm: FC = () => {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? (
+        <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+          {loginMutation.isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Logging in...
@@ -93,7 +85,7 @@ const LoginForm: FC = () => {
                 form.setValue("password", "password123");
                 form.handleSubmit(onSubmit)();
               }}
-              disabled={isSubmitting}
+              disabled={loginMutation.isPending}
             >
               John (Intermediate)
             </Button>
@@ -106,7 +98,7 @@ const LoginForm: FC = () => {
                 form.setValue("password", "password123");
                 form.handleSubmit(onSubmit)();
               }}
-              disabled={isSubmitting}
+              disabled={loginMutation.isPending}
             >
               Jane (Advanced)
             </Button>

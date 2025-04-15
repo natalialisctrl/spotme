@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { insertUserSchema } from "@shared/schema";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -29,8 +29,7 @@ const registerSchema = insertUserSchema.extend({
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const RegisterForm: FC = () => {
-  const { register } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { registerMutation } = useAuth();
 
   // Create form with validation schema
   const form = useForm<RegisterFormValues>({
@@ -49,17 +48,10 @@ const RegisterForm: FC = () => {
     },
   });
 
-  const onSubmit = async (values: RegisterFormValues) => {
-    try {
-      setIsSubmitting(true);
-      // Remove the confirmPassword field before sending to API
-      const { confirmPassword, ...userData } = values;
-      await register(userData);
-    } catch (error) {
-      console.error("Registration error:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
+  const onSubmit = (values: RegisterFormValues) => {
+    // Remove the confirmPassword field before sending to API
+    const { confirmPassword, ...userData } = values;
+    registerMutation.mutate(userData);
   };
 
   return (
