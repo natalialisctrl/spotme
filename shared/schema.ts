@@ -17,7 +17,9 @@ export const users = pgTable("users", {
   latitude: real("latitude"),
   longitude: real("longitude"),
   lastActive: timestamp("last_active"),
-  // Social media verification fields
+  // AI-generated profile insights
+  aiGeneratedInsights: text("ai_generated_insights"),
+  // Identity verification fields
   firebaseUid: text("firebase_uid").unique(),
   googleVerified: boolean("google_verified").default(false),
   facebookVerified: boolean("facebook_verified").default(false),
