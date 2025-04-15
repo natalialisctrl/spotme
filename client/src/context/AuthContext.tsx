@@ -15,11 +15,11 @@ interface AuthContextType {
 // Create the auth context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Create mock user data
+// Create mock user data with AI-generated insights
 const mockUser: User = {
   id: 1,
   name: "John Doe",
-  username: "johndoe",
+  username: "demo",
   email: "john@example.com",
   gender: "male",
   experienceLevel: "intermediate",
@@ -27,12 +27,25 @@ const mockUser: User = {
   password: "password", // Don't worry, this is just mock data
   bio: "Fitness enthusiast looking for gym partners",
   gymName: "FitZone Gym",
-  latitude: null,
-  longitude: null,
+  latitude: 37.7749,
+  longitude: -122.4194,
   lastActive: new Date(),
-  aiGeneratedInsights: null,
+  aiGeneratedInsights: JSON.stringify({
+    workoutStyle: "balanced",
+    motivationTips: [
+      "Track your progress with a fitness journal",
+      "Set specific, achievable weekly goals",
+      "Join group classes to stay motivated"
+    ],
+    recommendedGoals: [
+      "Increase strength by 15% in three months",
+      "Improve cardiovascular endurance",
+      "Maintain consistent workout schedule"
+    ],
+    partnerPreferences: "Looking for a consistent partner who enjoys balanced workouts and can help maintain motivation"
+  }),
   firebaseUid: null,
-  googleVerified: false,
+  googleVerified: true,
   facebookVerified: false,
   instagramVerified: false
 };

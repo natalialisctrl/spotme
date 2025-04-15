@@ -88,43 +88,139 @@ export class MemStorage implements IStorage {
   private createDemoUsers() {
     const demoUsers: InsertUser[] = [
       {
-        username: "johndoe",
-        password: "password123",
-        email: "john@example.com",
-        name: "John Doe",
+        username: "demo",
+        password: "password",
+        email: "demo@gymbuddy.com",
+        name: "Demo User",
         gender: "male",
         experienceLevel: "intermediate",
         experienceYears: 3,
-        bio: "Fitness enthusiast looking for workout partners",
-        gymName: "Fitness Hub",
+        bio: "Fitness enthusiast looking for gym partners",
+        gymName: "FitZone Gym",
         latitude: 37.7749,
-        longitude: -122.4194
+        longitude: -122.4194,
+        aiGeneratedInsights: JSON.stringify({
+          workoutStyle: "balanced",
+          motivationTips: [
+            "Track your progress with a fitness journal",
+            "Set specific, achievable weekly goals",
+            "Join group classes to stay motivated"
+          ],
+          recommendedGoals: [
+            "Increase strength by 15% in three months",
+            "Improve cardiovascular endurance",
+            "Maintain consistent workout schedule"
+          ],
+          partnerPreferences: "Looking for a consistent partner who enjoys balanced workouts and can help maintain motivation"
+        })
       },
       {
-        username: "janedoe",
+        username: "sarah_fit",
         password: "password123",
-        email: "jane@example.com",
-        name: "Jane Doe",
+        email: "sarah@example.com",
+        name: "Sarah Johnson",
         gender: "female",
-        experienceLevel: "advanced",
-        experienceYears: 5,
-        bio: "Personal trainer and fitness coach",
-        gymName: "Fitness Hub",
-        latitude: 37.7749,
-        longitude: -122.4194
+        experienceLevel: "intermediate",
+        experienceYears: 4,
+        bio: "Love challenging workouts and helping others reach their goals",
+        gymName: "FitZone Gym",
+        latitude: 37.775,
+        longitude: -122.42,
+        aiGeneratedInsights: JSON.stringify({
+          workoutStyle: "balanced",
+          motivationTips: [
+            "Create a reward system for hitting targets",
+            "Mix up routine to avoid plateaus",
+            "Find a workout buddy for accountability"
+          ],
+          recommendedGoals: [
+            "Increase overall strength",
+            "Improve endurance for longer workouts",
+            "Maintain consistent schedule"
+          ],
+          partnerPreferences: "Seeking someone who values consistency and balanced approach to fitness"
+        })
       },
       {
-        username: "mikesmith",
+        username: "mike_power",
         password: "password123",
         email: "mike@example.com",
-        name: "Mike Smith",
+        name: "Mike Power",
         gender: "male",
+        experienceLevel: "advanced",
+        experienceYears: 7,
+        bio: "Powerlifting enthusiast looking to help beginners and intermediates",
+        gymName: "Strength Central",
+        latitude: 37.77,
+        longitude: -122.41,
+        aiGeneratedInsights: JSON.stringify({
+          workoutStyle: "high intensity",
+          motivationTips: [
+            "Track personal records for motivation",
+            "Compete with yourself, not others",
+            "Visualize success before each set"
+          ],
+          recommendedGoals: [
+            "Increase max lifts by 10%",
+            "Perfect form on compound movements",
+            "Add muscle mass while maintaining mobility"
+          ],
+          partnerPreferences: "Looking for dedicated partners who want to push their limits"
+        })
+      },
+      {
+        username: "yoga_lisa",
+        password: "password123",
+        email: "lisa@example.com",
+        name: "Lisa Chen",
+        gender: "female",
         experienceLevel: "beginner",
         experienceYears: 1,
-        bio: "New to the gym, looking for guidance",
-        gymName: "City Gym",
-        latitude: 37.7833,
-        longitude: -122.4167
+        bio: "Just getting started with fitness after years of yoga practice",
+        gymName: "Wellness Studio",
+        latitude: 37.78,
+        longitude: -122.43,
+        aiGeneratedInsights: JSON.stringify({
+          workoutStyle: "methodical",
+          motivationTips: [
+            "Focus on form over intensity",
+            "Celebrate small improvements",
+            "Use mind-body connection during workouts"
+          ],
+          recommendedGoals: [
+            "Build foundation of strength",
+            "Improve flexibility while gaining muscle",
+            "Learn proper technique for all major exercises"
+          ],
+          partnerPreferences: "Seeking patient partners who value proper form and mindful approach"
+        })
+      },
+      {
+        username: "fitness_carlos",
+        password: "password123",
+        email: "carlos@example.com",
+        name: "Carlos Rodriguez",
+        gender: "male",
+        experienceLevel: "intermediate",
+        experienceYears: 3,
+        bio: "Fitness should be fun! Looking for workout buddies who enjoy social training",
+        gymName: "FitZone Gym",
+        latitude: 37.773,
+        longitude: -122.415,
+        aiGeneratedInsights: JSON.stringify({
+          workoutStyle: "social",
+          motivationTips: [
+            "Make workouts a social event",
+            "Use group classes for motivation",
+            "Share goals with friends for accountability"
+          ],
+          recommendedGoals: [
+            "Try a new group fitness class each month",
+            "Improve overall fitness while having fun",
+            "Build a supportive fitness community"
+          ],
+          partnerPreferences: "Looking for partners who believe workouts should be effective AND enjoyable"
+        })
       }
     ];
 
@@ -190,9 +286,9 @@ export class MemStorage implements IStorage {
       ...user, 
       id, 
       lastActive: new Date(),
-      aiGeneratedInsights: null,
-      latitude: null,
-      longitude: null,
+      aiGeneratedInsights: user.aiGeneratedInsights || null,
+      latitude: user.latitude || null,
+      longitude: user.longitude || null,
       bio: user.bio || null,
       gymName: user.gymName || null,
       firebaseUid: user.firebaseUid || null,
