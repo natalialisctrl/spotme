@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import FindPartners from "@/pages/FindPartners";
 import Messages from "@/pages/Messages";
 import Profile from "@/pages/Profile";
+import NewProfilePage from "@/pages/NewProfilePage"; // Import the new profile page
 import Connections from "@/pages/Connections";
 import ProfileSetup from "@/pages/ProfileSetup";
 import AuthPage from "@/pages/AuthPage";
@@ -25,7 +26,8 @@ function ConnectionsPage() {
 }
 
 function ProfilePage() {
-  return <Profile />;
+  // Use the new profile page component with direct fetch approach
+  return <NewProfilePage />;
 }
 
 function ProfileSetupPage() {

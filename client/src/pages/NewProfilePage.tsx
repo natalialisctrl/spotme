@@ -1,4 +1,4 @@
-import { FC, useState, useEffect, useRef, useCallback } from "react";
+import { FC, useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -15,92 +15,188 @@ import { Badge } from "@/components/ui/badge";
 import { workoutTypes } from "@shared/schema";
 import IdentityVerification from "@/components/profile/IdentityVerification";
 
-const Profile: FC = () => {
+// Create a standalone profile page component with a completely different approach
+const NewProfilePage: FC = () => {
   const { user, refreshUserData } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [formData, setFormData] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    bio: user?.bio || "",
-    gymName: user?.gymName || "",
-    gender: user?.gender || "",
-    experienceLevel: user?.experienceLevel || "",
-    experienceYears: user?.experienceYears || 0
-  });
   
-  // Refresh user data when the component mounts
+  // Profile state
+  const [mode, setMode] = useState<"view" | "edit">("view");
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // User data state - completely separate from React Query cache
+  const [userData, setUserData] = useState<any>(null);
+  const [formData, setFormData] = useState<any>({});
+  
+  // Load initial data directly from API, bypassing React Query
   useEffect(() => {
-    // Refresh user data when component mounts
-    const loadData = async () => {
-      console.log("Profile component mounted, refreshing user data");
-      await refreshUserData();
-    };
-    
-    loadData();
-  }, [refreshUserData]);
-  
-  // Update form data when user changes
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name || "",
-        email: user.email || "",
-        bio: user.bio || "",
-        gymName: user.gymName || "",
-        gender: user.gender || "",
-        experienceLevel: user.experienceLevel || "",
-        experienceYears: user.experienceYears || 0
-      });
-    }
-  }, [user]);
-  
-  // Function to manually refresh profile data
-  const handleRefreshProfile = async () => {
-    setIsRefreshing(true);
-    try {
-      // Force fetch from server by cleaning cache first
-      queryClient.removeQueries({ queryKey: ["/api/user"] });
-      
-      // Wait a moment to ensure any pending updates are complete
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Now refresh user data
-      await refreshUserData();
-      
-      // Update local form data with refreshed user data
-      if (user) {
+    const loadUserData = async () => {
+      try {
+        // Make a direct fetch request to get user data
+        const response = await fetch('/api/user', {
+          credentials: 'include',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error("Failed to load user data");
+        }
+        
+        const data = await response.json();
+        setUserData(data);
         setFormData({
-          name: user.name || "",
-          email: user.email || "",
-          bio: user.bio || "",
-          gymName: user.gymName || "",
-          gender: user.gender || "",
-          experienceLevel: user.experienceLevel || "",
-          experienceYears: user.experienceYears || 0
+          name: data.name || "",
+          email: data.email || "",
+          bio: data.bio || "",
+          gymName: data.gymName || "",
+          gender: data.gender || "",
+          experienceLevel: data.experienceLevel || "",
+          experienceYears: data.experienceYears || 0
+        });
+      } catch (error) {
+        console.error("Error loading user data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load your profile data. Please refresh the page.",
+          variant: "destructive"
         });
       }
+    };
+    
+    loadUserData();
+  }, [toast]);
+
+  // Manual refresh function
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const response = await fetch('/api/user', {
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to refresh data");
+      }
+      
+      const freshData = await response.json();
+      
+      // Update the local state
+      setUserData(freshData);
+      
+      // Update the form data
+      setFormData({
+        name: freshData.name || "",
+        email: freshData.email || "",
+        bio: freshData.bio || "",
+        gymName: freshData.gymName || "",
+        gender: freshData.gender || "",
+        experienceLevel: freshData.experienceLevel || "",
+        experienceYears: freshData.experienceYears || 0
+      });
+      
+      // Also update React Query cache for consistency with the rest of the app
+      queryClient.setQueryData(["/api/user"], freshData);
       
       toast({
         title: "Profile refreshed",
-        description: "Your profile has been refreshed with the latest data.",
+        description: "Your profile has been refreshed with the latest data."
       });
     } catch (error) {
-      console.error("Error refreshing profile:", error);
+      console.error("Error refreshing data:", error);
       toast({
         title: "Refresh failed",
-        description: "Could not refresh profile data. Please try again.",
+        description: "Failed to refresh your profile. Please try again.",
         variant: "destructive"
       });
     } finally {
-      setIsRefreshing(false);
+      setRefreshing(false);
     }
   };
 
-  if (!user) {
+  // Input handlers
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev: Record<string, any>) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev: Record<string, any>) => ({ ...prev, [name]: value }));
+  };
+
+  const handleNumberChange = (name: string, value: string) => {
+    setFormData((prev: Record<string, any>) => ({ ...prev, [name]: parseInt(value) || 0 }));
+  };
+
+  // Save handler
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      // First, update local state immediately
+      const updatedData = { ...userData, ...formData };
+      setUserData(updatedData);
+      
+      // Then send the update to the server
+      const response = await fetch(`/api/users/${userData.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(formData)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update profile: ${response.status}`);
+      }
+      
+      // Get the response data from the server
+      const serverData = await response.json();
+      
+      // Update local state with server response
+      setUserData(serverData);
+      
+      // Also update React Query cache
+      queryClient.setQueryData(["/api/user"], serverData);
+      
+      // Exit edit mode
+      setMode("view");
+      
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully."
+      });
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      
+      // Revert local state and try to refresh
+      await handleRefresh();
+      
+      toast({
+        title: "Update failed",
+        description: "Failed to update your profile. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper functions
+  const getInitials = (name: string) => {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+  };
+
+  // Loading state
+  if (!userData) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -108,114 +204,7 @@ const Profile: FC = () => {
     );
   }
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleNumberChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: parseInt(value) || 0 }));
-  };
-
-  const handleSave = async () => {
-    try {
-      setIsSaving(true);
-      
-      // SOLUTION 1: Create a new updatedUser object to work with
-      const updatedUser = user ? { ...user, ...formData } : null;
-      if (!updatedUser) {
-        throw new Error("User data not available");
-      }
-      
-      // SOLUTION 2: Create a synchronous update function for visual consistency
-      const updateVisualElements = () => {
-        // Select all elements that need updating
-        const nameDisplayElement = document.querySelector('.text-center h3');
-        const nameDetailElement = document.querySelector('label[for="name"] + p');
-        const emailElement = document.querySelector('label[for="email"] + p');
-        const genderElement = document.querySelector('label[for="gender"] + p');
-        const gymNameElement = document.querySelector('label[for="gymName"] + p');
-        const experienceLevelElement = document.querySelector('label[for="experienceLevel"] + p');
-        const experienceYearsElement = document.querySelector('label[for="experienceYears"] + p');
-        const bioElement = document.querySelector('label[for="bio"] + p');
-        const avatarElement = document.querySelector('.h-32.w-32 span');
-        
-        // Update DOM elements for immediate visual feedback
-        if (nameDisplayElement) nameDisplayElement.textContent = formData.name;
-        if (nameDetailElement) nameDetailElement.textContent = formData.name;
-        if (emailElement) emailElement.textContent = formData.email;
-        if (genderElement) genderElement.textContent = formData.gender;
-        if (gymNameElement) gymNameElement.textContent = formData.gymName || "Not specified";
-        if (experienceLevelElement) experienceLevelElement.textContent = formData.experienceLevel;
-        if (experienceYearsElement) {
-          experienceYearsElement.textContent = `${formData.experienceYears} ${formData.experienceYears === 1 ? 'year' : 'years'}`;
-        }
-        if (bioElement) bioElement.textContent = formData.bio || "No bio provided";
-        if (avatarElement) avatarElement.textContent = getInitials(formData.name);
-      };
-      
-      // SOLUTION 3: Clear React Query cache to force fresh data
-      // Remove any existing cache data for the user
-      queryClient.removeQueries({ queryKey: ["/api/user"] });
-      
-      // SOLUTION 4: Update local cache immediately before network request
-      queryClient.setQueryData(["/api/user"], updatedUser);
-      
-      // SOLUTION 5: Update DOM directly for visual consistency
-      updateVisualElements();
-      
-      // SOLUTION 6: Save data to server
-      const response = await apiRequest('PATCH', `/api/users/${user.id}`, formData);
-      if (!response.ok) {
-        throw new Error(`Server update failed with status ${response.status}`);
-      }
-      
-      // SOLUTION 7: Get and use fresh data from server response
-      const serverResponse = await response.json();
-      
-      // SOLUTION 8: Force cache update with server response
-      queryClient.setQueryData(["/api/user"], serverResponse);
-      
-      // SOLUTION 9: Trigger component update with forced refresh
-      await refreshUserData();
-      
-      // SOLUTION 10: Update DOM elements again to ensure consistency with server data
-      updateVisualElements();
-      
-      // Exit edit mode
-      setIsEditing(false);
-      
-      // Notify user of success
-      toast({
-        title: "Profile Updated",
-        description: "Your profile information has been saved successfully."
-      });
-      
-    } catch (error) {
-      console.error("Profile update error:", error);
-      
-      // Fallback: Force refresh from server on error
-      queryClient.removeQueries({ queryKey: ["/api/user"] });
-      await refreshUserData();
-      
-      toast({
-        title: "Update Failed",
-        description: error instanceof Error ? error.message : "Failed to update profile",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
+  // Render profile
   return (
     <div className="space-y-6">
       <Card>
@@ -231,16 +220,16 @@ const Profile: FC = () => {
               <Button 
                 variant="outline" 
                 size="icon" 
-                onClick={handleRefreshProfile} 
-                disabled={isRefreshing}
+                onClick={handleRefresh} 
+                disabled={refreshing}
               >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               </Button>
               
-              {!isEditing ? (
-                <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
+              {mode === "view" ? (
+                <Button onClick={() => setMode("edit")}>Edit Profile</Button>
               ) : (
-                <Button onClick={() => setIsEditing(false)} variant="outline">Cancel</Button>
+                <Button onClick={() => setMode("view")} variant="outline">Cancel</Button>
               )}
             </div>
           </div>
@@ -249,18 +238,18 @@ const Profile: FC = () => {
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex flex-col items-center gap-3">
               <Avatar className="h-32 w-32 bg-primary text-white text-4xl">
-                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                <AvatarFallback>{getInitials(userData.name)}</AvatarFallback>
               </Avatar>
               <div className="text-center">
-                <h3 className="font-semibold text-xl">{user.name}</h3>
-                <p className="text-sm text-gray-500">{user.username}</p>
+                <h3 className="font-semibold text-xl">{userData.name}</h3>
+                <p className="text-sm text-gray-500">{userData.username}</p>
               </div>
             </div>
             <div className="flex-1 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
-                  {isEditing ? (
+                  {mode === "edit" ? (
                     <Input 
                       id="name" 
                       name="name" 
@@ -268,12 +257,12 @@ const Profile: FC = () => {
                       onChange={handleInputChange} 
                     />
                   ) : (
-                    <p className="text-gray-900 font-medium">{user.name}</p>
+                    <p className="text-gray-900 font-medium">{userData.name}</p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  {isEditing ? (
+                  {mode === "edit" ? (
                     <Input 
                       id="email" 
                       name="email" 
@@ -282,12 +271,12 @@ const Profile: FC = () => {
                       onChange={handleInputChange} 
                     />
                   ) : (
-                    <p className="text-gray-900">{user.email}</p>
+                    <p className="text-gray-900">{userData.email}</p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="gender">Gender</Label>
-                  {isEditing ? (
+                  {mode === "edit" ? (
                     <Select 
                       value={formData.gender} 
                       onValueChange={(value) => handleSelectChange("gender", value)}
@@ -303,12 +292,12 @@ const Profile: FC = () => {
                       </SelectContent>
                     </Select>
                   ) : (
-                    <p className="text-gray-900 capitalize">{user.gender}</p>
+                    <p className="text-gray-900 capitalize">{userData.gender}</p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="gymName">Gym Name</Label>
-                  {isEditing ? (
+                  {mode === "edit" ? (
                     <Input 
                       id="gymName" 
                       name="gymName" 
@@ -316,12 +305,12 @@ const Profile: FC = () => {
                       onChange={handleInputChange} 
                     />
                   ) : (
-                    <p className="text-gray-900">{user.gymName || "Not specified"}</p>
+                    <p className="text-gray-900">{userData.gymName || "Not specified"}</p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="experienceLevel">Experience Level</Label>
-                  {isEditing ? (
+                  {mode === "edit" ? (
                     <Select 
                       value={formData.experienceLevel} 
                       onValueChange={(value) => handleSelectChange("experienceLevel", value)}
@@ -336,12 +325,12 @@ const Profile: FC = () => {
                       </SelectContent>
                     </Select>
                   ) : (
-                    <p className="text-gray-900 capitalize">{user.experienceLevel}</p>
+                    <p className="text-gray-900 capitalize">{userData.experienceLevel}</p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="experienceYears">Years of Experience</Label>
-                  {isEditing ? (
+                  {mode === "edit" ? (
                     <Input 
                       id="experienceYears" 
                       name="experienceYears" 
@@ -351,13 +340,15 @@ const Profile: FC = () => {
                       onChange={(e) => handleNumberChange("experienceYears", e.target.value)} 
                     />
                   ) : (
-                    <p className="text-gray-900">{user.experienceYears} {user.experienceYears === 1 ? 'year' : 'years'}</p>
+                    <p className="text-gray-900">
+                      {userData.experienceYears} {userData.experienceYears === 1 ? 'year' : 'years'}
+                    </p>
                   )}
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bio">Bio</Label>
-                {isEditing ? (
+                {mode === "edit" ? (
                   <Textarea 
                     id="bio" 
                     name="bio" 
@@ -367,20 +358,20 @@ const Profile: FC = () => {
                     className="min-h-[100px]"
                   />
                 ) : (
-                  <p className="text-gray-900">{user.bio || "No bio provided"}</p>
+                  <p className="text-gray-900">{userData.bio || "No bio provided"}</p>
                 )}
               </div>
             </div>
           </div>
         </CardContent>
-        {isEditing && (
+        {mode === "edit" && (
           <CardFooter>
             <Button 
               className="ml-auto" 
               onClick={handleSave} 
-              disabled={isSaving}
+              disabled={loading}
             >
-              {isSaving ? (
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving
@@ -396,8 +387,10 @@ const Profile: FC = () => {
         )}
       </Card>
 
-      <IdentityVerification user={user} onVerificationComplete={refreshUserData} />
+      {/* Identity Verification section */}
+      <IdentityVerification user={userData} onVerificationComplete={handleRefresh} />
 
+      {/* AI Profile section */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -412,29 +405,24 @@ const Profile: FC = () => {
             </div>
             <Button 
               onClick={() => navigate("/profile-setup")}
-              variant={user.aiGeneratedInsights ? "outline" : "default"}
+              variant={userData.aiGeneratedInsights ? "outline" : "default"}
             >
-              {user.aiGeneratedInsights ? "Regenerate Profile" : "Generate AI Profile"}
+              {userData.aiGeneratedInsights ? "Regenerate Profile" : "Generate AI Profile"}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          {user.aiGeneratedInsights ? (
+          {userData.aiGeneratedInsights ? (
             <div className="space-y-4">
               {(() => {
                 try {
-                  // Log the raw insights data for debugging
-                  console.log("Raw AI insights data:", user.aiGeneratedInsights);
-                  
                   // Parse the insights data
                   let insights;
-                  if (typeof user.aiGeneratedInsights === 'string') {
-                    insights = JSON.parse(user.aiGeneratedInsights);
+                  if (typeof userData.aiGeneratedInsights === 'string') {
+                    insights = JSON.parse(userData.aiGeneratedInsights);
                   } else {
-                    insights = user.aiGeneratedInsights;
+                    insights = userData.aiGeneratedInsights;
                   }
-                  
-                  console.log("Parsed insights:", insights);
                   
                   if (!insights || !insights.workoutStyle) {
                     throw new Error("Invalid insights data");
@@ -463,11 +451,10 @@ const Profile: FC = () => {
                     </>
                   );
                 } catch (e) {
-                  console.error("Error displaying AI insights:", e, user.aiGeneratedInsights);
+                  console.error("Error displaying AI insights:", e);
                   return (
                     <div className="text-center text-gray-500">
                       <p>Your AI profile data needs to be updated. Click "Regenerate Profile" to create a new one.</p>
-                      <p className="text-xs mt-2 text-red-400">Error: {String(e)}</p>
                     </div>
                   );
                 }
@@ -483,6 +470,7 @@ const Profile: FC = () => {
         </CardContent>
       </Card>
 
+      {/* Workout Preferences section */}
       <Card>
         <CardHeader>
           <CardTitle>Workout Preferences</CardTitle>
@@ -504,4 +492,4 @@ const Profile: FC = () => {
   );
 };
 
-export default Profile;
+export default NewProfilePage;
