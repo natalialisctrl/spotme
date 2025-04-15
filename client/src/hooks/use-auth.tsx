@@ -123,16 +123,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUserData = async () => {
     console.log("Refreshing user data...");
     try {
-      // First, completely remove any cached user data
-      queryClient.removeQueries({ queryKey: ["/api/user"] });
+      // SOLUTION 1: Completely remove all queries from cache
+      queryClient.clear();
       
-      // Then force a new fetch with no caching
-      const userData = await fetch('/api/user', {
+      // SOLUTION 2: Force browser to bypass its own cache
+      const timestamp = new Date().getTime();
+      
+      // SOLUTION 3: Use direct fetch with all cache prevention headers
+      const userData = await fetch(`/api/user?nocache=${timestamp}`, {
         method: 'GET',
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
           'Pragma': 'no-cache',
-          'Expires': '0'
+          'Expires': '0',
+          'If-Modified-Since': '0',
+          'If-None-Match': ''
         },
         credentials: 'include'
       });
@@ -141,13 +146,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(`Failed to fetch user data: ${userData.status}`);
       }
       
-      // Get the fresh user data
+      // SOLUTION 4: Parse server response as fresh data
       const freshUserData = await userData.json();
       
-      // Manually update the query cache with the fresh data
+      // SOLUTION 5: Completely rebuild the query cache with fresh data
       queryClient.setQueryData(["/api/user"], freshUserData);
       
+      // SOLUTION 6: Force a reset of the entire query cache
+      queryClient.resetQueries({ queryKey: ["/api/user"] });
+      
       console.log("User data refreshed successfully with fresh data:", freshUserData.name);
+      
+      // Force a small delay to ensure React has time to process the state change
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
       return freshUserData;
     } catch (error) {
       console.error("Error refreshing user data:", error);

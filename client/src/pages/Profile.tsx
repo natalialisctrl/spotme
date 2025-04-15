@@ -129,49 +129,71 @@ const Profile: FC = () => {
     try {
       setIsSaving(true);
       
-      // Create local DOM references to update immediately (to bypass React's rendering cycles)
-      const nameDisplayElement = document.querySelector('.text-center h3');
-      const nameDetailElement = document.querySelector('label[for="name"] + p');
-      const emailElement = document.querySelector('label[for="email"] + p');
-      const genderElement = document.querySelector('label[for="gender"] + p');
-      const gymNameElement = document.querySelector('label[for="gymName"] + p');
-      const experienceLevelElement = document.querySelector('label[for="experienceLevel"] + p');
-      const experienceYearsElement = document.querySelector('label[for="experienceYears"] + p');
-      const bioElement = document.querySelector('label[for="bio"] + p');
-      const avatarElement = document.querySelector('.h-32.w-32 span');
-      
-      // Immediately update DOM elements for instant visual feedback
-      if (nameDisplayElement) nameDisplayElement.textContent = formData.name;
-      if (nameDetailElement) nameDetailElement.textContent = formData.name;
-      if (emailElement) emailElement.textContent = formData.email;
-      if (genderElement) genderElement.textContent = formData.gender;
-      if (gymNameElement) gymNameElement.textContent = formData.gymName || "Not specified";
-      if (experienceLevelElement) experienceLevelElement.textContent = formData.experienceLevel;
-      if (experienceYearsElement) {
-        experienceYearsElement.textContent = `${formData.experienceYears} ${formData.experienceYears === 1 ? 'year' : 'years'}`;
+      // SOLUTION 1: Create a new updatedUser object to work with
+      const updatedUser = user ? { ...user, ...formData } : null;
+      if (!updatedUser) {
+        throw new Error("User data not available");
       }
-      if (bioElement) bioElement.textContent = formData.bio || "No bio provided";
-      if (avatarElement) avatarElement.textContent = getInitials(formData.name);
       
-      // Immediately update the cache for React's state management
-      if (user) {
-        // Create updated user object for cache
-        const updatedUser = { ...user, ...formData };
+      // SOLUTION 2: Create a synchronous update function for visual consistency
+      const updateVisualElements = () => {
+        // Select all elements that need updating
+        const nameDisplayElement = document.querySelector('.text-center h3');
+        const nameDetailElement = document.querySelector('label[for="name"] + p');
+        const emailElement = document.querySelector('label[for="email"] + p');
+        const genderElement = document.querySelector('label[for="gender"] + p');
+        const gymNameElement = document.querySelector('label[for="gymName"] + p');
+        const experienceLevelElement = document.querySelector('label[for="experienceLevel"] + p');
+        const experienceYearsElement = document.querySelector('label[for="experienceYears"] + p');
+        const bioElement = document.querySelector('label[for="bio"] + p');
+        const avatarElement = document.querySelector('.h-32.w-32 span');
         
-        // Update the local cache instantly
-        queryClient.setQueryData(["/api/user"], updatedUser);
+        // Update DOM elements for immediate visual feedback
+        if (nameDisplayElement) nameDisplayElement.textContent = formData.name;
+        if (nameDetailElement) nameDetailElement.textContent = formData.name;
+        if (emailElement) emailElement.textContent = formData.email;
+        if (genderElement) genderElement.textContent = formData.gender;
+        if (gymNameElement) gymNameElement.textContent = formData.gymName || "Not specified";
+        if (experienceLevelElement) experienceLevelElement.textContent = formData.experienceLevel;
+        if (experienceYearsElement) {
+          experienceYearsElement.textContent = `${formData.experienceYears} ${formData.experienceYears === 1 ? 'year' : 'years'}`;
+        }
+        if (bioElement) bioElement.textContent = formData.bio || "No bio provided";
+        if (avatarElement) avatarElement.textContent = getInitials(formData.name);
+      };
+      
+      // SOLUTION 3: Clear React Query cache to force fresh data
+      // Remove any existing cache data for the user
+      queryClient.removeQueries({ queryKey: ["/api/user"] });
+      
+      // SOLUTION 4: Update local cache immediately before network request
+      queryClient.setQueryData(["/api/user"], updatedUser);
+      
+      // SOLUTION 5: Update DOM directly for visual consistency
+      updateVisualElements();
+      
+      // SOLUTION 6: Save data to server
+      const response = await apiRequest('PATCH', `/api/users/${user.id}`, formData);
+      if (!response.ok) {
+        throw new Error(`Server update failed with status ${response.status}`);
       }
       
-      // Save the profile data to the server
-      const response = await apiRequest('PATCH', `/api/users/${user.id}`, formData);
+      // SOLUTION 7: Get and use fresh data from server response
+      const serverResponse = await response.json();
       
-      // Get the updated user from the server
-      const updatedUserFromServer = await response.json();
+      // SOLUTION 8: Force cache update with server response
+      queryClient.setQueryData(["/api/user"], serverResponse);
       
-      // Update the cache with the server response (might be redundant but ensures consistency)
-      queryClient.setQueryData(["/api/user"], updatedUserFromServer);
+      // SOLUTION 9: Trigger component update with forced refresh
+      await refreshUserData();
       
+      // SOLUTION 10: Update DOM elements again to ensure consistency with server data
+      updateVisualElements();
+      
+      // Exit edit mode
       setIsEditing(false);
+      
+      // Notify user of success
       toast({
         title: "Profile Updated",
         description: "Your profile information has been saved successfully."
@@ -179,9 +201,10 @@ const Profile: FC = () => {
       
     } catch (error) {
       console.error("Profile update error:", error);
-      // Force refresh to get the actual server state on error
+      
+      // Fallback: Force refresh from server on error
       queryClient.removeQueries({ queryKey: ["/api/user"] });
-      refreshUserData();
+      await refreshUserData();
       
       toast({
         title: "Update Failed",

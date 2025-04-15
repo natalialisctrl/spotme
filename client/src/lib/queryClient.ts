@@ -29,8 +29,20 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    // Add cache-busting timestamp to prevent browser caching
+    const url = queryKey[0] as string;
+    const separator = url.includes('?') ? '&' : '?';
+    const timestamp = new Date().getTime();
+    const cacheBustingUrl = `${url}${separator}_=${timestamp}`;
+    
+    // Fetch with explicit cache prevention headers
+    const res = await fetch(cacheBustingUrl, {
       credentials: "include",
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      },
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
@@ -46,8 +58,11 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: true,  // Allow refetching when window is focused
-      staleTime: 5000,             // Consider data stale after 5 seconds
+      refetchOnWindowFocus: true,       // Always refetch when window is focused
+      refetchOnReconnect: true,         // Refetch when reconnecting
+      refetchOnMount: true,             // Always refetch when mounting components
+      staleTime: 0,                     // Consider data stale immediately (always refetch)
+      gcTime: 1000 * 60,                // Cache for 1 minute maximum (previously called cacheTime)
       retry: false,
     },
     mutations: {
