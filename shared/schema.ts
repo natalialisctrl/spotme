@@ -17,6 +17,8 @@ export const users = pgTable("users", {
   latitude: real("latitude"),
   longitude: real("longitude"),
   lastActive: timestamp("last_active"),
+  // Profile picture
+  profilePictureUrl: text("profile_picture_url"),
   // AI-generated profile insights
   aiGeneratedInsights: text("ai_generated_insights"),
   // Identity verification fields

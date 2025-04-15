@@ -8,6 +8,9 @@ import {
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { generatePersonalityInsights, PersonalityQuizResponses } from "./openai";
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
 
 // Map to store active WebSocket connections by user ID
 const activeConnections = new Map<number, WebSocket>();
@@ -115,6 +118,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: error.errors });
       }
       return res.status(500).json({ message: 'Failed to update location' });
+    }
+  });
+  
+  // Profile picture upload endpoint
+  app.post('/api/users/:id/profile-picture', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    const userId = parseInt(req.params.id);
+    
+    // Ensure user can only update their own profile picture
+    if (userId !== req.session.userId) {
+      return res.status(403).json({ message: 'Not authorized to update this user' });
+    }
+    
+    try {
+      const { imageData, fileName } = req.body;
+      
+      if (!imageData || !fileName) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+      
+      // Decode base64 data
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      // Create uploads directory if it doesn't exist
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      // Generate unique filename
+      const fileExt = path.extname(fileName);
+      const uniqueFilename = `${userId}_${crypto.randomBytes(8).toString('hex')}${fileExt}`;
+      const filePath = path.join(uploadsDir, uniqueFilename);
+      
+      // Write file
+      fs.writeFileSync(filePath, buffer);
+      
+      // Generate public URL
+      const imageUrl = `/uploads/${uniqueFilename}`;
+      
+      // Update user's profile picture URL in database
+      const user = await storage.updateUser(userId, { profilePictureUrl: imageUrl });
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Return the image URL
+      return res.json({ imageUrl });
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
+      return res.status(500).json({ message: 'Failed to upload profile picture' });
     }
   });
 
