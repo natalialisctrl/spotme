@@ -53,7 +53,7 @@ export interface IStorage {
   calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number;
   
   // Session storage
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Using 'any' to avoid TypeScript errors with SessionStore
 }
 
 // In-memory storage implementation
@@ -72,7 +72,7 @@ export class MemStorage implements IStorage {
   private currentMessageId: number;
   private currentCompatibilityResponseId: number;
 
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Using 'any' to avoid TypeScript errors
 
   constructor() {
     this.users = new Map();
@@ -102,14 +102,14 @@ export class MemStorage implements IStorage {
   private createDemoUsers() {
     const demoUsers: InsertUser[] = [
       {
-        username: "demo",
-        password: "password",
-        email: "demo@gymbuddy.com",
-        name: "Demo User",
-        gender: "male",
-        experienceLevel: "intermediate",
-        experienceYears: 3,
-        bio: "Fitness enthusiast looking for gym partners",
+        username: "natalia",
+        password: "liscr12",
+        email: "natalia@spotme.com",
+        name: "Natalia Trainer",
+        gender: "female",
+        experienceLevel: "advanced",
+        experienceYears: 5,
+        bio: "Certified personal trainer who loves connecting with fitness enthusiasts",
         gymName: "FitZone Gym",
         latitude: 37.7749,
         longitude: -122.4194,
@@ -125,7 +125,7 @@ export class MemStorage implements IStorage {
             "Improve cardiovascular endurance",
             "Maintain consistent workout schedule"
           ],
-          partnerPreferences: "Looking for a consistent partner who enjoys balanced workouts and can help maintain motivation"
+          partnerPreferences: "Looking for dedicated partners who want to improve their form and technique"
         })
       },
       {
