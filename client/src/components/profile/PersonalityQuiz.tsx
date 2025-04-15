@@ -1,36 +1,37 @@
 import { FC, useState } from 'react';
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { 
-  Form, 
-  FormControl, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
-} from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { Loader2, Sparkles } from "lucide-react";
-import { PersonalityInsight, generatePersonalityInsights } from '@/lib/openai';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Sparkles, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { generatePersonalityInsights, PersonalityInsight } from '@/lib/openai';
 
-// Form schema
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+
+// Validation schema for personality quiz
 const personalityQuizSchema = z.object({
-  fitnessLevel: z.string().min(3, "Please describe your fitness level"),
-  fitnessGoals: z.string().min(3, "Please describe your fitness goals"),
-  preferredActivities: z.string().min(3, "Please describe activities you enjoy"),
-  schedule: z.string().min(3, "Please describe your typical workout schedule"),
-  motivationFactors: z.string().min(3, "Please describe what motivates you")
+  fitnessLevel: z.string().min(3, { message: 'Please describe your fitness level' }),
+  fitnessGoals: z.string().min(3, { message: 'Please describe your fitness goals' }),
+  preferredActivities: z.string().min(3, { message: 'Please describe your preferred activities' }),
+  schedule: z.string().min(3, { message: 'Please describe your workout schedule' }),
+  motivationFactors: z.string().min(3, { message: 'Please describe what motivates you' })
 });
 
 type PersonalityQuizValues = z.infer<typeof personalityQuizSchema>;

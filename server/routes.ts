@@ -61,6 +61,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes are now handled by setupAuth()
 
   // User routes
+  app.patch('/api/users/:id', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    const userId = parseInt(req.params.id);
+    
+    // Ensure user can only update their own profile
+    if (userId !== req.session.userId) {
+      return res.status(403).json({ message: 'Not authorized to update this user' });
+    }
+    
+    try {
+      const userData = req.body;
+      const user = await storage.updateUser(userId, userData);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Don't return password in response
+      const { password, ...userWithoutPassword } = user;
+      return res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
+      return res.status(500).json({ message: 'Failed to update user' });
+    }
+  });
+  
   app.patch('/api/users/location', async (req, res) => {
     if (!req.session || !req.session.userId) {
       return res.status(401).json({ message: 'Not authenticated' });
