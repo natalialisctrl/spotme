@@ -29,6 +29,12 @@ async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
+  // Handle non-hashed passwords in demo accounts
+  if (!stored.includes('.')) {
+    return supplied === stored;
+  }
+
+  // Handle properly hashed passwords
   const [hashed, salt] = stored.split(".");
   const hashedBuf = Buffer.from(hashed, "hex");
   const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
