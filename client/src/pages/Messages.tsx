@@ -1,7 +1,7 @@
 import { FC, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { User, Connection, Message } from "@shared/schema";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import ChatInterface from "@/components/chat/ChatInterface";
 import { Loader2, MessageSquare } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";

@@ -1,8 +1,8 @@
 import { FC, useState } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Loader2 } from 'lucide-react';
 import PersonalityQuiz from '@/components/profile/PersonalityQuiz';
 import PersonalityInsights from '@/components/profile/PersonalityInsights';
@@ -10,7 +10,12 @@ import { PersonalityInsight } from '@/lib/openai';
 
 const ProfileSetup: FC = () => {
   const [, setLocation] = useLocation();
-  const { user, checkAuth } = useAuth();
+  const { user } = useAuth();
+  
+  // Function to refresh user data
+  const checkAuth = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+  };
   const { toast } = useToast();
   const [step, setStep] = useState<'quiz' | 'insights' | 'saving'>('quiz');
   const [insights, setInsights] = useState<PersonalityInsight | null>(null);
@@ -91,8 +96,8 @@ const ProfileSetup: FC = () => {
   return (
     <div className="container max-w-4xl py-8">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold">Welcome to GymBuddy</h1>
-        <p className="text-gray-500 mt-2">Let's setup your fitness profile with AI assistance</p>
+        <h1 className="text-3xl font-bold">Welcome to SpotMe</h1>
+        <p className="text-gray-500 mt-2">Never lift solo again. Let's setup your fitness profile with AI assistance.</p>
       </div>
       
       {step === 'quiz' && (
