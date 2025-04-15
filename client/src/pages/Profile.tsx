@@ -132,11 +132,22 @@ const Profile: FC = () => {
                 Manage your personal information and preferences
               </CardDescription>
             </div>
-            {!isEditing ? (
-              <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
-            ) : (
-              <Button onClick={() => setIsEditing(false)} variant="outline">Cancel</Button>
-            )}
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={handleRefreshProfile} 
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+              
+              {!isEditing ? (
+                <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
+              ) : (
+                <Button onClick={() => setIsEditing(false)} variant="outline">Cancel</Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
