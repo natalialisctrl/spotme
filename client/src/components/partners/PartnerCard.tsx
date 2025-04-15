@@ -2,10 +2,26 @@ import { FC, useState } from "react";
 import { User } from "@shared/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { CheckCircle, Zap } from "lucide-react";
+import { CheckCircle, Zap, ThumbsUp, ThumbsDown, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { calculateCompatibilityScore, getCompatibilityLabel, getCompatibilityColor } from "@/lib/compatibilityMatcher";
+import { 
+  calculateCompatibilityScore, 
+  calculateCompatibilityWithBreakdown,
+  getCompatibilityLabel, 
+  getCompatibilityColor 
+} from "@/lib/compatibilityMatcher";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 interface PartnerCardProps {
   user: User;
@@ -104,12 +120,37 @@ const PartnerCard: FC<PartnerCardProps> = ({ user, distance, currentUser }) => {
               </span>
             </div>
             <div className="mt-1 flex flex-wrap gap-2">
-              {/* Compatibility score badge */}
-              {compatibilityScore > 0 && (
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${compatibilityScore >= 70 ? 'bg-green-100 text-green-800' : compatibilityScore >= 50 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
-                  <Zap className="h-3 w-3 mr-1" />
-                  {compatibilityScore}% {compatibilityLabel}
-                </span>
+              {/* Compatibility score badge with hover card */}
+              {compatibilityScore > 0 && loggedInUser && (
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <span 
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-all duration-200 hover:shadow-md
+                        ${compatibilityScore >= 70 ? 'bg-green-100 text-green-800' : 
+                          compatibilityScore >= 50 ? 'bg-blue-100 text-blue-800' : 
+                          'bg-amber-100 text-amber-800'}`}
+                    >
+                      <Zap className="h-3 w-3 mr-1" />
+                      {compatibilityScore}% {compatibilityLabel}
+                      <Info className="h-3 w-3 ml-1 opacity-50" />
+                    </span>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80 p-0">
+                    <CompatibilityDetails 
+                      currentUser={loggedInUser} 
+                      potentialPartner={user}
+                      onFeedback={(isAccurate) => {
+                        toast({
+                          title: `Thanks for your feedback!`,
+                          description: isAccurate ? 
+                            "We'll use this to improve future matches." :
+                            "We'll adjust our algorithm based on your feedback.",
+                          duration: 3000,
+                        });
+                      }} 
+                    />
+                  </HoverCardContent>
+                </HoverCard>
               )}
               
               {/* Experience level badge */}
@@ -150,6 +191,173 @@ const PartnerCard: FC<PartnerCardProps> = ({ user, distance, currentUser }) => {
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+// Compatibility details component to show in hover card
+interface CompatibilityDetailsProps {
+  currentUser: User;
+  potentialPartner: User;
+  onFeedback: (isAccurate: boolean) => void;
+}
+
+const CompatibilityDetails: FC<CompatibilityDetailsProps> = ({ 
+  currentUser, 
+  potentialPartner,
+  onFeedback
+}) => {
+  const [feedbackGiven, setFeedbackGiven] = useState(false);
+  
+  // Get detailed breakdown of compatibility scores
+  const breakdown = calculateCompatibilityWithBreakdown(currentUser, potentialPartner);
+  
+  // Format score as percentage
+  const formatScore = (score: number) => `${score}%`;
+  
+  // Generate a color class based on score
+  const getScoreColorClass = (score: number) => {
+    if (score >= 80) return "text-green-600";
+    if (score >= 60) return "text-emerald-500";
+    if (score >= 50) return "text-blue-500";
+    if (score >= 30) return "text-amber-500";
+    return "text-gray-500";
+  };
+  
+  // Calculate score bar width
+  const getScoreBarWidth = (score: number) => {
+    return `${Math.max(5, score)}%`;
+  };
+  
+  const handleFeedback = (isAccurate: boolean) => {
+    setFeedbackGiven(true);
+    onFeedback(isAccurate);
+    
+    // In a real app, we would send this feedback to the backend
+    // apiRequest('POST', '/api/match-feedback', {
+    //   userId: currentUser.id,
+    //   matchUserId: potentialPartner.id,
+    //   isAccurate,
+    //   score: breakdown.totalScore
+    // });
+  };
+  
+  return (
+    <div className="p-4">
+      <div className="mb-4">
+        <h3 className="text-base font-medium text-gray-900 mb-1">Compatibility Breakdown</h3>
+        <p className="text-xs text-gray-500">
+          See how you match with {potentialPartner.name} based on our AI analysis
+        </p>
+      </div>
+      
+      {/* Compatibility factors */}
+      <div className="space-y-3 mb-4">
+        <div>
+          <div className="flex justify-between mb-1">
+            <span className="text-xs font-medium text-gray-700">Workout Style</span>
+            <span className={`text-xs font-medium ${getScoreColorClass(breakdown.workoutStyleScore)}`}>
+              {formatScore(breakdown.workoutStyleScore)}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full ${getScoreColorClass(breakdown.workoutStyleScore).replace('text-', 'bg-')}`}
+              style={{ width: getScoreBarWidth(breakdown.workoutStyleScore) }}
+            ></div>
+          </div>
+        </div>
+        
+        <div>
+          <div className="flex justify-between mb-1">
+            <span className="text-xs font-medium text-gray-700">Fitness Goals</span>
+            <span className={`text-xs font-medium ${getScoreColorClass(breakdown.goalScore)}`}>
+              {formatScore(breakdown.goalScore)}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full ${getScoreColorClass(breakdown.goalScore).replace('text-', 'bg-')}`}
+              style={{ width: getScoreBarWidth(breakdown.goalScore) }}
+            ></div>
+          </div>
+        </div>
+        
+        <div>
+          <div className="flex justify-between mb-1">
+            <span className="text-xs font-medium text-gray-700">Experience Level</span>
+            <span className={`text-xs font-medium ${getScoreColorClass(breakdown.experienceScore)}`}>
+              {formatScore(breakdown.experienceScore)}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full ${getScoreColorClass(breakdown.experienceScore).replace('text-', 'bg-')}`}
+              style={{ width: getScoreBarWidth(breakdown.experienceScore) }}
+            ></div>
+          </div>
+        </div>
+        
+        <div>
+          <div className="flex justify-between mb-1">
+            <span className="text-xs font-medium text-gray-700">Partner Preferences</span>
+            <span className={`text-xs font-medium ${getScoreColorClass(breakdown.preferenceScore)}`}>
+              {formatScore(breakdown.preferenceScore)}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full ${getScoreColorClass(breakdown.preferenceScore).replace('text-', 'bg-')}`}
+              style={{ width: getScoreBarWidth(breakdown.preferenceScore) }}
+            ></div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Overall score */}
+      <div className="bg-gray-50 p-3 rounded-md mb-4">
+        <div className="flex justify-between items-center">
+          <span className="text-sm font-medium text-gray-900">Overall Compatibility</span>
+          <span className={`text-sm font-bold ${getScoreColorClass(breakdown.totalScore)}`}>
+            {formatScore(breakdown.totalScore)}
+          </span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-3 mt-2">
+          <div 
+            className={`h-3 rounded-full ${getScoreColorClass(breakdown.totalScore).replace('text-', 'bg-')}`}
+            style={{ width: getScoreBarWidth(breakdown.totalScore) }}
+          ></div>
+        </div>
+      </div>
+      
+      {/* Feedback section */}
+      {!feedbackGiven ? (
+        <div className="border-t pt-3">
+          <p className="text-xs text-gray-500 mb-2">Is this match accurate for you?</p>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => handleFeedback(true)}
+              className="flex items-center justify-center px-3 py-1 text-xs rounded-md border border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
+            >
+              <ThumbsUp className="h-3 w-3 mr-1" />
+              Yes, good match
+            </button>
+            <button
+              onClick={() => handleFeedback(false)}
+              className="flex items-center justify-center px-3 py-1 text-xs rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+            >
+              <ThumbsDown className="h-3 w-3 mr-1" />
+              No, improve it
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="border-t pt-3">
+          <p className="text-xs text-green-600">
+            Thank you for your feedback! We'll use it to improve future matches.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

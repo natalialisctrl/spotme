@@ -1,21 +1,76 @@
 import { User } from "@shared/schema";
 import { PersonalityInsight } from "./openai";
 
+// Default weights for compatibility factors
+export const DEFAULT_WEIGHTS = {
+  workoutStyle: 0.30,   // 30% workout style compatibility
+  goals: 0.30,          // 30% goals alignment
+  experience: 0.15,     // 15% experience compatibility
+  preferences: 0.25     // 25% preference match
+};
+
+export type CompatibilityWeights = typeof DEFAULT_WEIGHTS;
+
+export type CompatibilityBreakdown = {
+  workoutStyleScore: number;
+  goalScore: number;
+  experienceScore: number;
+  preferenceScore: number;
+  totalScore: number;
+};
+
 /**
  * Calculate compatibility score between current user and potential partner
  * based on their AI-generated insights and profile data
  * 
  * @param currentUser The logged in user
  * @param potentialPartner The potential workout partner
+ * @param weights Optional custom weighting for different compatibility factors
  * @returns A compatibility score between 0-100
  */
 export function calculateCompatibilityScore(
   currentUser: User,
-  potentialPartner: User
+  potentialPartner: User,
+  weights: Partial<CompatibilityWeights> = {}
 ): number {
+  return calculateCompatibilityWithBreakdown(currentUser, potentialPartner, weights).totalScore;
+}
+
+/**
+ * Calculate compatibility with detailed breakdown of scores
+ * 
+ * @param currentUser The logged in user
+ * @param potentialPartner The potential workout partner
+ * @param weights Optional custom weighting for different compatibility factors
+ * @returns Compatibility breakdown with individual factor scores and total
+ */
+export function calculateCompatibilityWithBreakdown(
+  currentUser: User,
+  potentialPartner: User,
+  weights: Partial<CompatibilityWeights> = {}
+): CompatibilityBreakdown {
+  // Merge custom weights with defaults
+  const finalWeights = { ...DEFAULT_WEIGHTS, ...weights };
+
+  // Normalize weights to ensure they sum to 1
+  const weightSum = Object.values(finalWeights).reduce((sum, weight) => sum + weight, 0);
+  const normalizedWeights: CompatibilityWeights = {
+    workoutStyle: finalWeights.workoutStyle / weightSum,
+    goals: finalWeights.goals / weightSum,
+    experience: finalWeights.experience / weightSum,
+    preferences: finalWeights.preferences / weightSum
+  };
+
   // Return a basic score if either user doesn't have AI insights
   if (!currentUser.aiGeneratedInsights || !potentialPartner.aiGeneratedInsights) {
-    return calculateBasicCompatibilityScore(currentUser, potentialPartner);
+    const basicScore = calculateBasicCompatibilityScore(currentUser, potentialPartner);
+    return {
+      workoutStyleScore: basicScore,
+      goalScore: basicScore,
+      experienceScore: basicScore,
+      preferenceScore: basicScore,
+      totalScore: basicScore
+    };
   }
 
   try {
@@ -28,25 +83,38 @@ export function calculateCompatibilityScore(
       ? JSON.parse(potentialPartner.aiGeneratedInsights)
       : potentialPartner.aiGeneratedInsights;
 
-    // Calculate different factors of compatibility
+    // Calculate different factors of compatibility (0-1 scale)
     const workoutStyleScore = compareWorkoutStyles(currentUserInsights.workoutStyle, partnerInsights.workoutStyle);
     const goalScore = compareGoals(currentUserInsights.recommendedGoals, partnerInsights.recommendedGoals);
     const experienceScore = compareExperienceLevels(currentUser.experienceLevel, potentialPartner.experienceLevel);
     const preferenceScore = evaluatePreferenceCompatibility(currentUserInsights.partnerPreferences, partnerInsights);
     
-    // Weight the factors
+    // Calculate weighted score (0-1 scale)
     const weightedScore = (
-      workoutStyleScore * 0.30 +  // 30% workout style compatibility
-      goalScore * 0.30 +          // 30% goals alignment
-      experienceScore * 0.15 +    // 15% experience compatibility
-      preferenceScore * 0.25      // 25% preference match
+      workoutStyleScore * normalizedWeights.workoutStyle +
+      goalScore * normalizedWeights.goals +
+      experienceScore * normalizedWeights.experience +
+      preferenceScore * normalizedWeights.preferences
     );
     
-    // Convert to 0-100 scale and round to nearest integer
-    return Math.round(weightedScore * 100);
+    // Return breakdown with scores on 0-100 scale
+    return {
+      workoutStyleScore: Math.round(workoutStyleScore * 100),
+      goalScore: Math.round(goalScore * 100),
+      experienceScore: Math.round(experienceScore * 100),
+      preferenceScore: Math.round(preferenceScore * 100),
+      totalScore: Math.round(weightedScore * 100)
+    };
   } catch (error) {
     console.error("Error calculating compatibility score:", error);
-    return calculateBasicCompatibilityScore(currentUser, potentialPartner);
+    const basicScore = calculateBasicCompatibilityScore(currentUser, potentialPartner);
+    return {
+      workoutStyleScore: basicScore,
+      goalScore: basicScore,
+      experienceScore: basicScore,
+      preferenceScore: basicScore,
+      totalScore: basicScore
+    };
   }
 }
 

@@ -1,20 +1,44 @@
-import { FC } from "react";
+import { FC, useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { User } from "@shared/schema";
 import PartnerCard from "./PartnerCard";
-import { Loader2 } from "lucide-react";
+import { Loader2, SlidersHorizontal } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { calculateCompatibilityScore } from "@/lib/compatibilityMatcher";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface FilterParams {
+  workoutType?: string;
+  gender?: string;
+  experienceLevel?: string;
+  maxDistance?: number;
+  sameGymOnly?: boolean;
+}
 
 interface PartnersListProps {
-  filterParams: any;
+  filterParams: FilterParams;
 }
 
 type NearbyUser = User & { distance: number };
 
+type SortType = 'compatibility' | 'distance' | 'experienceLevel';
+
 const PartnersList: FC<PartnersListProps> = ({ filterParams }) => {
+  const { user: currentUser } = useAuth();
+  const [sortBy, setSortBy] = useState<SortType>('compatibility');
+  const [animateIn, setAnimateIn] = useState<Record<number, boolean>>({});
+  
   const { data: nearbyUsers, isLoading, error } = useQuery<NearbyUser[]>({
     queryKey: ['/api/users/nearby', filterParams],
     queryFn: async ({ queryKey }) => {
-      const [_path, filters] = queryKey;
+      const [_path, filters] = queryKey as [string, FilterParams];
       const queryParams = new URLSearchParams();
       
       if (filters.workoutType) queryParams.append('workoutType', filters.workoutType);
@@ -33,6 +57,50 @@ const PartnersList: FC<PartnersListProps> = ({ filterParams }) => {
       return res.json();
     }
   });
+  
+  // Calculate compatibility scores and sort users
+  const sortedUsers = useMemo(() => {
+    if (!nearbyUsers || !currentUser) return [];
+    
+    // Create a new array with compatibility scores
+    const usersWithScores = nearbyUsers.map(user => ({
+      ...user, 
+      compatibilityScore: calculateCompatibilityScore(currentUser, user)
+    }));
+    
+    // Sort by selected criteria
+    return [...usersWithScores].sort((a, b) => {
+      if (sortBy === 'compatibility') {
+        return b.compatibilityScore - a.compatibilityScore;
+      } else if (sortBy === 'distance') {
+        return a.distance - b.distance;
+      } else if (sortBy === 'experienceLevel') {
+        const levelMap = { beginner: 0, intermediate: 1, advanced: 2 };
+        return levelMap[b.experienceLevel as keyof typeof levelMap] - 
+               levelMap[a.experienceLevel as keyof typeof levelMap];
+      }
+      return 0;
+    });
+  }, [nearbyUsers, currentUser, sortBy]);
+  
+  // Animate new partners in when they appear
+  useEffect(() => {
+    if (sortedUsers && sortedUsers.length > 0) {
+      // Reset animation state
+      const newAnimateState: Record<number, boolean> = {};
+      
+      // Schedule animations for each user with staggered timing
+      sortedUsers.forEach((user, index) => {
+        setTimeout(() => {
+          setAnimateIn(prev => ({ ...prev, [user.id]: true }));
+        }, index * 150); // Stagger the animations
+        
+        newAnimateState[user.id] = false;
+      });
+      
+      setAnimateIn(newAnimateState);
+    }
+  }, [sortedUsers]);
 
   // Function to format distance
   const formatDistance = (distance: number) => {
