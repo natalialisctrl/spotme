@@ -11,6 +11,7 @@ import createMemoryStore from "memorystore";
 
 export interface IStorage {
   // User operations
+  getAllUsers(): Promise<User[]>;
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -256,6 +257,10 @@ export class MemStorage implements IStorage {
   }
 
   // User operations
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+  
   async getUser(id: number): Promise<User | undefined> {
     const user = this.users.get(id);
     if (!user) {
