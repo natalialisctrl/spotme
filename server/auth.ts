@@ -1,11 +1,31 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Express } from "express";
+import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import {
+  generateMfaSecret,
+  generateQrCode,
+  verifyTOTP,
+  generateBackupCodes,
+  hashBackupCodes,
+  verifyBackupCode,
+  isAccountLocked,
+  recordFailedLogin,
+  resetFailedAttempts,
+  createPasswordResetToken,
+  createEmailVerificationToken,
+  logSecurityEvent
+} from "./security";
+import {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  sendMfaEnabledEmail,
+  sendSecurityAlertEmail
+} from "./email";
 
 declare global {
   namespace Express {

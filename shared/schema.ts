@@ -26,6 +26,23 @@ export const users = pgTable("users", {
   googleVerified: boolean("google_verified").default(false),
   facebookVerified: boolean("facebook_verified").default(false),
   instagramVerified: boolean("instagram_verified").default(false),
+  // Account verification
+  emailVerified: boolean("email_verified").default(false),
+  emailVerificationToken: text("email_verification_token"),
+  emailVerificationExpires: timestamp("email_verification_expires"),
+  // Multi-factor authentication
+  mfaEnabled: boolean("mfa_enabled").default(false),
+  mfaSecret: text("mfa_secret"),
+  backupCodes: text("backup_codes"),
+  // Security logs
+  passwordLastChanged: timestamp("password_last_changed"),
+  failedLoginAttempts: integer("failed_login_attempts").default(0),
+  lastFailedLogin: timestamp("last_failed_login"),
+  accountLocked: boolean("account_locked").default(false),
+  accountLockedUntil: timestamp("account_locked_until"),
+  // Password reset
+  resetPasswordToken: text("reset_password_token"),
+  resetPasswordExpires: timestamp("reset_password_expires"),
 });
 
 // Workout types enumeration
@@ -87,6 +104,56 @@ export const insertCompatibilityResponseSchema = createInsertSchema(compatibilit
 export const loginSchema = z.object({
   username: z.string().min(3),
   password: z.string().min(6),
+  mfaCode: z.string().optional(),
+});
+
+// Enhanced password schema with strong requirements
+export const passwordSchema = z.string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
+
+// Schema for password change
+export const changePasswordSchema = z.object({
+  currentPassword: z.string(),
+  newPassword: passwordSchema,
+  confirmPassword: z.string()
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"]
+});
+
+// Schema for MFA setup
+export const setupMfaSchema = z.object({
+  password: z.string(),
+  mfaCode: z.string().length(6).regex(/^\d+$/, "MFA code must be 6 digits")
+});
+
+// Schema for MFA verification
+export const verifyMfaSchema = z.object({
+  mfaCode: z.string().length(6).regex(/^\d+$/, "MFA code must be 6 digits")
+});
+
+// Schema for email verification
+export const verifyEmailSchema = z.object({
+  token: z.string()
+});
+
+// Schema for password reset request
+export const requestPasswordResetSchema = z.object({
+  email: z.string().email()
+});
+
+// Schema for password reset
+export const resetPasswordSchema = z.object({
+  token: z.string(),
+  newPassword: passwordSchema,
+  confirmPassword: z.string()
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"]
 });
 
 export const updateLocationSchema = z.object({
@@ -120,6 +187,12 @@ export type Message = typeof messages.$inferSelect;
 export type CompatibilityResponse = typeof compatibilityResponses.$inferSelect;
 
 export type Login = z.infer<typeof loginSchema>;
+export type ChangePassword = z.infer<typeof changePasswordSchema>;
+export type SetupMfa = z.infer<typeof setupMfaSchema>;
+export type VerifyMfa = z.infer<typeof verifyMfaSchema>;
+export type VerifyEmail = z.infer<typeof verifyEmailSchema>;
+export type RequestPasswordReset = z.infer<typeof requestPasswordResetSchema>;
+export type ResetPassword = z.infer<typeof resetPasswordSchema>;
 export type UpdateLocation = z.infer<typeof updateLocationSchema>;
 export type NearbyUsersParams = z.infer<typeof nearbyUsersSchema>;
 
