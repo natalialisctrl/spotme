@@ -47,23 +47,46 @@ const ProfileSetup: FC = () => {
     try {
       setStep('saving');
       
-      // Use our new special endpoint for saving insights
-      await apiRequest('POST', '/api/save-personality-insights', {
+      // First, save the insight data directly in the client cache
+      if (user) {
+        // Immediately update the user data in cache to show instant updates
+        const updatedUser = {
+          ...user,
+          aiGeneratedInsights: typeof insights === 'string' ? insights : JSON.stringify(insights)
+        };
+        
+        // Update the cache directly for instant UI update
+        queryClient.setQueryData(["/api/user"], updatedUser);
+      }
+      
+      // Then send to server
+      const response = await apiRequest('POST', '/api/save-personality-insights', {
         insights: insights
       });
       
-      // Refresh user data
-      await refreshUserData();
+      // Get the updated user data
+      const updatedUserFromServer = await response.json();
+      
+      // Set the updated data in the cache
+      queryClient.setQueryData(["/api/user"], updatedUserFromServer);
       
       toast({
         title: "Profile updated!",
-        description: "Your AI-generated profile insights have been saved."
+        description: "Your AI-generated profile insights have been saved.",
+        duration: 3000
       });
       
-      // Redirect to home page or profile page
-      setLocation('/');
+      // Redirect to home page or profile page after a slight delay
+      // so user can see the success message
+      setTimeout(() => {
+        setLocation('/');
+      }, 800);
+      
     } catch (error) {
       console.error("Failed to save profile insights:", error);
+      
+      // Force refresh to get real server state
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       
       toast({
         title: "Update failed",

@@ -608,12 +608,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiGeneratedInsights: typeof insights === 'string' ? insights : JSON.stringify(insights)
       };
       
-      console.log(`Saving insights for user ${req.session.userId}`, updateData);
+      console.log(`Saving insights for user ${req.session.userId}`, {
+        insightsType: typeof insights,
+        stringified: typeof insights === 'string',
+        dataLength: typeof insights === 'string' ? insights.length : JSON.stringify(insights).length
+      });
       
       // Get user before update for comparison
       const beforeUser = await storage.getUser(req.session.userId);
       console.log("User before update:", {
         id: beforeUser?.id,
+        name: beforeUser?.name,
         hasInsights: !!beforeUser?.aiGeneratedInsights,
         insightsLength: beforeUser?.aiGeneratedInsights ? beforeUser.aiGeneratedInsights.length : 0
       });
@@ -628,13 +633,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log the updated user
       console.log("User after update:", {
         id: user.id,
+        name: user.name,
         hasInsights: !!user.aiGeneratedInsights,
         insightsLength: user.aiGeneratedInsights ? user.aiGeneratedInsights.length : 0,
-        updateSuccess: beforeUser?.aiGeneratedInsights !== user.aiGeneratedInsights
+        updateSuccess: beforeUser?.aiGeneratedInsights !== user.aiGeneratedInsights,
+        dataMatches: updateData.aiGeneratedInsights === user.aiGeneratedInsights
       });
       
       // Don't return password in response
       const { password, ...userWithoutPassword } = user;
+      
+      // Add a cache-busting header
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
       return res.json(userWithoutPassword);
     } catch (error) {
       console.error('Error saving personality insights:', error);

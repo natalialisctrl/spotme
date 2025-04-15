@@ -62,13 +62,39 @@ const Profile: FC = () => {
   const handleRefreshProfile = async () => {
     setIsRefreshing(true);
     try {
+      // Force fetch from server by cleaning cache first
+      queryClient.removeQueries({ queryKey: ["/api/user"] });
+      
+      // Wait a moment to ensure any pending updates are complete
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Now refresh user data
       await refreshUserData();
+      
+      // Update local form data with refreshed user data
+      if (user) {
+        setFormData({
+          name: user.name || "",
+          email: user.email || "",
+          bio: user.bio || "",
+          gymName: user.gymName || "",
+          gender: user.gender || "",
+          experienceLevel: user.experienceLevel || "",
+          experienceYears: user.experienceYears || 0
+        });
+      }
+      
       toast({
         title: "Profile refreshed",
         description: "Your profile has been refreshed with the latest data.",
       });
     } catch (error) {
       console.error("Error refreshing profile:", error);
+      toast({
+        title: "Refresh failed",
+        description: "Could not refresh profile data. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsRefreshing(false);
     }
@@ -102,15 +128,35 @@ const Profile: FC = () => {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      await apiRequest('PATCH', `/api/users/${user.id}`, formData);
-      await refreshUserData(); // Refresh user data
+      
+      // Immediately update the UI with the new data
+      if (user) {
+        // Create updated user object for immediate display
+        const updatedUser = { ...user, ...formData };
+        
+        // Update the local cache instantly
+        queryClient.setQueryData(["/api/user"], updatedUser);
+      }
+      
+      // Save the profile data to the server
+      const response = await apiRequest('PATCH', `/api/users/${user.id}`, formData);
+      
+      // Get the updated user from the server
+      const updatedUserFromServer = await response.json();
+      
+      // Update the cache with the server response
+      queryClient.setQueryData(["/api/user"], updatedUserFromServer);
       
       setIsEditing(false);
       toast({
         title: "Profile Updated",
         description: "Your profile information has been saved successfully."
       });
+      
     } catch (error) {
+      // Force refresh to get the actual server state on error
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
       toast({
         title: "Update Failed",
         description: error instanceof Error ? error.message : "Failed to update profile",
