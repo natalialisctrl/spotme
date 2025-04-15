@@ -2,19 +2,31 @@ import { FC, useState } from "react";
 import { User } from "@shared/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
+import { calculateCompatibilityScore, getCompatibilityLabel, getCompatibilityColor } from "@/lib/compatibilityMatcher";
 
 interface PartnerCardProps {
   user: User;
   distance: string;
+  currentUser?: User | null;
 }
 
-const PartnerCard: FC<PartnerCardProps> = ({ user, distance }) => {
+const PartnerCard: FC<PartnerCardProps> = ({ user, distance, currentUser }) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionSent, setConnectionSent] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user: authUser } = useAuth();
+  
+  // Use either provided currentUser or authUser from context
+  const loggedInUser = currentUser || authUser;
+  
+  // Calculate compatibility score if both users have data
+  const compatibilityScore = loggedInUser && user ? calculateCompatibilityScore(loggedInUser, user) : 0;
+  const compatibilityLabel = getCompatibilityLabel(compatibilityScore);
+  const compatibilityColor = getCompatibilityColor(compatibilityScore);
 
   // Send connection request mutation
   const { mutate: sendConnectionRequest } = useMutation({
@@ -92,17 +104,20 @@ const PartnerCard: FC<PartnerCardProps> = ({ user, distance }) => {
               </span>
             </div>
             <div className="mt-1 flex flex-wrap gap-2">
-              {user.workoutType && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7l4-4m0 0l4 4m-4-4v18" />
-                  </svg>
-                  {formatWorkoutType(user.workoutType)} Today
+              {/* Compatibility score badge */}
+              {compatibilityScore > 0 && (
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${compatibilityScore >= 70 ? 'bg-green-100 text-green-800' : compatibilityScore >= 50 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                  <Zap className="h-3 w-3 mr-1" />
+                  {compatibilityScore}% {compatibilityLabel}
                 </span>
               )}
+              
+              {/* Experience level badge */}
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                 {user.experienceLevel.charAt(0).toUpperCase() + user.experienceLevel.slice(1)} • {user.experienceYears} years
               </span>
+              
+              {/* Gender badge */}
               {user.gender && (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                   {user.gender.charAt(0).toUpperCase() + user.gender.slice(1)}
