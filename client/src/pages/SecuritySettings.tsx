@@ -1,281 +1,449 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Redirect } from "wouter";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLocation } from "wouter";
 import { 
-  LockKeyhole, 
-  Shield, 
-  Mail, 
-  History, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Loader2 
+  Shield, Lock, KeyRound, Mail, AlertTriangle, 
+  CheckCircle2, Clock, Phone, Check, ChevronRight
 } from "lucide-react";
-import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 import MfaSetup from "@/components/security/MfaSetup";
-import EmailVerification from "@/components/security/EmailVerification";
-import PasswordManagement from "@/components/security/PasswordManagement";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 
 export default function SecuritySettings() {
+  const [location, setLocation] = useLocation();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const { user, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("general");
+  const queryClient = useQueryClient();
   const [showMfaSetup, setShowMfaSetup] = useState(false);
-
-  // If not authenticated, redirect to login
-  if (!isLoading && !user) {
-    return <Redirect to="/auth" />;
-  }
-
-  // Get security log data
-  const { data: securityLogs, isLoading: isLoadingLogs } = useQuery({
-    queryKey: ["/api/security/logs"],
-    queryFn: getQueryFn(),
-    enabled: !!user
-  });
-
-  // Mutation to disable MFA
-  const disableMfaMutation = useMutation({
-    mutationFn: async (password: string) => {
-      const res = await apiRequest("POST", "/api/mfa/disable", { password });
+  
+  // Get user's security settings
+  const { 
+    data: securityData, 
+    isLoading,
+    error 
+  } = useQuery({
+    queryKey: ["/api/security/settings"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/security/settings");
+      if (!res.ok) throw new Error("Failed to load security settings");
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      toast({
-        title: "Two-Factor Authentication Disabled",
-        description: "Your account is now using single-factor authentication.",
-      });
+    enabled: !!user,
+  });
+
+  // Toggle MFA mutation
+  const toggleMfaMutation = useMutation({
+    mutationFn: async (enable: boolean) => {
+      if (enable) {
+        setShowMfaSetup(true);
+        return null; // Actual enabling happens in MfaSetup component
+      } else {
+        const res = await apiRequest("POST", "/api/mfa/disable");
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.message || "Failed to disable MFA");
+        }
+        return await res.json();
+      }
+    },
+    onSuccess: (data) => {
+      if (data) { // Only for disabling MFA
+        queryClient.invalidateQueries({ queryKey: ["/api/security/settings"] });
+        toast({
+          title: "MFA Disabled",
+          description: "Two-factor authentication has been disabled for your account.",
+        });
+      }
     },
     onError: (error) => {
       toast({
-        title: "Failed to Disable 2FA",
-        description: error.message || "Could not disable two-factor authentication. Please try again.",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update MFA settings",
         variant: "destructive",
       });
-    },
+    }
   });
 
-  const handleDisableMfa = () => {
-    // In a real app, you would prompt for the password first
-    // Here we're simplifying for the demo
-    const password = prompt("Enter your password to disable two-factor authentication:");
-    if (password) {
-      disableMfaMutation.mutate(password);
-    }
-  };
+  // Get security logs
+  const { 
+    data: logsData, 
+    isLoading: logsLoading 
+  } = useQuery({
+    queryKey: ["/api/security/logs"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/security/logs");
+      if (!res.ok) return []; // Return empty array if endpoint not implemented yet
+      return res.json();
+    },
+    enabled: !!user,
+  });
 
-  const handleMfaSetupComplete = () => {
+  const handleMfaComplete = () => {
     setShowMfaSetup(false);
-    queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/security/settings"] });
+    toast({
+      title: "MFA Enabled",
+      description: "Two-factor authentication has been enabled for your account.",
+    });
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+  if (!user) {
+    setLocation("/auth");
+    return null;
   }
 
   return (
-    <div className="container max-w-4xl py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Security Settings</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage your account security settings and preferences.
-        </p>
+    <div className="container mx-auto py-8 px-4">
+      <div className="flex items-center mb-6">
+        <Shield className="h-6 w-6 mr-2 text-primary" />
+        <h1 className="text-2xl font-bold">Security Settings</h1>
       </div>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-3 w-full max-w-md">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="password">Password</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-        </TabsList>
-        
-        {/* General Security Settings */}
-        <TabsContent value="general" className="space-y-6">
-          {/* Two-Factor Authentication */}
-          {showMfaSetup ? (
-            <MfaSetup 
-              onComplete={handleMfaSetupComplete} 
-              onCancel={() => setShowMfaSetup(false)} 
-            />
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Two-Factor Authentication
-                </CardTitle>
-                <CardDescription>
-                  Add an extra layer of security to your account by requiring a second 
-                  authentication factor to sign in.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between py-2">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full border">
-                      {user?.mfaEnabled ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <AlertTriangle className="h-4 w-4 text-amber-500" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="font-medium">
-                        {user?.mfaEnabled 
-                          ? "Two-factor authentication is enabled" 
-                          : "Two-factor authentication is not enabled"
-                        }
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {user?.mfaEnabled 
-                          ? "Your account is using two-factor authentication" 
-                          : "Enable 2FA for enhanced account security"
-                        }
-                      </div>
-                    </div>
-                  </div>
-                  <Button 
-                    variant={user?.mfaEnabled ? "outline" : "default"}
-                    onClick={() => {
-                      if (user?.mfaEnabled) {
-                        handleDisableMfa();
-                      } else {
-                        setShowMfaSetup(true);
-                      }
-                    }}
-                    disabled={disableMfaMutation.isPending}
-                  >
-                    {disableMfaMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      user?.mfaEnabled ? "Disable" : "Enable"
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Email Verification */}
-          <EmailVerification 
-            email={user?.email || ""} 
-            isVerified={user?.emailVerified || false}
-            onVerificationStatusChange={() => {
-              queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-            }} 
-          />
-        </TabsContent>
-        
-        {/* Password Management */}
-        <TabsContent value="password">
-          <PasswordManagement />
-        </TabsContent>
-        
-        {/* Security Activity */}
-        <TabsContent value="activity">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        {/* Authentication section */}
+        <div className="md:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
-                Security Activity
+              <CardTitle className="flex items-center">
+                <Lock className="h-5 w-5 mr-2" />
+                Authentication
               </CardTitle>
               <CardDescription>
-                Review recent security-related activity on your account
+                Manage your account's authentication and security settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-14 w-full" />
+                  <Skeleton className="h-14 w-full" />
+                  <Skeleton className="h-14 w-full" />
+                </div>
+              ) : (
+                <>
+                  {/* Email verification */}
+                  <div className="flex justify-between items-center py-3 border-b">
+                    <div className="flex items-start">
+                      <Mail className="h-5 w-5 mr-3 mt-0.5 text-gray-500" />
+                      <div>
+                        <h3 className="font-medium">Email Verification</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Your email has been verified and is being used for account recovery
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      {securityData?.emailVerified ? (
+                        <span className="flex items-center text-sm text-green-600">
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          Verified
+                        </span>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                        >
+                          Verify
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Two-factor authentication */}
+                  <div className="flex justify-between items-center py-3 border-b">
+                    <div className="flex items-start">
+                      <KeyRound className="h-5 w-5 mr-3 mt-0.5 text-gray-500" />
+                      <div>
+                        <h3 className="font-medium">Two-Factor Authentication</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Add an extra layer of security to your account with authenticator apps
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <Switch 
+                        checked={securityData?.mfaEnabled || false} 
+                        onCheckedChange={(checked) => toggleMfaMutation.mutate(checked)}
+                        disabled={toggleMfaMutation.isPending}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password management */}
+                  <div className="flex justify-between items-center py-3 border-b">
+                    <div className="flex items-start">
+                      <KeyRound className="h-5 w-5 mr-3 mt-0.5 text-gray-500" />
+                      <div>
+                        <h3 className="font-medium">Password Management</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Change your password or reset your password recovery options
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                          >
+                            Manage
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Password Management</DialogTitle>
+                            <DialogDescription>
+                              Update your password or recovery settings
+                            </DialogDescription>
+                          </DialogHeader>
+                          
+                          <div className="space-y-4 py-4">
+                            <Button className="w-full" variant="outline">
+                              Change Password
+                            </Button>
+                            
+                            <Button className="w-full" variant="outline">
+                              Update Recovery Email
+                            </Button>
+                          </div>
+                          
+                          <DialogFooter>
+                            <Button variant="ghost">Close</Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </div>
+
+                  {/* Phone verification (disabled for now) */}
+                  <div className="flex justify-between items-center py-3 border-b opacity-50">
+                    <div className="flex items-start">
+                      <Phone className="h-5 w-5 mr-3 mt-0.5 text-gray-500" />
+                      <div>
+                        <h3 className="font-medium">Phone Verification</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Add your phone number for additional account recovery options
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        disabled
+                      >
+                        Add Phone
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Security logs section */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Clock className="h-5 w-5 mr-2" />
+                Security Activity Logs
+              </CardTitle>
+              <CardDescription>
+                Recent security-related activity on your account
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoadingLogs ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : securityLogs && securityLogs.length > 0 ? (
+              {logsLoading ? (
                 <div className="space-y-4">
-                  {securityLogs.map((log, index) => (
-                    <div key={index} className="flex items-start border-b pb-4 last:border-0">
-                      <div className="mr-4 mt-1">
-                        {log.eventType.includes("LOGIN") ? (
-                          <LockKeyhole className="h-5 w-5 text-blue-500" />
-                        ) : log.eventType.includes("FAIL") ? (
-                          <AlertTriangle className="h-5 w-5 text-amber-500" />
-                        ) : log.eventType.includes("PASSWORD") ? (
-                          <KeyIcon className="h-5 w-5 text-purple-500" />
-                        ) : log.eventType.includes("EMAIL") ? (
-                          <Mail className="h-5 w-5 text-green-500" />
-                        ) : (
-                          <Shield className="h-5 w-5 text-slate-500" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-medium">{formatEventType(log.eventType)}</div>
-                        <div className="text-sm text-muted-foreground">{log.details}</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {new Date(log.timestamp).toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
                 </div>
+              ) : logsData && logsData.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Activity</TableHead>
+                      <TableHead>IP Address</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {logsData.map((log, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell>
+                        <TableCell>{log.activity}</TableCell>
+                        <TableCell>{log.ipAddress}</TableCell>
+                        <TableCell>
+                          {log.status === 'success' ? (
+                            <span className="flex items-center text-green-600 text-sm">
+                              <CheckCircle2 className="h-4 w-4 mr-1" />
+                              Success
+                            </span>
+                          ) : (
+                            <span className="flex items-center text-red-600 text-sm">
+                              <AlertTriangle className="h-4 w-4 mr-1" />
+                              Failed
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  No recent security activity found
+                <p className="text-center text-muted-foreground py-6">
+                  No recent security activity to display
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Security status section */}
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Security Status</CardTitle>
+              <CardDescription>
+                Your account's current security level
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-40 w-full" />
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Overall Security</span>
+                    <span className={`text-sm font-medium ${securityData?.mfaEnabled ? 'text-green-600' : 'text-amber-600'}`}>
+                      {securityData?.mfaEnabled ? 'Strong' : 'Moderate'}
+                    </span>
+                  </div>
+                  
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div 
+                      className={`h-2.5 rounded-full ${securityData?.mfaEnabled ? 'bg-green-600 w-full' : 'bg-amber-500 w-2/3'}`}
+                    ></div>
+                  </div>
+                  
+                  <div className="pt-4 space-y-3">
+                    <div className="flex items-center">
+                      <div className={`h-4 w-4 rounded-full mr-2 ${securityData?.emailVerified ? 'bg-green-500' : 'bg-gray-300'}`}>
+                        {securityData?.emailVerified && <Check className="h-4 w-4 text-white" />}
+                      </div>
+                      <span className="text-sm">Email verified</span>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <div className={`h-4 w-4 rounded-full mr-2 ${securityData?.mfaEnabled ? 'bg-green-500' : 'bg-gray-300'}`}>
+                        {securityData?.mfaEnabled && <Check className="h-4 w-4 text-white" />}
+                      </div>
+                      <span className="text-sm">Two-factor authentication</span>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <div className={`h-4 w-4 rounded-full mr-2 ${securityData?.strongPassword ? 'bg-green-500' : 'bg-gray-300'}`}>
+                        {securityData?.strongPassword && <Check className="h-4 w-4 text-white" />}
+                      </div>
+                      <span className="text-sm">Strong password</span>
+                    </div>
+                  </div>
+                  
+                  {!securityData?.mfaEnabled && (
+                    <Alert className="mt-4">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Enhance Your Security</AlertTitle>
+                      <AlertDescription>
+                        We recommend enabling two-factor authentication to better protect your account.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
               )}
             </CardContent>
-            <CardFooter>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="ml-auto"
-                onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/security/logs"] })}
-              >
-                Refresh
-              </Button>
-            </CardFooter>
           </Card>
-        </TabsContent>
-      </Tabs>
+          
+          {/* Resources section */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Security Resources</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded-md">
+                <div className="flex items-center">
+                  <Shield className="h-5 w-5 mr-2 text-gray-500" />
+                  <span className="text-sm">Security best practices</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+              </div>
+              
+              <div className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded-md">
+                <div className="flex items-center">
+                  <AlertTriangle className="h-5 w-5 mr-2 text-gray-500" />
+                  <span className="text-sm">Report security issue</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+              </div>
+              
+              <div className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded-md">
+                <div className="flex items-center">
+                  <Lock className="h-5 w-5 mr-2 text-gray-500" />
+                  <span className="text-sm">Privacy settings</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* MFA Setup Dialog */}
+      <Dialog open={showMfaSetup} onOpenChange={setShowMfaSetup}>
+        <DialogContent className="max-w-xl">
+          <MfaSetup 
+            onComplete={handleMfaComplete} 
+            onCancel={() => setShowMfaSetup(false)} 
+          />
+        </DialogContent>
+      </Dialog>
     </div>
-  );
-}
-
-// Helper function to format security event types for display
-function formatEventType(eventType: string): string {
-  // Convert from UPPERCASE_WITH_UNDERSCORES to Regular Text with Spaces
-  const formatted = eventType
-    .replace(/_/g, ' ')
-    .replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
-  
-  return formatted;
-}
-
-// KeyIcon for password changes
-function KeyIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
-    </svg>
   );
 }

@@ -1,70 +1,107 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Loader2, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+// Verification code schema
+const verificationSchema = z.object({
+  verificationCode: z.string().min(6, "Code must be 6 digits").max(6)
+});
+
+type VerificationFormValues = z.infer<typeof verificationSchema>;
+
 interface MfaVerificationProps {
   userId: number;
-  username: string;
-  onComplete: (userData: any) => void;
-  onCancel: () => void;
+  onSuccess: () => void;
+  onCancel?: () => void;
 }
 
-export default function MfaVerification({ userId, username, onComplete, onCancel }: MfaVerificationProps) {
+export default function MfaVerification({ userId, onSuccess, onCancel }: MfaVerificationProps) {
   const { toast } = useToast();
-  const [code, setCode] = useState("");
-  const [isUsingBackupCode, setIsUsingBackupCode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const verifyMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/mfa/verify", {
-        userId,
-        mfaCode: code
-      });
-      return res.json();
-    },
-    onSuccess: (userData) => {
-      toast({
-        title: "Verification Successful",
-        description: "You have successfully logged in.",
-      });
-      onComplete(userData);
-    },
-    onError: (error) => {
-      toast({
-        title: "Verification Failed",
-        description: error.message || "Invalid verification code. Please try again.",
-        variant: "destructive",
-      });
-    },
+  // Form setup
+  const form = useForm<VerificationFormValues>({
+    resolver: zodResolver(verificationSchema),
+    defaultValues: {
+      verificationCode: ""
+    }
   });
 
-  const handleVerify = () => {
-    if (!code) {
+  // Form submission
+  const onSubmit = async (data: VerificationFormValues) => {
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      const res = await apiRequest("POST", "/api/mfa/verify", {
+        userId,
+        verificationCode: data.verificationCode
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Verification failed");
+      }
+      
       toast({
-        title: "Required Field",
-        description: "Please enter a verification code.",
+        title: "Verification Successful",
+        description: "You have successfully verified your identity.",
+      });
+      
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Verification failed. Please try again.");
+      toast({
+        title: "Verification Failed",
+        description: err instanceof Error ? err.message : "Invalid verification code. Please try again.",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
-    // For normal MFA codes, ensure it's 6 digits
-    if (!isUsingBackupCode && (code.length !== 6 || !/^\d+$/.test(code))) {
+  // Handle backup code
+  const handleUseBackupCode = async () => {
+    try {
+      const res = await apiRequest("GET", `/api/mfa/backup/${userId}`);
+      
+      if (!res.ok) {
+        throw new Error("Could not switch to backup code verification");
+      }
+      
+      // Redirect to backup code verification
+      window.location.href = `/auth/backup-code?userId=${userId}`;
+    } catch (err) {
       toast({
-        title: "Invalid Code",
-        description: "Please enter a valid 6-digit verification code.",
+        title: "Error",
+        description: err instanceof Error ? err.message : "Could not switch to backup code verification",
         variant: "destructive",
       });
-      return;
     }
-
-    verifyMutation.mutate();
   };
 
   return (
@@ -72,59 +109,77 @@ export default function MfaVerification({ userId, username, onComplete, onCancel
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5" />
-          Two-Factor Verification
+          Two-Factor Authentication
         </CardTitle>
         <CardDescription>
-          Enter the verification code from your authenticator app to complete sign in.
+          Enter the verification code from your authenticator app.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div className="flex flex-col space-y-1.5">
-            <Label htmlFor="username">Username</Label>
-            <Input id="username" value={username} disabled />
-          </div>
-          <div className="flex flex-col space-y-1.5">
-            <Label htmlFor="code">
-              {isUsingBackupCode ? "Backup Code" : "Verification Code"}
-            </Label>
-            <Input
-              id="code"
-              placeholder={isUsingBackupCode ? "Enter backup code" : "Enter 6-digit code"}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              maxLength={isUsingBackupCode ? undefined : 6}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="verificationCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Verification Code</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter 6-digit code"
+                      maxLength={6}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <Button
-            variant="link"
-            className="p-0 h-auto text-sm"
-            onClick={() => {
-              setIsUsingBackupCode(!isUsingBackupCode);
-              setCode("");
-            }}
+
+            {error && (
+              <div className="text-sm text-red-500 mt-2">
+                {error}
+              </div>
+            )}
+
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                "Verify"
+              )}
+            </Button>
+          </form>
+        </Form>
+
+        <div className="mt-4 text-center">
+          <Button 
+            variant="link" 
+            className="text-sm text-muted-foreground" 
+            onClick={handleUseBackupCode}
           >
-            {isUsingBackupCode
-              ? "Use authenticator app instead"
-              : "Use a backup code instead"}
+            Use backup code instead
           </Button>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button variant="ghost" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button onClick={handleVerify} disabled={verifyMutation.isPending}>
-          {verifyMutation.isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Verifying...
-            </>
-          ) : (
-            <>Verify</>
-          )}
-        </Button>
-      </CardFooter>
+      {onCancel && (
+        <CardFooter>
+          <Button 
+            variant="ghost" 
+            className="w-full" 
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 }

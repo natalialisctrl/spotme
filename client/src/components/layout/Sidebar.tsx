@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 
 const Sidebar: FC = () => {
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { user, logoutMutation } = useAuth();
 
   if (!user) return null;
 
@@ -53,7 +53,7 @@ const Sidebar: FC = () => {
         </nav>
       </div>
       <div className="p-4 border-t border-gray-200">
-        <div className="flex items-center">
+        <div className="flex items-center mb-3">
           <div className="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center">
             <span className="font-medium text-sm">{user.name.split(' ').map(n => n[0]).join('')}</span>
           </div>
@@ -62,6 +62,17 @@ const Sidebar: FC = () => {
             <p className="text-xs text-gray-500">{user.email}</p>
           </div>
         </div>
+        <Separator className="my-2" />
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full justify-start text-red-600 mt-2" 
+          onClick={() => logoutMutation.mutate()}
+          disabled={logoutMutation.isPending}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          {logoutMutation.isPending ? "Logging out..." : "Logout"}
+        </Button>
       </div>
     </aside>
   );
