@@ -23,35 +23,25 @@ const Sidebar: FC = () => {
       <div className="flex-1 overflow-y-auto">
         <nav className="px-4 pt-4">
           <div className="space-y-1">
-            <Link href="/">
-              <a className={`flex items-center px-4 py-3 text-gray-700 ${location === '/' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+            <Link href="/" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <MapPin className="h-5 w-5 mr-3 text-primary" />
                 Find Gym Partners
-              </a>
             </Link>
-            <Link href="/messages">
-              <a className={`flex items-center px-4 py-3 text-gray-700 ${location === '/messages' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+            <Link href="/messages" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/messages' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <MessageSquare className="h-5 w-5 mr-3 text-gray-500" />
                 Messages
-              </a>
             </Link>
-            <Link href="/connections">
-              <a className={`flex items-center px-4 py-3 text-gray-700 ${location === '/connections' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+            <Link href="/connections" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/connections' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <Users className="h-5 w-5 mr-3 text-gray-500" />
                 Connections
-              </a>
             </Link>
-            <Link href="/profile">
-              <a className={`flex items-center px-4 py-3 text-gray-700 ${location === '/profile' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+            <Link href="/profile" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/profile' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <User className="h-5 w-5 mr-3 text-gray-500" />
                 Profile
-              </a>
             </Link>
-            <Link href="/settings">
-              <a className={`flex items-center px-4 py-3 text-gray-700 ${location === '/settings' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+            <Link href="/settings" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/settings' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <Settings className="h-5 w-5 mr-3 text-gray-500" />
                 Settings
-              </a>
             </Link>
           </div>
         </nav>

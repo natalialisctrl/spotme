@@ -1,5 +1,5 @@
 import { FC, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -16,7 +16,12 @@ import { workoutTypes } from "@shared/schema";
 import IdentityVerification from "@/components/profile/IdentityVerification";
 
 const Profile: FC = () => {
-  const { user, checkAuth } = useAuth();
+  const { user } = useAuth();
+  
+  // Function to refresh user data
+  const checkAuth = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+  };
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [isEditing, setIsEditing] = useState(false);

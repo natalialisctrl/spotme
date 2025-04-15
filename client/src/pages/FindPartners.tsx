@@ -1,7 +1,7 @@
 import { FC, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import WorkoutSelection from "@/components/workout/WorkoutSelection";
 import MapView from "@/components/map/MapView";
 import PartnersList from "@/components/partners/PartnersList";
@@ -13,7 +13,7 @@ import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
 
 const FindPartners: FC = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { latitude, longitude, error: locationError } = useGeolocation();
   const [showLogin, setShowLogin] = useState(true);
   const [filterParams, setFilterParams] = useState({
@@ -61,9 +61,9 @@ const FindPartners: FC = () => {
                 <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
               </svg>
             </div>
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900 font-poppins">GymBuddy</h2>
+            <h2 className="mt-6 text-3xl font-extrabold text-gray-900 font-poppins">SpotMe</h2>
             <p className="mt-2 text-sm text-gray-600">
-              Find your perfect workout partner in real-time
+              Never lift solo again
             </p>
           </div>
           
