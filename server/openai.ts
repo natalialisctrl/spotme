@@ -1,8 +1,9 @@
 import OpenAI from "openai";
 
-// Initialize OpenAI client
+// Initialize OpenAI client - get key from environment
+// We're using process.env instead of import.meta.env because this is server-side code
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY || "",
 });
 
 export type PersonalityInsight = {
