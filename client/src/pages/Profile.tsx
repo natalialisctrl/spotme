@@ -254,131 +254,108 @@ const Profile: FC = () => {
         <CardContent className="space-y-6">
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex flex-col items-center gap-3">
-              <Avatar className="h-32 w-32 bg-primary text-white text-4xl">
-                {user.profilePictureUrl ? (
-                  <AvatarImage src={user.profilePictureUrl} alt={user.name} />
-                ) : null}
-                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-              </Avatar>
-              
-              {isEditing && (
-                <Card className="mt-4 w-full max-w-sm bg-yellow-50 border-2 border-primary">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-center text-lg">
-                      Upload Profile Picture
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <Button 
-                        className="w-full h-auto py-8 flex flex-col items-center justify-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary border-2 border-dashed border-primary"
-                        variant="ghost"
-                        onClick={() => {
-                          document.getElementById('profile-pic-upload')?.click();
-                        }}
-                      >
-                        <Camera className="h-8 w-8" />
-                        <span className="font-medium">Click to select a photo</span>
-                      </Button>
-                      
-                      <input
-                        id="profile-pic-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          
-                          // Preview
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            if (event.target?.result) {
-                              // Update avatar preview in DOM directly
-                              const avatarImg = document.querySelector('.h-32.w-32 img');
-                              if (avatarImg) {
-                                avatarImg.setAttribute('src', event.target.result.toString());
-                              }
-                            }
-                          };
-                          reader.readAsDataURL(file);
-                          
-                          // Upload
-                          try {
-                            const formData = new FormData();
-                            formData.append('file', file);
-                            
-                            // Create base64
-                            const base64 = await new Promise<string>((resolve) => {
-                              const reader = new FileReader();
-                              reader.onload = () => resolve(reader.result as string);
-                              reader.readAsDataURL(file);
-                            });
-                            
-                            // Send to server
-                            const response = await apiRequest('POST', `/api/users/${user.id}/profile-picture`, {
-                              imageData: base64,
-                              fileName: file.name
-                            });
-                            
-                            if (!response.ok) {
-                              throw new Error('Failed to upload image');
-                            }
-                            
-                            const data = await response.json();
-                            
-                            // Update in React Query cache
-                            queryClient.setQueryData(["/api/user"], {
-                              ...user,
-                              profilePictureUrl: data.imageUrl
-                            });
-                            
-                            toast({
-                              title: "Image uploaded",
-                              description: "Your profile picture will be updated when you save your profile.",
-                            });
-                            
-                          } catch (error) {
-                            console.error("Error uploading image:", error);
-                            toast({
-                              title: "Upload failed",
-                              description: "Could not upload the image. Please try again.",
-                              variant: "destructive"
-                            });
-                          }
-                        }}
-                      />
-                      
-                      {user.profilePictureUrl && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="w-full"
-                          onClick={() => {
-                            // Clear image
-                            queryClient.setQueryData(["/api/user"], {
-                              ...user,
-                              profilePictureUrl: ""
-                            });
-                            
-                            // Clear preview in DOM
-                            const avatarImg = document.querySelector('.h-32.w-32 img');
-                            if (avatarImg) {
-                              avatarImg.remove();
-                            }
-                            
-                            toast({
-                              title: "Image removed",
-                              description: "Your profile picture will be removed when you save your profile.",
-                            });
-                          }}
-                        >
-                          Remove Current Picture
-                        </Button>
-                      )}
+              <div className="relative">
+                <Avatar className="h-32 w-32 bg-primary text-white text-4xl">
+                  {user.profilePictureUrl ? (
+                    <AvatarImage src={user.profilePictureUrl} alt={user.name} />
+                  ) : null}
+                  <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                </Avatar>
+                
+                {/* Upload overlay when editing */}
+                {isEditing && (
+                  <div 
+                    className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full cursor-pointer"
+                    onClick={() => document.getElementById('profile-pic-direct-upload')?.click()}
+                  >
+                    <div className="text-white flex flex-col items-center">
+                      <Camera className="h-8 w-8" />
+                      <span className="text-xs mt-1">Upload</span>
                     </div>
-                  </CardContent>
-                </Card>
+                    <input
+                      id="profile-pic-direct-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        
+                        toast({
+                          title: "Uploading...",
+                          description: "Please wait while we upload your photo.",
+                        });
+                        
+                        try {
+                          // Create base64
+                          const base64 = await new Promise<string>((resolve) => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(reader.result as string);
+                            reader.readAsDataURL(file);
+                          });
+                          
+                          // Send to server
+                          const response = await apiRequest('POST', `/api/users/${user.id}/profile-picture`, {
+                            imageData: base64,
+                            fileName: file.name
+                          });
+                          
+                          if (!response.ok) {
+                            throw new Error('Failed to upload image');
+                          }
+                          
+                          const data = await response.json();
+                          
+                          // Update in React Query cache
+                          queryClient.setQueryData(["/api/user"], {
+                            ...user,
+                            profilePictureUrl: data.imageUrl
+                          });
+                          
+                          // Force reload to see changes
+                          window.location.reload();
+                          
+                        } catch (error) {
+                          console.error("Error uploading image:", error);
+                          toast({
+                            title: "Upload failed",
+                            description: "Could not upload the image. Please try again.",
+                            variant: "destructive"
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              
+              {/* Remove button */}
+              {isEditing && user.profilePictureUrl && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => {
+                    // Clear image and save
+                    apiRequest('PATCH', `/api/users/${user.id}`, { 
+                      profilePictureUrl: "" 
+                    }).then(() => {
+                      // Update in React Query cache
+                      queryClient.setQueryData(["/api/user"], {
+                        ...user,
+                        profilePictureUrl: ""
+                      });
+                      
+                      toast({
+                        title: "Image removed",
+                        description: "Your profile picture has been removed.",
+                      });
+                      window.location.reload();
+                    });
+                  }}
+                >
+                  Remove Picture
+                </Button>
               )}
               <div className="text-center">
                 <h3 className="font-semibold text-xl">{user.name}</h3>
