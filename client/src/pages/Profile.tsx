@@ -254,8 +254,16 @@ const Profile: FC = () => {
         <CardContent className="space-y-6">
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex flex-col items-center gap-3">
-              {isEditing ? (
-                <div className="w-48">
+              <Avatar className="h-32 w-32 bg-primary text-white text-4xl">
+                {user.profilePictureUrl ? (
+                  <AvatarImage src={user.profilePictureUrl} alt={user.name} />
+                ) : null}
+                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+              </Avatar>
+              
+              {isEditing && (
+                <div className="mt-3 w-full max-w-[220px]">
+                  <Label className="mb-2 block">Profile Picture</Label>
                   <ProfilePictureUpload 
                     currentImageUrl={user.profilePictureUrl || undefined}
                     userId={user.id}
@@ -268,13 +276,6 @@ const Profile: FC = () => {
                     }}
                   />
                 </div>
-              ) : (
-                <Avatar className="h-32 w-32 bg-primary text-white text-4xl">
-                  {user.profilePictureUrl ? (
-                    <AvatarImage src={user.profilePictureUrl} alt={user.name} />
-                  ) : null}
-                  <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                </Avatar>
               )}
               <div className="text-center">
                 <h3 className="font-semibold text-xl">{user.name}</h3>
