@@ -3,8 +3,15 @@ import OpenAI from "openai";
 // Initialize OpenAI client - get key from environment
 // We're using process.env instead of import.meta.env because this is server-side code
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "",
+  apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Log API key status for debugging (masking the actual key)
+if (process.env.OPENAI_API_KEY) {
+  console.log("OpenAI API key is configured");
+} else {
+  console.warn("WARNING: OpenAI API key is missing");
+}
 
 export type PersonalityInsight = {
   workoutStyle: string;

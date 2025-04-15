@@ -58,9 +58,15 @@ const ProfileSetup: FC = () => {
         aiGeneratedInsights: JSON.stringify(insights)
       };
       
+      console.log(`Attempting to update user ${user.id} with insights`);
+      
+      // Make sure we have the latest user data
+      await checkAuth();
+      
+      // Then update the user profile
       await apiRequest('PATCH', `/api/users/${user.id}`, updateData);
       
-      // Refresh user data
+      // Refresh user data again
       await checkAuth();
       
       toast({
@@ -78,6 +84,19 @@ const ProfileSetup: FC = () => {
         description: "We couldn't save your profile insights. Please try again.",
         variant: "destructive"
       });
+      
+      // Try to log in again if it's an authentication error
+      if (error instanceof Error && error.message.includes('401')) {
+        toast({
+          title: "Session expired",
+          description: "Please log in again to save your profile.",
+          variant: "destructive"
+        });
+        setTimeout(() => {
+          setLocation('/auth');
+        }, 2000);
+        return;
+      }
       
       setStep('insights');
     }
