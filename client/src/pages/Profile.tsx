@@ -1,5 +1,6 @@
 import { FC, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -9,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { workoutTypes } from "@shared/schema";
 import IdentityVerification from "@/components/profile/IdentityVerification";
@@ -17,6 +18,7 @@ import IdentityVerification from "@/components/profile/IdentityVerification";
 const Profile: FC = () => {
   const { user, checkAuth } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -246,6 +248,73 @@ const Profile: FC = () => {
       </Card>
 
       <IdentityVerification user={user} onVerificationComplete={checkAuth} />
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center">
+                <Sparkles className="h-5 w-5 mr-2 text-primary" />
+                AI Fitness Profile
+              </CardTitle>
+              <CardDescription>
+                Get AI-generated insights based on your fitness personality
+              </CardDescription>
+            </div>
+            <Button 
+              onClick={() => navigate("/profile-setup")}
+              variant={user.aiGeneratedInsights ? "outline" : "default"}
+            >
+              {user.aiGeneratedInsights ? "Regenerate Profile" : "Generate AI Profile"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {user.aiGeneratedInsights ? (
+            <div className="space-y-4">
+              {(() => {
+                try {
+                  const insights = JSON.parse(user.aiGeneratedInsights);
+                  return (
+                    <>
+                      <div className="space-y-1">
+                        <h3 className="text-md font-semibold">Your Workout Style</h3>
+                        <p className="text-gray-700">{insights.workoutStyle}</p>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <h3 className="text-md font-semibold">Motivation Tips</h3>
+                        <ul className="list-disc pl-5 text-gray-700 space-y-1">
+                          {insights.motivationTips.map((tip: string, index: number) => (
+                            <li key={index}>{tip}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <h3 className="text-md font-semibold">Your Ideal Gym Partner</h3>
+                        <p className="text-gray-700">{insights.partnerPreferences}</p>
+                      </div>
+                    </>
+                  );
+                } catch (e) {
+                  return (
+                    <div className="text-center text-gray-500">
+                      <p>Your AI profile data needs to be updated. Click "Regenerate Profile" to create a new one.</p>
+                    </div>
+                  );
+                }
+              })()}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-gray-500">
+              <Sparkles className="h-12 w-12 mx-auto mb-4 text-primary/50" />
+              <p className="mb-2">You haven't generated your AI fitness profile yet.</p>
+              <p>Take a quick personality quiz to get personalized workout insights.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
