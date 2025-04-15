@@ -199,6 +199,11 @@ const Profile: FC = () => {
         description: "Your profile information has been saved successfully."
       });
       
+      // SOLUTION 11: Force a hard page reload after saving
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+      
     } catch (error) {
       console.error("Profile update error:", error);
       
