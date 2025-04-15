@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { User } from "@shared/schema";
 import PartnerCard from "./PartnerCard";
 import { Loader2, SlidersHorizontal, Share2, Sliders } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { 
   calculateCompatibilityWithBreakdown, 
   getCompatibilityLabel,
