@@ -3,17 +3,18 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Save, Sparkles, RefreshCw } from "lucide-react";
+import { Loader2, Save, Sparkles, RefreshCw, Camera } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { workoutTypes } from "@shared/schema";
 import IdentityVerification from "@/components/profile/IdentityVerification";
+import ProfilePictureUpload from "@/components/profile/ProfilePictureUpload";
 
 const Profile: FC = () => {
   const { user, refreshUserData } = useAuth();
@@ -253,9 +254,28 @@ const Profile: FC = () => {
         <CardContent className="space-y-6">
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex flex-col items-center gap-3">
-              <Avatar className="h-32 w-32 bg-primary text-white text-4xl">
-                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-              </Avatar>
+              {isEditing ? (
+                <div className="w-48">
+                  <ProfilePictureUpload 
+                    currentImageUrl={user.profilePictureUrl || undefined}
+                    userId={user.id}
+                    onImageUploaded={(imageUrl) => {
+                      // Update user data locally with new image URL
+                      queryClient.setQueryData(["/api/user"], {
+                        ...user,
+                        profilePictureUrl: imageUrl
+                      });
+                    }}
+                  />
+                </div>
+              ) : (
+                <Avatar className="h-32 w-32 bg-primary text-white text-4xl">
+                  {user.profilePictureUrl ? (
+                    <AvatarImage src={user.profilePictureUrl} alt={user.name} />
+                  ) : null}
+                  <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                </Avatar>
+              )}
               <div className="text-center">
                 <h3 className="font-semibold text-xl">{user.name}</h3>
                 <p className="text-sm text-gray-500">{user.username}</p>
