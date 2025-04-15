@@ -123,8 +123,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUserData = async () => {
     console.log("Refreshing user data...");
     try {
-      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      console.log("User data refreshed successfully");
+      // First, completely remove any cached user data
+      queryClient.removeQueries({ queryKey: ["/api/user"] });
+      
+      // Then force a new fetch with no caching
+      const userData = await fetch('/api/user', {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+        credentials: 'include'
+      });
+      
+      if (!userData.ok) {
+        throw new Error(`Failed to fetch user data: ${userData.status}`);
+      }
+      
+      // Get the fresh user data
+      const freshUserData = await userData.json();
+      
+      // Manually update the query cache with the fresh data
+      queryClient.setQueryData(["/api/user"], freshUserData);
+      
+      console.log("User data refreshed successfully with fresh data:", freshUserData.name);
+      return freshUserData;
     } catch (error) {
       console.error("Error refreshing user data:", error);
       toast({
@@ -132,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Failed to refresh your profile data. Please try again.",
         variant: "destructive",
       });
+      throw error;
     }
   };
 
