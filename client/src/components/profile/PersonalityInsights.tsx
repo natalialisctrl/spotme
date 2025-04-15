@@ -1,7 +1,14 @@
 import { FC } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Check, Sparkles, Rocket, Target, Clock, Users } from "lucide-react";
+import { Sparkles, Rocket, Target, Clock, Users, Check } from 'lucide-react';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { PersonalityInsight } from '@/lib/openai';
 
 interface PersonalityInsightsProps {

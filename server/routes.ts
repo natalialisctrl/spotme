@@ -7,6 +7,7 @@ import {
   insertConnectionRequestSchema, insertMessageSchema, nearbyUsersSchema, WebSocketMessage
 } from "@shared/schema";
 import { ZodError } from "zod";
+import { generatePersonalityInsights, PersonalityQuizResponses } from "./openai";
 
 // Map to store active WebSocket connections by user ID
 const activeConnections = new Map<number, WebSocket>();
@@ -526,6 +527,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`WebSocket disconnected for user ${userId}`);
       activeConnections.delete(userId);
     });
+  });
+
+  // Personality insights route
+  app.post('/api/personality-insights', async (req, res) => {
+    try {
+      // Authentication is not strictly required for this endpoint
+      // but can be added if needed to prevent abuse
+      const quizResponses = req.body as PersonalityQuizResponses;
+      
+      // Validate that all required fields are present
+      if (!quizResponses.fitnessLevel || 
+          !quizResponses.fitnessGoals || 
+          !quizResponses.preferredActivities || 
+          !quizResponses.schedule || 
+          !quizResponses.motivationFactors) {
+        return res.status(400).json({ message: 'Missing required quiz responses' });
+      }
+      
+      // Generate insights using OpenAI
+      const insights = await generatePersonalityInsights(quizResponses);
+      return res.json(insights);
+    } catch (error) {
+      console.error('Error generating personality insights:', error);
+      return res.status(500).json({ message: 'Failed to generate personality insights' });
+    }
   });
 
   return httpServer;

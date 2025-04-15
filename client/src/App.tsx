@@ -54,6 +54,20 @@ function Router() {
     );
   }
 
+  // Check if user needs to complete profile setup (has no AI insights)
+  const needsProfileSetup = !user.aiGeneratedInsights;
+  
+  if (needsProfileSetup) {
+    return (
+      <Switch>
+        <Route path="/profile-setup" component={ProfileSetupPage} />
+        <Route>
+          <ProfileSetupPage />
+        </Route>
+      </Switch>
+    );
+  }
+
   return (
     <AppShell>
       <Switch>
