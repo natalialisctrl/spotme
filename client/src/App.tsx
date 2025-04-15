@@ -7,6 +7,7 @@ import FindPartners from "@/pages/FindPartners";
 import Messages from "@/pages/Messages";
 import Profile from "@/pages/Profile";
 import Connections from "@/pages/Connections";
+import ProfileSetup from "@/pages/ProfileSetup";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -18,6 +19,7 @@ function AuthenticatedApp() {
         <Route path="/messages" component={Messages} />
         <Route path="/connections" component={Connections} />
         <Route path="/profile" component={Profile} />
+        <Route path="/profile-setup" component={ProfileSetup} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>

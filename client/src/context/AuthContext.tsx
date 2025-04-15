@@ -30,6 +30,7 @@ const mockUser: User = {
   latitude: null,
   longitude: null,
   lastActive: new Date(),
+  aiGeneratedInsights: null,
   firebaseUid: null,
   googleVerified: false,
   facebookVerified: false,
