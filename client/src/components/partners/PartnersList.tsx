@@ -2,9 +2,14 @@ import { FC, useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { User } from "@shared/schema";
 import PartnerCard from "./PartnerCard";
-import { Loader2, SlidersHorizontal } from "lucide-react";
+import { Loader2, SlidersHorizontal, Share2, Sliders } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { calculateCompatibilityScore } from "@/lib/compatibilityMatcher";
+import { 
+  calculateCompatibilityWithBreakdown, 
+  getCompatibilityLabel,
+  CompatibilityBreakdown,
+  DEFAULT_WEIGHTS
+} from "@/lib/compatibilityMatcher";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -13,6 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
 
 interface FilterParams {
   workoutType?: string;
@@ -27,7 +38,10 @@ interface PartnersListProps {
 }
 
 type NearbyUser = User & { distance: number };
-type NearbyUserWithScore = NearbyUser & { compatibilityScore: number };
+type NearbyUserWithScore = NearbyUser & { 
+  compatibilityScore: number;
+  compatibilityBreakdown?: CompatibilityBreakdown;
+};
 
 type SortType = 'compatibility' | 'distance' | 'experienceLevel';
 
@@ -59,15 +73,33 @@ const PartnersList: FC<PartnersListProps> = ({ filterParams }) => {
     }
   });
   
+  // Customize compatibility weight factors
+  const [compatibilityWeights, setCompatibilityWeights] = useState(DEFAULT_WEIGHTS);
+  const [showWeightSettings, setShowWeightSettings] = useState(false);
+  
+  // Store compatibility breakdowns for each user
+  const [compatibilityBreakdowns, setCompatibilityBreakdowns] = useState<Record<number, CompatibilityBreakdown>>({});
+  
   // Calculate compatibility scores and sort users
   const sortedUsers = useMemo<NearbyUserWithScore[]>(() => {
     if (!nearbyUsers || !currentUser) return [];
     
-    // Create a new array with compatibility scores
-    const usersWithScores: NearbyUserWithScore[] = nearbyUsers.map(user => ({
-      ...user, 
-      compatibilityScore: calculateCompatibilityScore(currentUser, user)
-    }));
+    // Create a new array with compatibility scores and store breakdowns
+    const usersWithScores: NearbyUserWithScore[] = nearbyUsers.map(user => {
+      // Calculate detailed compatibility with breakdown
+      const breakdown = calculateCompatibilityWithBreakdown(currentUser, user, compatibilityWeights);
+      
+      // Store breakdown for this user to use in tooltips/cards
+      setCompatibilityBreakdowns(prev => ({
+        ...prev,
+        [user.id]: breakdown
+      }));
+      
+      return {
+        ...user, 
+        compatibilityScore: breakdown.totalScore
+      };
+    });
     
     // Sort by selected criteria
     return [...usersWithScores].sort((a, b) => {
@@ -82,7 +114,7 @@ const PartnersList: FC<PartnersListProps> = ({ filterParams }) => {
       }
       return 0;
     });
-  }, [nearbyUsers, currentUser, sortBy]);
+  }, [nearbyUsers, currentUser, sortBy, compatibilityWeights]);
   
   // Animate new partners in when they appear
   useEffect(() => {
@@ -117,21 +149,136 @@ const PartnersList: FC<PartnersListProps> = ({ filterParams }) => {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
         <h2 className="text-xl font-bold font-poppins text-dark mb-2 md:mb-0">Potential Workout Partners</h2>
         
-        {/* Sorting controls */}
+        {/* Sorting controls and compatibility settings */}
         {nearbyUsers && nearbyUsers.length > 0 && (
           <div className="flex items-center space-x-2">
-            <SlidersHorizontal className="h-4 w-4 text-gray-500" />
-            <span className="text-sm text-gray-600 mr-2">Sort by:</span>
-            <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortType)}>
-              <SelectTrigger className="h-8 w-[180px]">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="compatibility">Compatibility</SelectItem>
-                <SelectItem value="distance">Distance</SelectItem>
-                <SelectItem value="experienceLevel">Experience Level</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Customization for compatibility weights */}
+            <Popover open={showWeightSettings} onOpenChange={setShowWeightSettings}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex items-center gap-1 text-xs h-8"
+                >
+                  <Sliders className="h-3.5 w-3.5" />
+                  <span>Customize Match</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72">
+                <div className="space-y-4">
+                  <h3 className="font-medium text-sm">Customize Compatibility Factors</h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <label className="text-sm font-medium">Workout Style</label>
+                        <span className="text-xs">{Math.round(compatibilityWeights.workoutStyle * 100)}%</span>
+                      </div>
+                      <Slider 
+                        value={[compatibilityWeights.workoutStyle * 100]} 
+                        min={0} 
+                        max={100}
+                        step={5}
+                        onValueChange={(value) => {
+                          setCompatibilityWeights(prev => ({
+                            ...prev,
+                            workoutStyle: value[0] / 100
+                          }));
+                        }}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <label className="text-sm font-medium">Fitness Goals</label>
+                        <span className="text-xs">{Math.round(compatibilityWeights.goals * 100)}%</span>
+                      </div>
+                      <Slider 
+                        value={[compatibilityWeights.goals * 100]} 
+                        min={0} 
+                        max={100}
+                        step={5}
+                        onValueChange={(value) => {
+                          setCompatibilityWeights(prev => ({
+                            ...prev,
+                            goals: value[0] / 100
+                          }));
+                        }}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <label className="text-sm font-medium">Experience Level</label>
+                        <span className="text-xs">{Math.round(compatibilityWeights.experience * 100)}%</span>
+                      </div>
+                      <Slider 
+                        value={[compatibilityWeights.experience * 100]} 
+                        min={0} 
+                        max={100}
+                        step={5}
+                        onValueChange={(value) => {
+                          setCompatibilityWeights(prev => ({
+                            ...prev,
+                            experience: value[0] / 100
+                          }));
+                        }}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <label className="text-sm font-medium">Partner Preferences</label>
+                        <span className="text-xs">{Math.round(compatibilityWeights.preferences * 100)}%</span>
+                      </div>
+                      <Slider 
+                        value={[compatibilityWeights.preferences * 100]} 
+                        min={0} 
+                        max={100}
+                        step={5}
+                        onValueChange={(value) => {
+                          setCompatibilityWeights(prev => ({
+                            ...prev,
+                            preferences: value[0] / 100
+                          }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setCompatibilityWeights(DEFAULT_WEIGHTS)}
+                    >
+                      Reset
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={() => setShowWeightSettings(false)}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            
+            {/* Sorting dropdown */}
+            <div className="flex items-center space-x-2">
+              <SlidersHorizontal className="h-4 w-4 text-gray-500" />
+              <span className="text-sm text-gray-600 mr-2">Sort by:</span>
+              <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortType)}>
+                <SelectTrigger className="h-8 w-[180px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="compatibility">Compatibility</SelectItem>
+                  <SelectItem value="distance">Distance</SelectItem>
+                  <SelectItem value="experienceLevel">Experience Level</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
       </div>

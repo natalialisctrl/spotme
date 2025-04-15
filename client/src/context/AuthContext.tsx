@@ -100,7 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Simulate API call checking if user is logged in
     setTimeout(() => {
-      // Don't auto-login the user anymore
+      // For development purposes, auto-login with demo user
+      // In production, this would check if there's a valid session
+      setUser(mockUser);
       setLoading(false);
     }, 500);
   };
