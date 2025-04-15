@@ -1,7 +1,9 @@
 import { FC } from "react";
 import { Link, useLocation } from "wouter";
-import { MapPin, MessageSquare, Users, User, Settings } from "lucide-react";
+import { MapPin, MessageSquare, Users, User, Settings, Shield, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 const Sidebar: FC = () => {
   const [location] = useLocation();
@@ -42,6 +44,10 @@ const Sidebar: FC = () => {
             <Link href="/settings" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/settings' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <Settings className="h-5 w-5 mr-3 text-gray-500" />
                 Settings
+            </Link>
+            <Link href="/security-settings" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/security-settings' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+                <Shield className="h-5 w-5 mr-3 text-gray-500" />
+                Security
             </Link>
           </div>
         </nav>
