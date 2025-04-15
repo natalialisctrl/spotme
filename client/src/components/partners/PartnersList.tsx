@@ -27,6 +27,7 @@ interface PartnersListProps {
 }
 
 type NearbyUser = User & { distance: number };
+type NearbyUserWithScore = NearbyUser & { compatibilityScore: number };
 
 type SortType = 'compatibility' | 'distance' | 'experienceLevel';
 
@@ -59,11 +60,11 @@ const PartnersList: FC<PartnersListProps> = ({ filterParams }) => {
   });
   
   // Calculate compatibility scores and sort users
-  const sortedUsers = useMemo(() => {
+  const sortedUsers = useMemo<NearbyUserWithScore[]>(() => {
     if (!nearbyUsers || !currentUser) return [];
     
     // Create a new array with compatibility scores
-    const usersWithScores = nearbyUsers.map(user => ({
+    const usersWithScores: NearbyUserWithScore[] = nearbyUsers.map(user => ({
       ...user, 
       compatibilityScore: calculateCompatibilityScore(currentUser, user)
     }));
@@ -113,7 +114,27 @@ const PartnersList: FC<PartnersListProps> = ({ filterParams }) => {
 
   return (
     <section className="mb-8 px-4">
-      <h2 className="text-xl font-bold font-poppins text-dark mb-4">Potential Workout Partners</h2>
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
+        <h2 className="text-xl font-bold font-poppins text-dark mb-2 md:mb-0">Potential Workout Partners</h2>
+        
+        {/* Sorting controls */}
+        {nearbyUsers && nearbyUsers.length > 0 && (
+          <div className="flex items-center space-x-2">
+            <SlidersHorizontal className="h-4 w-4 text-gray-500" />
+            <span className="text-sm text-gray-600 mr-2">Sort by:</span>
+            <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortType)}>
+              <SelectTrigger className="h-8 w-[180px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="compatibility">Compatibility</SelectItem>
+                <SelectItem value="distance">Distance</SelectItem>
+                <SelectItem value="experienceLevel">Experience Level</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
       
       {isLoading ? (
         <div className="flex justify-center py-10">
@@ -123,14 +144,23 @@ const PartnersList: FC<PartnersListProps> = ({ filterParams }) => {
         <div className="bg-red-50 p-4 rounded-lg">
           <p className="text-red-600">Error loading potential partners. Please try again.</p>
         </div>
-      ) : nearbyUsers && nearbyUsers.length > 0 ? (
+      ) : sortedUsers && sortedUsers.length > 0 ? (
         <div className="space-y-4">
-          {nearbyUsers.map((user) => (
-            <PartnerCard 
+          {sortedUsers.map((user) => (
+            <div 
               key={user.id}
-              user={user}
-              distance={formatDistance(user.distance)}
-            />
+              className={`transform transition-all duration-500 ease-out ${
+                animateIn[user.id] 
+                  ? 'translate-y-0 opacity-100' 
+                  : 'translate-y-4 opacity-0'
+              }`}
+            >
+              <PartnerCard 
+                user={user}
+                distance={formatDistance(user.distance)}
+                currentUser={currentUser}
+              />
+            </div>
           ))}
         </div>
       ) : (
