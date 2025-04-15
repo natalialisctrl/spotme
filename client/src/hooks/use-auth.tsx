@@ -36,11 +36,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      // Set the user data in the query cache
       queryClient.setQueryData(["/api/user"], user);
+      
+      // Force a refetch of user data to ensure everything is up-to-date
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
       toast({
         title: "Login successful",
         description: `Welcome back, ${user.name}!`,
       });
+      
+      // Add a small delay to ensure the user state is updated before redirecting
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 500);
     },
     onError: (error: Error) => {
       toast({
@@ -57,11 +67,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      // Set the user data in the query cache
       queryClient.setQueryData(["/api/user"], user);
+      
+      // Force a refetch of user data to ensure everything is up-to-date
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
       toast({
         title: "Registration successful",
         description: "Your account has been created.",
       });
+      
+      // Add a small delay to ensure the user state is updated before redirecting
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 500);
     },
     onError: (error: Error) => {
       toast({
@@ -77,11 +97,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      // Clear user data from cache
       queryClient.setQueryData(["/api/user"], null);
+      
       toast({
         title: "Logged out",
         description: "You have been logged out successfully.",
       });
+      
+      // Redirect to login page
+      setTimeout(() => {
+        window.location.href = "/auth";
+      }, 500);
     },
     onError: (error: Error) => {
       toast({
