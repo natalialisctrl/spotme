@@ -61,8 +61,8 @@ const AuthPage: FC = () => {
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: 'demo',
-      password: 'password'
+      username: 'natalia',
+      password: 'liscr12'
     }
   });
   
