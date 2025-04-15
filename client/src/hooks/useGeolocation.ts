@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { useWebSocket } from "./useWebSocket";
 
 interface GeolocationHookResult {
