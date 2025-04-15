@@ -254,12 +254,26 @@ const Profile: FC = () => {
         <CardContent className="space-y-6">
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex flex-col items-center gap-3">
-              <Avatar className="h-32 w-32 bg-primary text-white text-4xl">
-                {user.profilePictureUrl ? (
-                  <AvatarImage src={user.profilePictureUrl} alt={user.name} />
-                ) : null}
-                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-              </Avatar>
+              <div className="flex flex-col items-center">
+                <Avatar className="h-32 w-32 bg-primary text-white text-4xl">
+                  {user.profilePictureUrl ? (
+                    <AvatarImage src={user.profilePictureUrl} alt={user.name} />
+                  ) : null}
+                  <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                </Avatar>
+                
+                {isEditing && (
+                  <Button
+                    size="sm" 
+                    variant="outline"
+                    className="mt-3 text-sm"
+                    onClick={() => navigate("/upload-profile-picture")}
+                  >
+                    <Camera className="mr-1 h-3 w-3" />
+                    Change Picture
+                  </Button>
+                )}
+              </div>
               <div className="text-center">
                 <h3 className="font-semibold text-xl">{user.name}</h3>
                 <p className="text-sm text-gray-500">{user.username}</p>
@@ -383,113 +397,7 @@ const Profile: FC = () => {
           </div>
         </CardContent>
         {isEditing && (
-          <CardFooter className="flex flex-col sm:flex-row gap-4">
-            {/* Dedicated Profile Picture Upload Button */}
-            <div className="w-full sm:w-auto flex flex-col gap-2">
-              <input
-                type="file"
-                id="profile-picture-upload"
-                accept="image/*"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  
-                  toast({
-                    title: "Uploading profile picture...",
-                    description: "Please wait while we process your image.",
-                  });
-                  
-                  try {
-                    // Create base64
-                    const base64 = await new Promise<string>((resolve) => {
-                      const reader = new FileReader();
-                      reader.onload = () => resolve(reader.result as string);
-                      reader.readAsDataURL(file);
-                    });
-                    
-                    // Send to server
-                    const response = await apiRequest('POST', `/api/users/${user.id}/profile-picture`, {
-                      imageData: base64,
-                      fileName: file.name
-                    });
-                    
-                    if (!response.ok) {
-                      throw new Error('Failed to upload image');
-                    }
-                    
-                    const data = await response.json();
-                    
-                    toast({
-                      title: "Profile picture uploaded!",
-                      description: "Your new profile picture has been set.",
-                    });
-                    
-                    // Force page reload to see changes
-                    window.location.reload();
-                    
-                  } catch (error) {
-                    console.error("Error uploading image:", error);
-                    toast({
-                      title: "Upload failed",
-                      description: "Could not upload the image. Please try again.",
-                      variant: "destructive"
-                    });
-                  }
-                }}
-              />
-              
-              <Button
-                type="button"
-                variant="outline"
-                className="bg-blue-50 border-blue-300"
-                onClick={() => {
-                  document.getElementById('profile-picture-upload')?.click();
-                }}
-              >
-                <Camera className="mr-2 h-4 w-4" />
-                Upload Profile Picture
-              </Button>
-              
-              {user.profilePictureUrl && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-red-500 border-red-200"
-                  onClick={async () => {
-                    try {
-                      const response = await apiRequest('PATCH', `/api/users/${user.id}`, { 
-                        profilePictureUrl: "" 
-                      });
-                      
-                      if (!response.ok) {
-                        throw new Error('Failed to remove profile picture');
-                      }
-                      
-                      toast({
-                        title: "Profile picture removed",
-                        description: "Your profile picture has been removed.",
-                      });
-                      
-                      // Force page reload to see changes
-                      window.location.reload();
-                    } catch (error) {
-                      console.error("Error removing profile picture:", error);
-                      toast({
-                        title: "Failed to remove picture",
-                        description: "Please try again.",
-                        variant: "destructive"
-                      });
-                    }
-                  }}
-                >
-                  Remove Picture
-                </Button>
-              )}
-            </div>
-            
-            {/* Save Button */}
+          <CardFooter>
             <Button 
               className="ml-auto" 
               onClick={handleSave} 

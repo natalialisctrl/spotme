@@ -10,6 +10,7 @@ import Profile from "@/pages/Profile";
 import NewProfilePage from "@/pages/NewProfilePage"; // Import the new profile page
 import Connections from "@/pages/Connections";
 import ProfileSetup from "@/pages/ProfileSetup";
+import UploadProfilePicture from "@/pages/UploadProfilePicture";
 import AuthPage from "@/pages/AuthPage";
 import { Loader2 } from "lucide-react";
 
@@ -78,6 +79,7 @@ function Router() {
         <Route path="/connections" component={ConnectionsPage} />
         <Route path="/profile" component={ProfilePage} />
         <Route path="/profile-setup" component={ProfileSetupPage} />
+        <Route path="/upload-profile-picture" component={UploadProfilePicture} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>
