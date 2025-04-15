@@ -84,10 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = () => {
     setLoading(true);
     
-    // Simulate API call
+    // Simulate API call checking if user is logged in
     setTimeout(() => {
-      // For testing - automatically log in
-      setUser(mockUser);
+      // Don't auto-login the user anymore
       setLoading(false);
     }, 500);
   };

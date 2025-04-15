@@ -8,6 +8,7 @@ import Messages from "@/pages/Messages";
 import Profile from "@/pages/Profile";
 import Connections from "@/pages/Connections";
 import ProfileSetup from "@/pages/ProfileSetup";
+import AuthPage from "@/pages/AuthPage";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -27,13 +28,13 @@ function AuthenticatedApp() {
 }
 
 function UnauthenticatedApp() {
-  // For simplicity, we'll redirect to the login page in FindPartners
   return (
     <Switch>
-      <Route path="/" component={FindPartners} />
-      <Route path="/messages" component={FindPartners} />
-      <Route path="/connections" component={FindPartners} />
-      <Route path="/profile" component={FindPartners} />
+      <Route path="/" component={AuthPage} />
+      <Route path="/auth" component={AuthPage} />
+      <Route path="/messages" component={AuthPage} />
+      <Route path="/connections" component={AuthPage} />
+      <Route path="/profile" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
   );
