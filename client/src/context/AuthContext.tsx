@@ -39,6 +39,7 @@ const mockUser: User = {
 
 // Create the auth provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Explicitly setting initial state to null to prevent auto-login
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);

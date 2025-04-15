@@ -42,11 +42,9 @@ function UnauthenticatedApp() {
 
 function App() {
   const { user, loading, checkAuth } = useAuth();
-
-  useEffect(() => {
-    // Check authentication status when the app loads
-    checkAuth();
-  }, [checkAuth]);
+  
+  // Removed the automatic checkAuth call to prevent auto-login
+  // Let the user explicitly log in through the auth page
 
   return (
     <>
