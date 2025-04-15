@@ -1,4 +1,4 @@
-import { FC, useState, useEffect } from "react";
+import { FC, useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -129,9 +129,33 @@ const Profile: FC = () => {
     try {
       setIsSaving(true);
       
-      // Immediately update the UI with the new data
+      // Create local DOM references to update immediately (to bypass React's rendering cycles)
+      const nameDisplayElement = document.querySelector('.text-center h3');
+      const nameDetailElement = document.querySelector('label[for="name"] + p');
+      const emailElement = document.querySelector('label[for="email"] + p');
+      const genderElement = document.querySelector('label[for="gender"] + p');
+      const gymNameElement = document.querySelector('label[for="gymName"] + p');
+      const experienceLevelElement = document.querySelector('label[for="experienceLevel"] + p');
+      const experienceYearsElement = document.querySelector('label[for="experienceYears"] + p');
+      const bioElement = document.querySelector('label[for="bio"] + p');
+      const avatarElement = document.querySelector('.h-32.w-32 span');
+      
+      // Immediately update DOM elements for instant visual feedback
+      if (nameDisplayElement) nameDisplayElement.textContent = formData.name;
+      if (nameDetailElement) nameDetailElement.textContent = formData.name;
+      if (emailElement) emailElement.textContent = formData.email;
+      if (genderElement) genderElement.textContent = formData.gender;
+      if (gymNameElement) gymNameElement.textContent = formData.gymName || "Not specified";
+      if (experienceLevelElement) experienceLevelElement.textContent = formData.experienceLevel;
+      if (experienceYearsElement) {
+        experienceYearsElement.textContent = `${formData.experienceYears} ${formData.experienceYears === 1 ? 'year' : 'years'}`;
+      }
+      if (bioElement) bioElement.textContent = formData.bio || "No bio provided";
+      if (avatarElement) avatarElement.textContent = getInitials(formData.name);
+      
+      // Immediately update the cache for React's state management
       if (user) {
-        // Create updated user object for immediate display
+        // Create updated user object for cache
         const updatedUser = { ...user, ...formData };
         
         // Update the local cache instantly
@@ -144,7 +168,7 @@ const Profile: FC = () => {
       // Get the updated user from the server
       const updatedUserFromServer = await response.json();
       
-      // Update the cache with the server response
+      // Update the cache with the server response (might be redundant but ensures consistency)
       queryClient.setQueryData(["/api/user"], updatedUserFromServer);
       
       setIsEditing(false);
@@ -154,8 +178,10 @@ const Profile: FC = () => {
       });
       
     } catch (error) {
+      console.error("Profile update error:", error);
       // Force refresh to get the actual server state on error
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      queryClient.removeQueries({ queryKey: ["/api/user"] });
+      refreshUserData();
       
       toast({
         title: "Update Failed",
