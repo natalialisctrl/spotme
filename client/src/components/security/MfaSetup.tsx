@@ -1,63 +1,98 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, ShieldCheck, KeyRound, AlertTriangle } from "lucide-react";
+import { Loader2, Shield, Copy, Check, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type MfaSetupProps = {
+// Verification code schema
+const verificationSchema = z.object({
+  verificationCode: z.string().min(6, "Code must be 6 digits").max(6)
+});
+
+type VerificationFormValues = z.infer<typeof verificationSchema>;
+
+interface MfaSetupProps {
   onComplete: () => void;
   onCancel: () => void;
-};
+}
 
 export default function MfaSetup({ onComplete, onCancel }: MfaSetupProps) {
   const { toast } = useToast();
-  const [step, setStep] = useState<"setup" | "verify">("setup");
-  const [qrCode, setQrCode] = useState<string | null>(null);
-  const [secret, setSecret] = useState<string | null>(null);
-  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
-  const [verificationCode, setVerificationCode] = useState("");
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+  const [secret, setSecret] = useState<string>("");
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("setup");
+  const [copied, setCopied] = useState<boolean>(false);
 
-  // Setup MFA - Get QR code and backup codes
-  const setupMutation = useMutation({
+  // Setup form
+  const form = useForm<VerificationFormValues>({
+    resolver: zodResolver(verificationSchema),
+    defaultValues: {
+      verificationCode: ""
+    }
+  });
+
+  // Initialize MFA setup
+  const initSetupMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/mfa/setup");
-      return await res.json();
+      const res = await apiRequest("POST", "/api/mfa/setup/init");
+      return res.json();
     },
     onSuccess: (data) => {
-      setQrCode(data.qrCode);
+      setQrCodeUrl(data.qrCodeUrl);
       setSecret(data.secret);
-      setBackupCodes(data.backupCodes);
-      setStep("verify");
     },
     onError: (error) => {
       toast({
         title: "Setup Failed",
-        description: error.message || "Could not setup MFA. Please try again.",
+        description: error.message || "Could not initialize MFA setup. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  // Enable MFA - Verify the code and complete setup
-  const enableMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/mfa/enable", {
-        mfaCode: verificationCode
+  // Verify code to complete setup
+  const verifyMutation = useMutation({
+    mutationFn: async (data: VerificationFormValues) => {
+      const res = await apiRequest("POST", "/api/mfa/setup/verify", {
+        verificationCode: data.verificationCode
       });
-      return await res.json();
+      return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setBackupCodes(data.backupCodes);
+      setActiveTab("backup");
       toast({
-        title: "Success",
-        description: "Two-factor authentication has been enabled for your account.",
+        title: "Verification Successful",
+        description: "Your verification code is correct. Please save your backup codes.",
       });
-      onComplete();
     },
     onError: (error) => {
       toast({
@@ -68,201 +103,222 @@ export default function MfaSetup({ onComplete, onCancel }: MfaSetupProps) {
     },
   });
 
-  const handleSetup = () => {
-    setupMutation.mutate();
-  };
-
-  const handleVerify = () => {
-    if (!verificationCode || verificationCode.length !== 6) {
+  // Complete MFA setup
+  const completeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/mfa/setup/complete");
+      return res.json();
+    },
+    onSuccess: () => {
       toast({
-        title: "Invalid Code",
-        description: "Please enter a valid 6-digit verification code.",
+        title: "MFA Enabled",
+        description: "Two-factor authentication has been successfully enabled for your account.",
+      });
+      onComplete();
+    },
+    onError: (error) => {
+      toast({
+        title: "Setup Failed",
+        description: error.message || "Could not complete MFA setup. Please try again.",
         variant: "destructive",
       });
-      return;
-    }
-    enableMutation.mutate();
+    },
+  });
+
+  // Start setup on mount
+  useEffect(() => {
+    initSetupMutation.mutate();
+  }, []);
+
+  // Form submission
+  const onSubmit = (data: VerificationFormValues) => {
+    verifyMutation.mutate(data);
   };
 
-  if (step === "setup") {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5" />
-            Setup Two-Factor Authentication
-          </CardTitle>
-          <CardDescription>
-            Add an extra layer of security to your account by enabling two-factor authentication (2FA).
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium">Why use two-factor authentication?</h3>
-              <p className="text-sm text-muted-foreground">
-                With 2FA, you'll need both your password and a verification code from your
-                authenticator app to sign in. This protects your account even if your password
-                is compromised.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium">You'll need an authenticator app</h3>
-              <p className="text-sm text-muted-foreground">
-                Download an authenticator app like Google Authenticator, Authy, or Microsoft Authenticator
-                before continuing.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button variant="ghost" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button onClick={handleSetup} disabled={setupMutation.isPending}>
-            {setupMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Setting up...
-              </>
-            ) : (
-              <>Continue</>
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
-    );
-  }
+  // Copy secret to clipboard
+  const copySecret = () => {
+    navigator.clipboard.writeText(secret);
+    setCopied(true);
+    toast({
+      title: "Copied",
+      description: "Secret copied to clipboard.",
+    });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Copy backup codes to clipboard
+  const copyBackupCodes = () => {
+    navigator.clipboard.writeText(backupCodes.join("\n"));
+    toast({
+      title: "Copied",
+      description: "Backup codes copied to clipboard.",
+    });
+  };
 
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <KeyRound className="h-5 w-5" />
-          Complete Two-Factor Setup
+          <Shield className="h-5 w-5" />
+          Setup Two-Factor Authentication
         </CardTitle>
         <CardDescription>
-          Scan the QR code with your authenticator app and enter the verification code to enable 2FA.
+          Secure your account with an extra layer of protection.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="qrcode">
-          <TabsList className="mb-4">
-            <TabsTrigger value="qrcode">QR Code</TabsTrigger>
-            <TabsTrigger value="manual">Manual Entry</TabsTrigger>
-            <TabsTrigger value="backup">Backup Codes</TabsTrigger>
+        <Tabs value={activeTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="setup" disabled={activeTab === "backup"}>
+              Setup
+            </TabsTrigger>
+            <TabsTrigger value="backup" disabled={activeTab === "setup"}>
+              Backup Codes
+            </TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="qrcode" className="space-y-4">
-            {qrCode && (
-              <div className="flex justify-center">
-                <img src={qrCode} alt="QR Code for Authenticator App" className="w-48 h-48" />
+
+          <TabsContent value="setup" className="space-y-4">
+            {initSetupMutation.isPending ? (
+              <div className="flex justify-center items-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
+            ) : (
+              <>
+                <Alert className="mb-4">
+                  <AlertTitle>Important Instructions</AlertTitle>
+                  <AlertDescription>
+                    <p className="mb-2">
+                      Scan this QR code with an authenticator app like Google Authenticator,
+                      Microsoft Authenticator, or Authy.
+                    </p>
+                    <p>
+                      Then enter the 6-digit verification code shown in your app to complete setup.
+                    </p>
+                  </AlertDescription>
+                </Alert>
+
+                {qrCodeUrl && (
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="border border-border rounded p-2 bg-white">
+                      <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48" />
+                    </div>
+
+                    <div className="flex items-center space-x-2 text-sm">
+                      <span className="font-mono p-1 bg-muted rounded">{secret}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={copySecret}
+                        title="Copy secret key"
+                      >
+                        {copied ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
+                      If you can't scan the QR code, you can manually enter this secret key in your app.
+                    </p>
+                  </div>
+                )}
+
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="verificationCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Verification Code</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter the 6-digit code"
+                              maxLength={6}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={verifyMutation.isPending}
+                    >
+                      {verifyMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Verifying...
+                        </>
+                      ) : (
+                        "Verify & Continue"
+                      )}
+                    </Button>
+                  </form>
+                </Form>
+              </>
             )}
-            <p className="text-sm text-muted-foreground text-center">
-              Scan this QR code with your authenticator app
-            </p>
           </TabsContent>
-          
-          <TabsContent value="manual" className="space-y-4">
-            {secret && (
-              <div className="space-y-2">
-                <Label htmlFor="secret">Secret Key</Label>
-                <div className="flex">
-                  <Input 
-                    id="secret" 
-                    value={secret} 
-                    readOnly 
-                    className="font-mono text-xs"
-                  />
-                  <Button 
-                    variant="outline" 
-                    className="ml-2"
-                    onClick={() => {
-                      navigator.clipboard.writeText(secret);
-                      toast({
-                        title: "Copied",
-                        description: "Secret key copied to clipboard",
-                      });
-                    }}
-                  >
-                    Copy
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  If you can't scan the QR code, you can manually enter this secret key into your authenticator app.
-                </p>
-              </div>
-            )}
-          </TabsContent>
-          
+
           <TabsContent value="backup" className="space-y-4">
-            <Alert>
+            <Alert variant="destructive" className="mb-4">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Important</AlertTitle>
+              <AlertTitle>Save Your Backup Codes</AlertTitle>
               <AlertDescription>
-                Save these backup codes in a secure place. You'll need them if you lose access to your authenticator app.
+                <p className="mb-2">
+                  If you lose your device, you'll need these backup codes to access your account.
+                </p>
+                <p className="font-bold">
+                  Save these codes in a safe place. They won't be shown again!
+                </p>
               </AlertDescription>
             </Alert>
-            
-            {backupCodes && (
-              <div className="bg-muted p-3 rounded-md">
-                <div className="grid grid-cols-2 gap-2">
-                  {backupCodes.map((code, index) => (
-                    <code key={index} className="font-mono text-xs p-1">
-                      {code}
-                    </code>
-                  ))}
+
+            <div className="border rounded-md p-4 font-mono text-sm space-y-1 bg-muted/30">
+              {backupCodes.map((code, index) => (
+                <div key={index} className="flex justify-between">
+                  <span>{code}</span>
+                  <span className="text-muted-foreground">{index + 1}/{backupCodes.length}</span>
                 </div>
-              </div>
-            )}
-            
+              ))}
+            </div>
+
             <Button 
               variant="outline" 
-              className="w-full"
-              onClick={() => {
-                if (backupCodes) {
-                  navigator.clipboard.writeText(backupCodes.join('\n'));
-                  toast({
-                    title: "Copied",
-                    description: "Backup codes copied to clipboard",
-                  });
-                }
-              }}
+              className="w-full" 
+              onClick={copyBackupCodes}
             >
-              Copy All Codes
+              <Copy className="mr-2 h-4 w-4" />
+              Copy Backup Codes
+            </Button>
+
+            <Button 
+              className="w-full" 
+              onClick={() => completeMutation.mutate()}
+              disabled={completeMutation.isPending}
+            >
+              {completeMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Finalizing...
+                </>
+              ) : (
+                "Complete Setup"
+              )}
             </Button>
           </TabsContent>
         </Tabs>
-        
-        <div className="mt-6 space-y-2">
-          <Label htmlFor="verification-code">Verification Code</Label>
-          <Input
-            id="verification-code"
-            placeholder="Enter 6-digit code"
-            value={verificationCode}
-            onChange={(e) => setVerificationCode(e.target.value)}
-            maxLength={6}
-          />
-          <p className="text-xs text-muted-foreground">
-            Enter the 6-digit code from your authenticator app to verify and complete the setup.
-          </p>
-        </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="ghost" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button onClick={handleVerify} disabled={enableMutation.isPending}>
-          {enableMutation.isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Verifying...
-            </>
-          ) : (
-            <>Enable Two-Factor Authentication</>
-          )}
-        </Button>
+        {activeTab === "setup" && (
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

@@ -50,6 +50,9 @@ const AuthPage: FC = () => {
   const [, navigate] = useLocation();
   const { user, loginMutation, registerMutation, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("login");
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaUserId, setMfaUserId] = useState<number | null>(null);
+  const [mfaUsername, setMfaUsername] = useState<string>("");
   
   useEffect(() => {
     // Redirect to home if already logged in
@@ -83,7 +86,16 @@ const AuthPage: FC = () => {
   
   // Login form submission
   const onLoginSubmit = (values: LoginFormValues) => {
-    loginMutation.mutate(values);
+    loginMutation.mutate(values, {
+      onSuccess: (response) => {
+        // Check if MFA is required
+        if (response.requiresMfa) {
+          setMfaRequired(true);
+          setMfaUserId(response.userId);
+          setMfaUsername(response.username);
+        }
+      }
+    });
   };
   
   // Register form submission
@@ -91,6 +103,38 @@ const AuthPage: FC = () => {
     registerMutation.mutate(values);
   };
   
+  // Handle MFA verification completion
+  const handleMfaComplete = (userData: any) => {
+    // Reset MFA state
+    setMfaRequired(false);
+    setMfaUserId(null);
+    setMfaUsername("");
+    
+    // The user is now fully authenticated
+    navigate('/');
+  };
+  
+  // Handle MFA cancellation
+  const handleMfaCancel = () => {
+    setMfaRequired(false);
+    setMfaUserId(null);
+    setMfaUsername("");
+  };
+  
+  // If MFA is required, show MFA verification component
+  if (mfaRequired && mfaUserId && mfaUsername) {
+    return (
+      <div className="flex min-h-screen w-full flex-col items-center justify-center p-4 bg-gray-50">
+        <MfaVerification
+          userId={mfaUserId}
+          username={mfaUsername}
+          onComplete={handleMfaComplete}
+          onCancel={handleMfaCancel}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center p-4 bg-gray-50">
       <div className="w-full max-w-6xl grid md:grid-cols-2 gap-8 items-center">
