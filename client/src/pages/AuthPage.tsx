@@ -100,9 +100,9 @@ const AuthPage: FC = () => {
             <div className="flex justify-center mb-4">
               <Dumbbell className="h-10 w-10 text-primary" />
             </div>
-            <CardTitle className="text-2xl font-bold text-center">Welcome to GymBuddy</CardTitle>
+            <CardTitle className="text-2xl font-bold text-center">Welcome to SpotMe</CardTitle>
             <CardDescription className="text-center">
-              Sign in to your account or create a new one
+              Never lift solo again.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -311,7 +311,8 @@ const AuthPage: FC = () => {
         
         {/* Hero section */}
         <div className="hidden md:flex flex-col">
-          <h1 className="text-4xl font-bold tracking-tight mb-4">Find Your Perfect Gym Partner</h1>
+          <h1 className="text-4xl font-bold tracking-tight mb-4">SpotMe</h1>
+          <p className="text-2xl font-semibold text-primary mb-2">Never lift solo again.</p>
           <p className="text-lg text-gray-600 mb-6">
             Connect with like-minded fitness enthusiasts, find workout buddies, and achieve your fitness goals together.
           </p>

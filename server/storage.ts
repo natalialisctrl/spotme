@@ -6,6 +6,9 @@ import {
 } from "@shared/schema";
 
 // Interface for storage operations
+import session from "express-session";
+import createMemoryStore from "memorystore";
+
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -48,6 +51,9 @@ export interface IStorage {
   // Find nearby users
   findNearbyUsers(params: NearbyUsersParams): Promise<User[]>;
   calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number;
+  
+  // Session storage
+  sessionStore: session.SessionStore;
 }
 
 // In-memory storage implementation
@@ -66,6 +72,8 @@ export class MemStorage implements IStorage {
   private currentMessageId: number;
   private currentCompatibilityResponseId: number;
 
+  sessionStore: session.SessionStore;
+
   constructor() {
     this.users = new Map();
     this.workoutFocuses = new Map();
@@ -80,6 +88,12 @@ export class MemStorage implements IStorage {
     this.currentConnectionId = 1;
     this.currentMessageId = 1;
     this.currentCompatibilityResponseId = 1;
+    
+    // Create a memory session store
+    const MemoryStore = createMemoryStore(session);
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
     
     // Add some demo users for testing
     this.createDemoUsers();

@@ -11,15 +11,19 @@ import { ZodError } from "zod";
 // Map to store active WebSocket connections by user ID
 const activeConnections = new Map<number, WebSocket>();
 
+import { setupAuth } from "./auth";
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
   const httpServer = createServer(app);
   
+  // Set up authentication routes
+  setupAuth(app);
+  
   // Create WebSocket server
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
-  // Authentication routes
-  // Social auth endpoint for linking accounts
+  // Social account linking endpoint
   app.post('/api/auth/social-link', async (req, res) => {
     if (!req.session || !req.session.userId) {
       return res.status(401).json({ message: 'Not authenticated' });
@@ -54,75 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/auth/register', async (req, res) => {
-    try {
-      const userData = insertUserSchema.parse(req.body);
-      
-      // Check if username already exists
-      const existingUser = await storage.getUserByUsername(userData.username);
-      if (existingUser) {
-        return res.status(400).json({ message: 'Username already exists' });
-      }
-      
-      const user = await storage.createUser(userData);
-      // Don't return password in response
-      const { password, ...userWithoutPassword } = user;
-      
-      req.session = { userId: user.id };
-      return res.status(201).json(userWithoutPassword);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: error.errors });
-      }
-      return res.status(500).json({ message: 'Failed to register user' });
-    }
-  });
-
-  app.post('/api/auth/login', async (req, res) => {
-    try {
-      const credentials = loginSchema.parse(req.body);
-      
-      const user = await storage.getUserByUsername(credentials.username);
-      if (!user || user.password !== credentials.password) {
-        return res.status(401).json({ message: 'Invalid username or password' });
-      }
-      
-      // Update last active timestamp
-      await storage.updateUser(user.id, { lastActive: new Date() });
-      
-      // Set user ID in session
-      req.session = { userId: user.id };
-      
-      // Don't return password in response
-      const { password, ...userWithoutPassword } = user;
-      return res.json(userWithoutPassword);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: error.errors });
-      }
-      return res.status(500).json({ message: 'Login failed' });
-    }
-  });
-
-  app.get('/api/auth/me', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const user = await storage.getUser(req.session.userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    
-    // Don't return password in response
-    const { password, ...userWithoutPassword } = user;
-    return res.json(userWithoutPassword);
-  });
-
-  app.post('/api/auth/logout', (req, res) => {
-    req.session = null;
-    res.json({ message: 'Logged out successfully' });
-  });
+  // Authentication routes are now handled by setupAuth()
 
   // User routes
   app.patch('/api/users/location', async (req, res) => {
