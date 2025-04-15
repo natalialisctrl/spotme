@@ -15,6 +15,7 @@ type AuthContextType = {
   loginMutation: UseMutationResult<SelectUser, Error, Login>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, any>;
+  refreshUserData: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -119,6 +120,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const refreshUserData = async () => {
+    console.log("Refreshing user data...");
+    try {
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      console.log("User data refreshed successfully");
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+      toast({
+        title: "Error refreshing data",
+        description: "Failed to refresh your profile data. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -128,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
+        refreshUserData,
       }}
     >
       {children}

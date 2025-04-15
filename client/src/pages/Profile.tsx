@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import { FC, useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -10,22 +10,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Save, Sparkles } from "lucide-react";
+import { Loader2, Save, Sparkles, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { workoutTypes } from "@shared/schema";
 import IdentityVerification from "@/components/profile/IdentityVerification";
 
 const Profile: FC = () => {
-  const { user } = useAuth();
-  
-  // Function to refresh user data
-  const checkAuth = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-  };
+  const { user, refreshUserData } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -35,6 +31,48 @@ const Profile: FC = () => {
     experienceLevel: user?.experienceLevel || "",
     experienceYears: user?.experienceYears || 0
   });
+  
+  // Refresh user data when the component mounts
+  useEffect(() => {
+    // Refresh user data when component mounts
+    const loadData = async () => {
+      console.log("Profile component mounted, refreshing user data");
+      await refreshUserData();
+    };
+    
+    loadData();
+  }, [refreshUserData]);
+  
+  // Update form data when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || "",
+        email: user.email || "",
+        bio: user.bio || "",
+        gymName: user.gymName || "",
+        gender: user.gender || "",
+        experienceLevel: user.experienceLevel || "",
+        experienceYears: user.experienceYears || 0
+      });
+    }
+  }, [user]);
+  
+  // Function to manually refresh profile data
+  const handleRefreshProfile = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshUserData();
+      toast({
+        title: "Profile refreshed",
+        description: "Your profile has been refreshed with the latest data.",
+      });
+    } catch (error) {
+      console.error("Error refreshing profile:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (!user) {
     return (
@@ -65,7 +103,7 @@ const Profile: FC = () => {
     try {
       setIsSaving(true);
       await apiRequest('PATCH', `/api/users/${user.id}`, formData);
-      await checkAuth(); // Refresh user data
+      await refreshUserData(); // Refresh user data
       
       setIsEditing(false);
       toast({
@@ -252,7 +290,7 @@ const Profile: FC = () => {
         )}
       </Card>
 
-      <IdentityVerification user={user} onVerificationComplete={checkAuth} />
+      <IdentityVerification user={user} onVerificationComplete={refreshUserData} />
 
       <Card>
         <CardHeader>

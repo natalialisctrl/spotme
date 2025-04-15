@@ -10,12 +10,7 @@ import { PersonalityInsight } from '@/lib/openai';
 
 const ProfileSetup: FC = () => {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
-  
-  // Function to refresh user data
-  const checkAuth = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-  };
+  const { user, refreshUserData } = useAuth();
   const { toast } = useToast();
   const [step, setStep] = useState<'quiz' | 'insights' | 'saving'>('quiz');
   const [insights, setInsights] = useState<PersonalityInsight | null>(null);
@@ -58,7 +53,7 @@ const ProfileSetup: FC = () => {
       });
       
       // Refresh user data
-      await checkAuth();
+      await refreshUserData();
       
       toast({
         title: "Profile updated!",
