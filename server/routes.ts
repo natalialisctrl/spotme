@@ -986,14 +986,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const now = new Date();
-      // Convert date string to Date object if needed
-      const bodyData = {...req.body};
-      if (typeof bodyData.date === 'string') {
-        bodyData.date = new Date(bodyData.date);
-      }
       
       const meetupData = insertScheduledMeetupSchema.parse({
-        ...bodyData,
+        ...req.body,
         creatorId: req.session.userId,
         createdAt: now,
         updatedAt: now,
