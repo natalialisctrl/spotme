@@ -1,5 +1,5 @@
 import { FC, useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { WorkoutFocus } from "@shared/schema";
 import { useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
 
 // Workout benefits information
 const workoutBenefits: Record<string, { title: string; benefits: string[] }> = {
@@ -113,10 +114,29 @@ const WorkoutFocusPage: FC = () => {
   const [selectedWorkout, setSelectedWorkout] = useState<string | null>(null);
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Get current workout focus
   const { data: currentWorkoutFocus, isLoading: isLoadingWorkout } = useQuery<WorkoutFocus>({
     queryKey: ['/api/workout-focus'],
+  });
+
+  // Set workout focus
+  const { mutate: setWorkoutFocus, isPending: isSettingWorkout } = useMutation({
+    mutationFn: async (workoutType: string) => {
+      return apiRequest('POST', '/api/workout-focus', { workoutType });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/workout-focus'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/nearby'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error updating workout focus",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    }
   });
 
   useEffect(() => {
@@ -127,6 +147,9 @@ const WorkoutFocusPage: FC = () => {
 
   const handleWorkoutSelected = (workoutType: string) => {
     setSelectedWorkout(workoutType);
+    
+    // Save workout focus to server
+    setWorkoutFocus(workoutType);
     
     // Show success toast
     toast({
@@ -140,7 +163,7 @@ const WorkoutFocusPage: FC = () => {
   };
 
   // Render loading state
-  if (authLoading || isLoadingWorkout) {
+  if (authLoading || isLoadingWorkout || isSettingWorkout) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-8 w-8 text-primary animate-spin" />
