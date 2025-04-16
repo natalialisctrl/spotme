@@ -6,7 +6,8 @@ import {
   loginSchema, insertUserSchema, updateLocationSchema, insertWorkoutFocusSchema,
   insertConnectionRequestSchema, insertMessageSchema, nearbyUsersSchema, WebSocketMessage,
   workoutRoutineSchema, scheduledMeetupSchema, insertWorkoutRoutineSchema, insertScheduledMeetupSchema,
-  insertMeetupParticipantSchema
+  insertMeetupParticipantSchema, challengeSchema, progressEntrySchema, challengeCommentSchema,
+  insertChallengeSchema, insertChallengeParticipantSchema, insertProgressEntrySchema, insertChallengeCommentSchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { generatePersonalityInsights, PersonalityQuizResponses } from "./openai";

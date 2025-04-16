@@ -78,6 +78,37 @@ export interface IStorage {
   getMeetupParticipants(meetupId: number): Promise<MeetupParticipant[]>;
   updateParticipantStatus(id: number, status: string): Promise<MeetupParticipant | undefined>;
   removeMeetupParticipant(meetupId: number, userId: number): Promise<boolean>;
+
+  // Challenge operations
+  createChallenge(challenge: InsertChallenge): Promise<Challenge>;
+  getChallenge(id: number): Promise<Challenge | undefined>;
+  getAllChallenges(): Promise<Challenge[]>;
+  getActiveChallenges(): Promise<Challenge[]>;
+  getChallengesByUser(userId: number): Promise<Challenge[]>;
+  updateChallenge(id: number, challenge: Partial<Challenge>): Promise<Challenge | undefined>;
+  updateChallengeStatus(id: number, status: string): Promise<Challenge | undefined>;
+  deleteChallenge(id: number): Promise<boolean>;
+  
+  // Challenge participant operations
+  joinChallenge(participant: InsertChallengeParticipant): Promise<ChallengeParticipant>;
+  getChallengeParticipant(id: number): Promise<ChallengeParticipant | undefined>;
+  getChallengeParticipantByUserAndChallenge(userId: number, challengeId: number): Promise<ChallengeParticipant | undefined>;
+  getChallengeParticipants(challengeId: number): Promise<ChallengeParticipant[]>;
+  getUserChallenges(userId: number): Promise<ChallengeParticipant[]>;
+  updateChallengeProgress(id: number, currentProgress: number): Promise<ChallengeParticipant | undefined>;
+  completeChallenge(id: number): Promise<ChallengeParticipant | undefined>;
+  leaveChallengeByUserId(challengeId: number, userId: number): Promise<boolean>;
+  
+  // Progress entry operations
+  addProgressEntry(entry: InsertProgressEntry): Promise<ProgressEntry>;
+  getProgressEntries(challengeParticipantId: number): Promise<ProgressEntry[]>;
+  
+  // Challenge comment operations
+  addChallengeComment(comment: InsertChallengeComment): Promise<ChallengeComment>;
+  getChallengeComments(challengeId: number): Promise<ChallengeComment[]>;
+  
+  // Leaderboard operations
+  getChallengeLeaderboard(challengeId: number): Promise<{userId: number, username: string, name: string, progress: number, completed: boolean}[]>;
   
   // Session storage
   sessionStore: any; // Using 'any' to avoid TypeScript errors with SessionStore
@@ -94,6 +125,10 @@ export class MemStorage implements IStorage {
   private workoutRoutines: Map<number, WorkoutRoutine>;
   private scheduledMeetups: Map<number, ScheduledMeetup>;
   private meetupParticipants: Map<number, MeetupParticipant>;
+  private challenges: Map<number, Challenge>;
+  private challengeParticipants: Map<number, ChallengeParticipant>;
+  private progressEntries: Map<number, ProgressEntry>;
+  private challengeComments: Map<number, ChallengeComment>;
   
   private currentUserId: number;
   private currentWorkoutFocusId: number;
@@ -104,6 +139,10 @@ export class MemStorage implements IStorage {
   private currentWorkoutRoutineId: number;
   private currentScheduledMeetupId: number;
   private currentMeetupParticipantId: number;
+  private currentChallengeId: number;
+  private currentChallengeParticipantId: number;
+  private currentProgressEntryId: number;
+  private currentChallengeCommentId: number;
 
   sessionStore: any; // Using 'any' to avoid TypeScript errors
 
@@ -117,6 +156,10 @@ export class MemStorage implements IStorage {
     this.workoutRoutines = new Map();
     this.scheduledMeetups = new Map();
     this.meetupParticipants = new Map();
+    this.challenges = new Map();
+    this.challengeParticipants = new Map();
+    this.progressEntries = new Map();
+    this.challengeComments = new Map();
     
     this.currentUserId = 1;
     this.currentWorkoutFocusId = 1;
@@ -127,6 +170,10 @@ export class MemStorage implements IStorage {
     this.currentWorkoutRoutineId = 1;
     this.currentScheduledMeetupId = 1;
     this.currentMeetupParticipantId = 1;
+    this.currentChallengeId = 1;
+    this.currentChallengeParticipantId = 1;
+    this.currentProgressEntryId = 1;
+    this.currentChallengeCommentId = 1;
     
     // Create a memory session store
     const MemoryStore = createMemoryStore(session);
@@ -836,6 +883,236 @@ export class MemStorage implements IStorage {
       }
     }
     return false;
+  }
+  
+  // Challenge operations
+  async createChallenge(challenge: InsertChallenge): Promise<Challenge> {
+    const id = this.currentChallengeId++;
+    const now = new Date();
+    
+    const newChallenge: Challenge = {
+      ...challenge,
+      id,
+      createdAt: now,
+      updatedAt: now,
+      status: challenge.status || "active"
+    };
+    
+    this.challenges.set(id, newChallenge);
+    return newChallenge;
+  }
+  
+  async getChallenge(id: number): Promise<Challenge | undefined> {
+    return this.challenges.get(id);
+  }
+  
+  async getAllChallenges(): Promise<Challenge[]> {
+    return Array.from(this.challenges.values());
+  }
+  
+  async getActiveChallenges(): Promise<Challenge[]> {
+    return Array.from(this.challenges.values())
+      .filter(challenge => challenge.status === "active");
+  }
+  
+  async getChallengesByUser(userId: number): Promise<Challenge[]> {
+    return Array.from(this.challenges.values())
+      .filter(challenge => challenge.creatorId === userId);
+  }
+  
+  async updateChallenge(id: number, challenge: Partial<Challenge>): Promise<Challenge | undefined> {
+    const existingChallenge = this.challenges.get(id);
+    if (!existingChallenge) return undefined;
+    
+    const updatedChallenge = {
+      ...existingChallenge,
+      ...challenge,
+      updatedAt: new Date()
+    };
+    
+    this.challenges.set(id, updatedChallenge);
+    return updatedChallenge;
+  }
+  
+  async updateChallengeStatus(id: number, status: string): Promise<Challenge | undefined> {
+    const challenge = this.challenges.get(id);
+    if (!challenge) return undefined;
+    
+    const updatedChallenge = {
+      ...challenge,
+      status,
+      updatedAt: new Date()
+    };
+    
+    this.challenges.set(id, updatedChallenge);
+    return updatedChallenge;
+  }
+  
+  async deleteChallenge(id: number): Promise<boolean> {
+    return this.challenges.delete(id);
+  }
+  
+  // Challenge participant operations
+  async joinChallenge(participant: InsertChallengeParticipant): Promise<ChallengeParticipant> {
+    const id = this.currentChallengeParticipantId++;
+    const now = new Date();
+    
+    const newParticipant: ChallengeParticipant = {
+      ...participant,
+      id,
+      joinedAt: now,
+      status: participant.status || "active",
+      currentProgress: participant.currentProgress || 0,
+      completed: participant.completed || false
+    };
+    
+    this.challengeParticipants.set(id, newParticipant);
+    return newParticipant;
+  }
+  
+  async getChallengeParticipant(id: number): Promise<ChallengeParticipant | undefined> {
+    return this.challengeParticipants.get(id);
+  }
+  
+  async getChallengeParticipantByUserAndChallenge(userId: number, challengeId: number): Promise<ChallengeParticipant | undefined> {
+    for (const participant of this.challengeParticipants.values()) {
+      if (participant.userId === userId && participant.challengeId === challengeId) {
+        return participant;
+      }
+    }
+    return undefined;
+  }
+  
+  async getChallengeParticipants(challengeId: number): Promise<ChallengeParticipant[]> {
+    return Array.from(this.challengeParticipants.values())
+      .filter(participant => participant.challengeId === challengeId);
+  }
+  
+  async getUserChallenges(userId: number): Promise<ChallengeParticipant[]> {
+    return Array.from(this.challengeParticipants.values())
+      .filter(participant => participant.userId === userId);
+  }
+  
+  async updateChallengeProgress(id: number, currentProgress: number): Promise<ChallengeParticipant | undefined> {
+    const participant = this.challengeParticipants.get(id);
+    if (!participant) return undefined;
+    
+    const updatedParticipant = {
+      ...participant,
+      currentProgress,
+      updatedAt: new Date()
+    };
+    
+    this.challengeParticipants.set(id, updatedParticipant);
+    return updatedParticipant;
+  }
+  
+  async completeChallenge(id: number): Promise<ChallengeParticipant | undefined> {
+    const participant = this.challengeParticipants.get(id);
+    if (!participant) return undefined;
+    
+    const updatedParticipant = {
+      ...participant,
+      completed: true,
+      completedAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.challengeParticipants.set(id, updatedParticipant);
+    return updatedParticipant;
+  }
+  
+  async leaveChallengeByUserId(challengeId: number, userId: number): Promise<boolean> {
+    for (const [id, participant] of this.challengeParticipants.entries()) {
+      if (participant.challengeId === challengeId && participant.userId === userId) {
+        this.challengeParticipants.delete(id);
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  // Progress entry operations
+  async addProgressEntry(entry: InsertProgressEntry): Promise<ProgressEntry> {
+    const id = this.currentProgressEntryId++;
+    const now = new Date();
+    
+    const newEntry: ProgressEntry = {
+      ...entry,
+      id,
+      createdAt: now
+    };
+    
+    this.progressEntries.set(id, newEntry);
+    
+    // Update the participant's current progress
+    const participant = await this.getChallengeParticipant(entry.challengeParticipantId);
+    if (participant) {
+      const allEntries = await this.getProgressEntries(entry.challengeParticipantId);
+      const totalProgress = allEntries.reduce((sum, e) => sum + e.value, 0);
+      
+      await this.updateChallengeProgress(participant.id, totalProgress);
+      
+      // Check if the challenge is completed
+      const challenge = await this.getChallenge(participant.challengeId);
+      if (challenge && totalProgress >= challenge.goalValue && !participant.completed) {
+        await this.completeChallenge(participant.id);
+      }
+    }
+    
+    return newEntry;
+  }
+  
+  async getProgressEntries(challengeParticipantId: number): Promise<ProgressEntry[]> {
+    return Array.from(this.progressEntries.values())
+      .filter(entry => entry.challengeParticipantId === challengeParticipantId)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  }
+  
+  // Challenge comment operations
+  async addChallengeComment(comment: InsertChallengeComment): Promise<ChallengeComment> {
+    const id = this.currentChallengeCommentId++;
+    const now = new Date();
+    
+    const newComment: ChallengeComment = {
+      ...comment,
+      id,
+      createdAt: now
+    };
+    
+    this.challengeComments.set(id, newComment);
+    return newComment;
+  }
+  
+  async getChallengeComments(challengeId: number): Promise<ChallengeComment[]> {
+    return Array.from(this.challengeComments.values())
+      .filter(comment => comment.challengeId === challengeId)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  }
+  
+  // Leaderboard operations
+  async getChallengeLeaderboard(challengeId: number): Promise<{userId: number, username: string, name: string, progress: number, completed: boolean}[]> {
+    const participants = await this.getChallengeParticipants(challengeId);
+    
+    const leaderboardData = await Promise.all(
+      participants.map(async (participant) => {
+        const user = await this.getUser(participant.userId);
+        if (!user) return null;
+        
+        return {
+          userId: participant.userId,
+          username: user.username,
+          name: user.name,
+          progress: participant.currentProgress,
+          completed: participant.completed
+        };
+      })
+    );
+    
+    // Sort by progress (highest first) and filter out nulls
+    return leaderboardData
+      .filter(entry => entry !== null)
+      .sort((a, b) => b.progress - a.progress);
   }
 }
 
