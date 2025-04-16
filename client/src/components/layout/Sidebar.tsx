@@ -1,6 +1,17 @@
 import { FC } from "react";
 import { Link, useLocation } from "wouter";
-import { MapPin, MessageSquare, Users, User, Settings, Shield, LogOut, Dumbbell } from "lucide-react";
+import { 
+  MapPin, 
+  MessageSquare, 
+  Users, 
+  User, 
+  Settings, 
+  Shield, 
+  LogOut, 
+  Dumbbell, 
+  Clipboard, 
+  CalendarDays 
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";

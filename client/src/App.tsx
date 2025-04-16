@@ -13,6 +13,8 @@ import ProfileSetup from "@/pages/ProfileSetup";
 import UploadProfilePicture from "@/pages/UploadProfilePicture";
 import SecuritySettings from "@/pages/SecuritySettings";
 import WorkoutFocus from "@/pages/WorkoutFocus"; // Import the workout focus page
+import WorkoutRoutines from "@/pages/WorkoutRoutines"; // Import workout routines page
+import ScheduledMeetups from "@/pages/ScheduledMeetups"; // Import scheduled meetups page
 import AuthPage from "@/pages/AuthPage";
 import { Loader2 } from "lucide-react";
 
@@ -43,6 +45,14 @@ function SecuritySettingsPage() {
 
 function WorkoutFocusPage() {
   return <WorkoutFocus />;
+}
+
+function WorkoutRoutinesPage() {
+  return <WorkoutRoutines />;
+}
+
+function ScheduledMeetupsPage() {
+  return <ScheduledMeetups />;
 }
 
 function Router() {
@@ -96,6 +106,8 @@ function Router() {
         <Route path="/upload-profile-picture" component={UploadProfilePicture} />
         <Route path="/security-settings" component={SecuritySettingsPage} />
         <Route path="/workout-focus" component={WorkoutFocusPage} />
+        <Route path="/workout-routines" component={WorkoutRoutinesPage} />
+        <Route path="/scheduled-meetups" component={ScheduledMeetupsPage} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>
