@@ -37,6 +37,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupChallengeRoutes(app, activeConnections);
   
   // Simple demo data setup endpoint (not requiring authentication)
+  // Special endpoint just to create the natalia user
+  app.post('/api/natalia', async (req, res) => {
+    try {
+      // Check if natalia user exists
+      const existingUser = await storage.getUserByUsername("natalia");
+      
+      if (existingUser) {
+        return res.json({ 
+          success: true, 
+          message: "Natalia user already exists", 
+          user: {
+            username: existingUser.username,
+            password: "liscr12" // We show the password because this is a demo
+          }
+        });
+      }
+      
+      // Create natalia user
+      const nataliaUser = {
+        username: "natalia",
+        password: "liscr12",
+        email: "natalia@spotme.com",
+        name: "Natalia Liscio",
+        gender: "female",
+        experienceLevel: "intermediate",
+        experienceYears: 5,
+        bio: "Certified personal trainer who loves connecting with fitness enthusiasts",
+        gymName: "FitZone Gym",
+        latitude: 30.2267,  // Austin-based location
+        longitude: -97.7476,
+        aiGeneratedInsights: JSON.stringify({
+          workoutStyle: "balanced",
+          motivationTips: [
+            "Track your progress with a fitness journal",
+            "Set specific, achievable weekly goals",
+            "Join group classes to stay motivated"
+          ],
+          recommendedGoals: [
+            "Increase strength by 15% in three months",
+            "Improve cardiovascular endurance",
+            "Maintain consistent workout schedule"
+          ],
+          partnerPreferences: "Looking for dedicated partners who want to improve their form and technique"
+        })
+      };
+      
+      const user = await storage.createUser(nataliaUser);
+      
+      return res.json({
+        success: true,
+        message: "Natalia user created successfully",
+        user: {
+          username: user.username,
+          password: "liscr12" // We show the password because this is a demo
+        }
+      });
+    } catch (error) {
+      console.error("Error creating natalia user:", error);
+      return res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  // Initialize demo data endpoint
   app.post('/api/demo/initialize', async (req, res) => {
     try {
       console.log("Initializing demo data...");
