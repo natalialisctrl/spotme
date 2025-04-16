@@ -19,6 +19,7 @@ import * as crypto from 'crypto';
 const activeConnections = new Map<number, WebSocket>();
 
 import { setupAuth } from "./auth";
+import { setupChallengeRoutes } from "./challengeRoutes";
 
 import express from 'express';
 
@@ -31,6 +32,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Set up authentication routes
   setupAuth(app);
+  
+  // Set up challenge routes
+  setupChallengeRoutes(app, activeConnections);
   
   // Create WebSocket server
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
