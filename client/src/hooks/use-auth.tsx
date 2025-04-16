@@ -50,7 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Add a small delay to ensure the user state is updated before redirecting
       setTimeout(() => {
-        window.location.href = "/";
+        // Check if user needs to complete profile setup
+        if (!user.aiGeneratedInsights) {
+          window.location.href = "/profile-setup";
+        } else {
+          window.location.href = "/";
+        }
       }, 500);
     },
     onError: (error: Error) => {
@@ -81,7 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Add a small delay to ensure the user state is updated before redirecting
       setTimeout(() => {
-        window.location.href = "/";
+        // For new users, always redirect to profile setup
+        window.location.href = "/profile-setup";
       }, 500);
     },
     onError: (error: Error) => {

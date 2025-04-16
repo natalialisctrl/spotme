@@ -14,6 +14,7 @@ import { Loader2, Save, Sparkles, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { workoutTypes } from "@shared/schema";
 import IdentityVerification from "@/components/profile/IdentityVerification";
+import ProfileInsights from "@/components/profile/ProfileInsights";
 
 // Create a standalone profile page component with a completely different approach
 const NewProfilePage: FC = () => {
@@ -413,53 +414,31 @@ const NewProfilePage: FC = () => {
         </CardHeader>
         <CardContent>
           {userData.aiGeneratedInsights ? (
-            <div className="space-y-4">
-              {(() => {
-                try {
-                  // Parse the insights data
-                  let insights;
-                  if (typeof userData.aiGeneratedInsights === 'string') {
-                    insights = JSON.parse(userData.aiGeneratedInsights);
-                  } else {
-                    insights = userData.aiGeneratedInsights;
-                  }
-                  
-                  if (!insights || !insights.workoutStyle) {
-                    throw new Error("Invalid insights data");
-                  }
-                  
-                  return (
-                    <>
-                      <div className="space-y-1">
-                        <h3 className="text-md font-semibold">Your Workout Style</h3>
-                        <p className="text-gray-700">{insights.workoutStyle}</p>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <h3 className="text-md font-semibold">Motivation Tips</h3>
-                        <ul className="list-disc pl-5 text-gray-700 space-y-1">
-                          {Array.isArray(insights.motivationTips) && insights.motivationTips.map((tip: string, index: number) => (
-                            <li key={index}>{tip}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <h3 className="text-md font-semibold">Your Ideal Gym Partner</h3>
-                        <p className="text-gray-700">{insights.partnerPreferences}</p>
-                      </div>
-                    </>
-                  );
-                } catch (e) {
-                  console.error("Error displaying AI insights:", e);
-                  return (
-                    <div className="text-center text-gray-500">
-                      <p>Your AI profile data needs to be updated. Click "Regenerate Profile" to create a new one.</p>
-                    </div>
-                  );
+            (() => {
+              try {
+                // Parse the insights data
+                let insights;
+                if (typeof userData.aiGeneratedInsights === 'string') {
+                  insights = JSON.parse(userData.aiGeneratedInsights);
+                } else {
+                  insights = userData.aiGeneratedInsights;
                 }
-              })()}
-            </div>
+                
+                if (!insights || !insights.workoutStyle) {
+                  throw new Error("Invalid insights data");
+                }
+                
+                // Import and use the ProfileInsights component
+                return <ProfileInsights insights={insights} isProfile={true} />;
+              } catch (e) {
+                console.error("Error displaying AI insights:", e);
+                return (
+                  <div className="text-center text-gray-500">
+                    <p>Your AI profile data needs to be updated. Click "Regenerate Profile" to create a new one.</p>
+                  </div>
+                );
+              }
+            })()
           ) : (
             <div className="text-center py-6 text-gray-500">
               <Sparkles className="h-12 w-12 mx-auto mb-4 text-primary/50" />
