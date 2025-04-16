@@ -188,10 +188,11 @@ const ScheduledMeetups = () => {
       resetForm();
       setIsCreateDialogOpen(false);
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error',
-        description: `Failed to create meetup: ${error.message}`,
+        description: `Failed to create meetup: ${errorMessage}`,
         variant: 'destructive',
       });
     }
@@ -217,10 +218,11 @@ const ScheduledMeetups = () => {
       resetForm();
       setIsEditDialogOpen(false);
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error',
-        description: `Failed to update meetup: ${error.message}`,
+        description: `Failed to update meetup: ${errorMessage}`,
         variant: 'destructive',
       });
     }
@@ -246,10 +248,11 @@ const ScheduledMeetups = () => {
       setIsCancelAlertOpen(false);
       if (isDetailsDialogOpen) setIsDetailsDialogOpen(false);
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error',
-        description: `Failed to cancel meetup: ${error.message}`,
+        description: `Failed to cancel meetup: ${errorMessage}`,
         variant: 'destructive',
       });
     }
@@ -273,10 +276,11 @@ const ScheduledMeetups = () => {
         description: 'You have joined the meetup!',
       });
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error',
-        description: `Failed to join meetup: ${error.message}`,
+        description: `Failed to join meetup: ${errorMessage}`,
         variant: 'destructive',
       });
     }

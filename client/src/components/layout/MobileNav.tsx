@@ -1,6 +1,18 @@
 import { FC, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { MapPin, MessageSquare, Users, User, Shield, Settings, ChevronUp, LogOut } from "lucide-react";
+import { 
+  MapPin, 
+  MessageSquare, 
+  Users, 
+  User, 
+  Shield, 
+  Settings, 
+  ChevronUp, 
+  LogOut, 
+  Dumbbell, 
+  Clipboard, 
+  CalendarDays 
+} from "lucide-react";
 import { 
   Popover,
   PopoverContent,
@@ -29,12 +41,15 @@ const MobileNav: FC = () => {
             <span className="text-xs mt-1">Connections</span>
         </Link>
         <Popover>
-          <PopoverTrigger className={`flex flex-col items-center justify-center py-3 w-1/4 ${(location === '/profile' || location === '/security-settings') ? 'text-primary border-t-2 border-primary' : 'text-gray-500'}`}>
+          <PopoverTrigger className={`flex flex-col items-center justify-center py-3 w-1/4 ${(location === '/profile' || location === '/security-settings' || location === '/workout-focus' || location === '/workout-routines' || location === '/scheduled-meetups') ? 'text-primary border-t-2 border-primary' : 'text-gray-500'}`}>
             <User className="h-6 w-6" />
-            <span className="text-xs mt-1">Profile</span>
+            <span className="text-xs mt-1">Menu</span>
           </PopoverTrigger>
-          <PopoverContent className="w-48 p-0" align="end">
+          <PopoverContent className="w-60 p-0" align="end">
             <div className="flex flex-col">
+              <div className="p-2 font-medium text-xs uppercase text-muted-foreground bg-gray-50">
+                Profile
+              </div>
               <Link href="/profile" className="flex items-center p-3 hover:bg-gray-100">
                 <User className="h-4 w-4 mr-2" />
                 <span className="text-sm">Profile</span>
@@ -46,6 +61,22 @@ const MobileNav: FC = () => {
               <Link href="/settings" className="flex items-center p-3 hover:bg-gray-100">
                 <Settings className="h-4 w-4 mr-2" />
                 <span className="text-sm">Settings</span>
+              </Link>
+              
+              <div className="p-2 font-medium text-xs uppercase text-muted-foreground bg-gray-50">
+                Workouts
+              </div>
+              <Link href="/workout-focus" className="flex items-center p-3 hover:bg-gray-100">
+                <Dumbbell className="h-4 w-4 mr-2" />
+                <span className="text-sm">Workout Focus</span>
+              </Link>
+              <Link href="/workout-routines" className="flex items-center p-3 hover:bg-gray-100">
+                <Clipboard className="h-4 w-4 mr-2" />
+                <span className="text-sm">Workout Routines</span>
+              </Link>
+              <Link href="/scheduled-meetups" className="flex items-center p-3 hover:bg-gray-100">
+                <CalendarDays className="h-4 w-4 mr-2" />
+                <span className="text-sm">Scheduled Meetups</span>
               </Link>
               <Separator />
               <button 
