@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Plus, Edit, Trash2, Share2, Sparkles, ListFilter, Dumbbell, Zap } from 'lucide-react';
+import { Loader2, Plus, Edit, Trash2, Share2, Sparkles, ListFilter, Dumbbell, Zap, Heart, Medal, FlaskConical, Activity } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -64,7 +64,7 @@ const muscleGroupOptions = [
 // Description templates for quick selection
 const descriptionTemplates = [
   { 
-    icon: <Sparkles className="h-4 w-4 mr-2" />,
+    icon: <Medal className="h-4 w-4 mr-2" />,
     name: 'Strength Focus', 
     value: 'A comprehensive strength-building routine designed to increase muscle mass and power. Focus on proper form and progressive overload for best results.'
   },
@@ -74,7 +74,7 @@ const descriptionTemplates = [
     value: 'High-intensity interval training circuit that combines cardio and resistance exercises. Great for fat burning and improving endurance in a time-efficient manner.'
   },
   { 
-    icon: <Dumbbell className="h-4 w-4 mr-2" />,
+    icon: <FlaskConical className="h-4 w-4 mr-2" />,
     name: 'Hypertrophy Program', 
     value: 'Targeted muscle growth routine with moderate weights and higher repetitions. Focus on time under tension and mind-muscle connection for maximum hypertrophy.'
   },
@@ -82,6 +82,26 @@ const descriptionTemplates = [
     icon: <ListFilter className="h-4 w-4 mr-2" />,
     name: 'Full Body Workout', 
     value: 'Balanced full-body workout hitting all major muscle groups in a single session. Ideal for those training 2-3 times per week or beginners establishing a foundation.'
+  },
+  { 
+    icon: <Activity className="h-4 w-4 mr-2" />,
+    name: 'Leg Day', 
+    value: 'Focused lower body workout targeting quads, hamstrings, glutes, and calves. Includes compound movements like squats and deadlifts alongside isolation exercises for complete leg development.'
+  },
+  { 
+    icon: <Dumbbell className="h-4 w-4 mr-2" />,
+    name: 'Chest and Arms Day', 
+    value: 'Upper body push routine focusing on chest, triceps, and biceps. Combination of compound pressing movements and isolation exercises for maximum muscle stimulation and pump.'
+  },
+  { 
+    icon: <Sparkles className="h-4 w-4 mr-2" />,
+    name: 'Back and Shoulders Day', 
+    value: 'Upper body pull routine targeting the entire back and shoulder complex. Includes vertical and horizontal pulling movements, along with pressing and lateral raises for well-rounded development.'
+  },
+  { 
+    icon: <Heart className="h-4 w-4 mr-2" />,
+    name: 'Core Focus', 
+    value: 'Comprehensive core training targeting abs, obliques, and lower back. Combination of dynamic and static exercises to build strength, stability, and definition in the midsection.'
   }
 ];
 
