@@ -4,7 +4,9 @@ import {
   InsertConnection, Message, InsertMessage, CompatibilityResponse,
   InsertCompatibilityResponse, NearbyUsersParams, UpdateLocation,
   WorkoutRoutine, InsertWorkoutRoutine, ScheduledMeetup, 
-  InsertScheduledMeetup, MeetupParticipant, InsertMeetupParticipant
+  InsertScheduledMeetup, MeetupParticipant, InsertMeetupParticipant,
+  Challenge, InsertChallenge, ChallengeParticipant, InsertChallengeParticipant,
+  ProgressEntry, InsertProgressEntry, ChallengeComment, InsertChallengeComment
 } from "@shared/schema";
 
 // Interface for storage operations
