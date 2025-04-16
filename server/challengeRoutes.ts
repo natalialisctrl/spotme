@@ -548,4 +548,79 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
       res.status(500).json({ message: "Failed to create demo challenges" });
     }
   });
+  
+  // Create complete demo data set including users, connections, and challenges
+  app.post("/api/demo/create-all", async (req, res) => {
+    try {
+      console.log("Creating full demo data set...");
+      // First create demo users
+      const count = req.body.count || 5;
+      const demoUsers = await storage.createDemoUsers(count);
+      
+      if (demoUsers.length === 0) {
+        return res.status(500).json({ success: false, error: 'Failed to create demo users' });
+      }
+      
+      // Set up the first user as the "main user"
+      const mainUser = demoUsers[0];
+      const friendIds: number[] = [];
+      
+      // Create connections between main user and others
+      console.log("Creating connections for demo users...");
+      for (let i = 1; i < demoUsers.length; i++) {
+        const otherUser = demoUsers[i];
+        await storage.createConnection({
+          user1Id: mainUser.id,
+          user2Id: otherUser.id,
+          createdAt: new Date()
+        });
+        friendIds.push(otherUser.id);
+      }
+      
+      // Create challenges 
+      console.log("Creating demo challenges...");
+      const challengeCount = req.body.challengeCount || 3;
+      const challenges = await storage.createDemoChallenges(challengeCount, mainUser.id, friendIds);
+      
+      // Have users join and progress on the challenges
+      console.log("Setting up challenge participants...");
+      for (const challenge of challenges) {
+        // Main user joins and makes progress
+        const mainParticipant = await storage.joinChallenge(mainUser.id, challenge.id);
+        await storage.updateChallengeProgress(mainParticipant.id, challenge.goalValue * 0.75);
+        
+        // Some friends join and make progress too
+        for (let i = 0; i < friendIds.length; i++) {
+          const friendId = friendIds[i];
+          const participant = await storage.joinChallenge(friendId, challenge.id);
+          
+          // Randomize progress for each friend
+          const progressPercentage = Math.random();
+          const progress = Math.floor(challenge.goalValue * progressPercentage);
+          await storage.updateChallengeProgress(participant.id, progress);
+          
+          // Mark some as completed
+          if (progressPercentage > 0.9) {
+            await storage.completeChallenge(participant.id);
+          }
+        }
+      }
+      
+      res.status(200).json({
+        success: true,
+        data: {
+          users: demoUsers.length,
+          connections: friendIds.length,
+          challenges: challenges.length,
+          loginCredentials: {
+            username: mainUser.username,
+            password: 'liscr12'
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error creating complete demo data set:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
 }
