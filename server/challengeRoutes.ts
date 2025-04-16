@@ -407,14 +407,16 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
   });
   
   // Get leaderboard for a challenge
-  app.get("/api/challenges/:id/leaderboard", isAuthenticated, async (req, res) => {
+  app.get("/api/challenges/:id/leaderboard", async (req, res) => {
     try {
       const challengeId = parseInt(req.params.id, 10);
       if (isNaN(challengeId)) {
         return res.status(400).json({ message: "Invalid challenge ID" });
       }
       
-      const leaderboard = await storage.getChallengeLeaderboard(challengeId, req.user!.id);
+      // If user is authenticated, pass user ID, otherwise pass null
+      const userId = req.isAuthenticated() ? req.user!.id : null;
+      const leaderboard = await storage.getChallengeLeaderboard(challengeId, userId);
       
       res.status(200).json(leaderboard);
     } catch (error) {
@@ -573,8 +575,8 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
     }
   });
   
-  // Create complete demo data set including users, connections, and challenges
-  app.post("/api/demo/create-all", async (req, res) => {
+  // Create complete demo data set including users, connections, and challenges - public endpoint
+  app.post("/api/demo/initialize", async (req, res) => {
     console.log("Demo data endpoint called with body:", req.body);
     
     // Set proper content type to ensure JSON response
