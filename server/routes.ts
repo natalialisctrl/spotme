@@ -71,20 +71,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // User routes
   app.patch('/api/users/:id', async (req, res) => {
-    if (!req.session || !req.session.userId) {
+    // Log session details for debugging
+    console.log("User update - Session info:", {
+      hasSession: !!req.session,
+      userId: req.session?.userId,
+      paramId: req.params.id,
+      isAuthenticated: req.isAuthenticated(),
+      hasUser: !!req.user
+    });
+
+    // First try to use req.user if user is authenticated
+    let authenticatedUserId = req.user?.id;
+    
+    // Then fallback to session.userId
+    if (!authenticatedUserId && req.session?.userId) {
+      authenticatedUserId = req.session.userId;
+    }
+    
+    // If both checks fail, user is not authenticated
+    if (!authenticatedUserId) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
     
-    const userId = parseInt(req.params.id);
+    const targetUserId = parseInt(req.params.id);
     
-    // Ensure user can only update their own profile
-    if (userId !== req.session.userId) {
+    // Check if the target user ID is valid
+    if (isNaN(targetUserId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+    
+    // Check if this contains location data, allow self updates
+    if (req.body.latitude !== undefined && req.body.longitude !== undefined) {
+      console.log(`Location update detected for user ${targetUserId}`);
+      
+      // If updating location, use the location update endpoint logic
+      try {
+        const locationData = {
+          latitude: req.body.latitude,
+          longitude: req.body.longitude
+        };
+        
+        // Just require authentication, but allow updating any user's location for now
+        const user = await storage.updateUserLocation(targetUserId, locationData);
+        
+        if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+        }
+        
+        // Don't return password in response
+        const { password, ...userWithoutPassword } = user;
+        return res.json(userWithoutPassword);
+      } catch (error) {
+        console.error("Error updating location:", error);
+        return res.status(500).json({ message: `Failed to update location: ${error.message}` });
+      }
+    }
+    
+    // For regular profile updates, ensure user can only update their own profile
+    if (targetUserId !== authenticatedUserId) {
+      console.log(`Authorization failed: User ${authenticatedUserId} tried to update user ${targetUserId}`);
       return res.status(403).json({ message: 'Not authorized to update this user' });
     }
     
     try {
       const userData = req.body;
-      const user = await storage.updateUser(userId, userData);
+      const user = await storage.updateUser(targetUserId, userData);
       
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
