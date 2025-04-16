@@ -2,7 +2,9 @@ import {
   User, InsertUser, WorkoutFocus, InsertWorkoutFocus, 
   ConnectionRequest, InsertConnectionRequest, Connection, 
   InsertConnection, Message, InsertMessage, CompatibilityResponse,
-  InsertCompatibilityResponse, NearbyUsersParams, UpdateLocation
+  InsertCompatibilityResponse, NearbyUsersParams, UpdateLocation,
+  WorkoutRoutine, InsertWorkoutRoutine, ScheduledMeetup, 
+  InsertScheduledMeetup, MeetupParticipant, InsertMeetupParticipant
 } from "@shared/schema";
 
 // Interface for storage operations
@@ -53,6 +55,28 @@ export interface IStorage {
   findNearbyUsers(params: NearbyUsersParams): Promise<User[]>;
   calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number;
   
+  // Workout routine operations
+  createWorkoutRoutine(routine: InsertWorkoutRoutine): Promise<WorkoutRoutine>;
+  getWorkoutRoutine(id: number): Promise<WorkoutRoutine | undefined>;
+  getWorkoutRoutinesByUserId(userId: number): Promise<WorkoutRoutine[]>;
+  getPublicWorkoutRoutines(): Promise<WorkoutRoutine[]>;
+  updateWorkoutRoutine(id: number, routine: Partial<WorkoutRoutine>): Promise<WorkoutRoutine | undefined>;
+  deleteWorkoutRoutine(id: number): Promise<boolean>;
+  
+  // Scheduled meetup operations
+  createScheduledMeetup(meetup: InsertScheduledMeetup): Promise<ScheduledMeetup>;
+  getScheduledMeetup(id: number): Promise<ScheduledMeetup | undefined>;
+  getScheduledMeetupsByUser(userId: number): Promise<ScheduledMeetup[]>;
+  getUpcomingMeetups(userId: number): Promise<ScheduledMeetup[]>;
+  updateScheduledMeetup(id: number, meetup: Partial<ScheduledMeetup>): Promise<ScheduledMeetup | undefined>;
+  cancelScheduledMeetup(id: number): Promise<boolean>;
+  
+  // Meetup participant operations
+  addMeetupParticipant(participant: InsertMeetupParticipant): Promise<MeetupParticipant>;
+  getMeetupParticipants(meetupId: number): Promise<MeetupParticipant[]>;
+  updateParticipantStatus(id: number, status: string): Promise<MeetupParticipant | undefined>;
+  removeMeetupParticipant(meetupId: number, userId: number): Promise<boolean>;
+  
   // Session storage
   sessionStore: any; // Using 'any' to avoid TypeScript errors with SessionStore
 }
@@ -65,6 +89,9 @@ export class MemStorage implements IStorage {
   private connections: Map<number, Connection>;
   private messages: Map<number, Message>;
   private compatibilityResponses: Map<number, CompatibilityResponse>;
+  private workoutRoutines: Map<number, WorkoutRoutine>;
+  private scheduledMeetups: Map<number, ScheduledMeetup>;
+  private meetupParticipants: Map<number, MeetupParticipant>;
   
   private currentUserId: number;
   private currentWorkoutFocusId: number;
@@ -72,6 +99,9 @@ export class MemStorage implements IStorage {
   private currentConnectionId: number;
   private currentMessageId: number;
   private currentCompatibilityResponseId: number;
+  private currentWorkoutRoutineId: number;
+  private currentScheduledMeetupId: number;
+  private currentMeetupParticipantId: number;
 
   sessionStore: any; // Using 'any' to avoid TypeScript errors
 
@@ -82,6 +112,9 @@ export class MemStorage implements IStorage {
     this.connections = new Map();
     this.messages = new Map();
     this.compatibilityResponses = new Map();
+    this.workoutRoutines = new Map();
+    this.scheduledMeetups = new Map();
+    this.meetupParticipants = new Map();
     
     this.currentUserId = 1;
     this.currentWorkoutFocusId = 1;
@@ -89,6 +122,9 @@ export class MemStorage implements IStorage {
     this.currentConnectionId = 1;
     this.currentMessageId = 1;
     this.currentCompatibilityResponseId = 1;
+    this.currentWorkoutRoutineId = 1;
+    this.currentScheduledMeetupId = 1;
+    this.currentMeetupParticipantId = 1;
     
     // Create a memory session store
     const MemoryStore = createMemoryStore(session);
@@ -631,6 +667,173 @@ export class MemStorage implements IStorage {
 
   private toRadians(degrees: number): number {
     return degrees * Math.PI / 180;
+  }
+
+  // Workout routine operations
+  async createWorkoutRoutine(routine: InsertWorkoutRoutine): Promise<WorkoutRoutine> {
+    const id = this.currentWorkoutRoutineId++;
+    const newRoutine: WorkoutRoutine = { 
+      ...routine, 
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.workoutRoutines.set(id, newRoutine);
+    return newRoutine;
+  }
+
+  async getWorkoutRoutine(id: number): Promise<WorkoutRoutine | undefined> {
+    return this.workoutRoutines.get(id);
+  }
+
+  async getWorkoutRoutinesByUserId(userId: number): Promise<WorkoutRoutine[]> {
+    return Array.from(this.workoutRoutines.values())
+      .filter(routine => routine.userId === userId)
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  }
+
+  async getPublicWorkoutRoutines(): Promise<WorkoutRoutine[]> {
+    return Array.from(this.workoutRoutines.values())
+      .filter(routine => routine.isPublic)
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  }
+
+  async updateWorkoutRoutine(id: number, routineData: Partial<WorkoutRoutine>): Promise<WorkoutRoutine | undefined> {
+    const routine = this.workoutRoutines.get(id);
+    if (!routine) return undefined;
+    
+    const updatedRoutine = { 
+      ...routine, 
+      ...routineData,
+      updatedAt: new Date()
+    };
+    this.workoutRoutines.set(id, updatedRoutine);
+    return updatedRoutine;
+  }
+
+  async deleteWorkoutRoutine(id: number): Promise<boolean> {
+    return this.workoutRoutines.delete(id);
+  }
+
+  // Scheduled meetup operations
+  async createScheduledMeetup(meetup: InsertScheduledMeetup): Promise<ScheduledMeetup> {
+    const id = this.currentScheduledMeetupId++;
+    const newMeetup: ScheduledMeetup = { 
+      ...meetup, 
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      status: 'scheduled' 
+    };
+    this.scheduledMeetups.set(id, newMeetup);
+    return newMeetup;
+  }
+
+  async getScheduledMeetup(id: number): Promise<ScheduledMeetup | undefined> {
+    return this.scheduledMeetups.get(id);
+  }
+
+  async getScheduledMeetupsByUser(userId: number): Promise<ScheduledMeetup[]> {
+    // Get all meetups created by this user
+    const userMeetups = Array.from(this.scheduledMeetups.values())
+      .filter(meetup => meetup.creatorId === userId);
+    
+    // Get meetup IDs where this user is a participant
+    const participantMeetupIds = Array.from(this.meetupParticipants.values())
+      .filter(participant => participant.userId === userId)
+      .map(participant => participant.meetupId);
+    
+    // Get those meetups
+    const participatingMeetups = participantMeetupIds
+      .map(meetupId => this.scheduledMeetups.get(meetupId))
+      .filter(Boolean) as ScheduledMeetup[];
+    
+    // Combine both arrays, removing duplicates
+    const allMeetups = [...userMeetups];
+    for (const meetup of participatingMeetups) {
+      if (!allMeetups.some(m => m.id === meetup.id)) {
+        allMeetups.push(meetup);
+      }
+    }
+    
+    return allMeetups.sort((a, b) => a.date.getTime() - b.date.getTime());
+  }
+
+  async getUpcomingMeetups(userId: number): Promise<ScheduledMeetup[]> {
+    const now = new Date();
+    const allMeetups = await this.getScheduledMeetupsByUser(userId);
+    
+    return allMeetups
+      .filter(meetup => {
+        // Convert string date to Date object if needed
+        const meetupDate = typeof meetup.date === 'string' ? new Date(meetup.date) : meetup.date;
+        return meetupDate >= now && meetup.status !== 'cancelled';
+      })
+      .sort((a, b) => {
+        const dateA = typeof a.date === 'string' ? new Date(a.date) : a.date;
+        const dateB = typeof b.date === 'string' ? new Date(b.date) : b.date;
+        return dateA.getTime() - dateB.getTime();
+      });
+  }
+
+  async updateScheduledMeetup(id: number, meetupData: Partial<ScheduledMeetup>): Promise<ScheduledMeetup | undefined> {
+    const meetup = this.scheduledMeetups.get(id);
+    if (!meetup) return undefined;
+    
+    const updatedMeetup = { 
+      ...meetup, 
+      ...meetupData,
+      updatedAt: new Date()
+    };
+    this.scheduledMeetups.set(id, updatedMeetup);
+    return updatedMeetup;
+  }
+
+  async cancelScheduledMeetup(id: number): Promise<boolean> {
+    const meetup = this.scheduledMeetups.get(id);
+    if (!meetup) return false;
+    
+    meetup.status = 'cancelled';
+    meetup.updatedAt = new Date();
+    this.scheduledMeetups.set(id, meetup);
+    return true;
+  }
+
+  // Meetup participant operations
+  async addMeetupParticipant(participant: InsertMeetupParticipant): Promise<MeetupParticipant> {
+    const id = this.currentMeetupParticipantId++;
+    const newParticipant: MeetupParticipant = { 
+      ...participant, 
+      id,
+      status: participant.status || 'pending',
+      joinedAt: new Date()
+    };
+    this.meetupParticipants.set(id, newParticipant);
+    return newParticipant;
+  }
+
+  async getMeetupParticipants(meetupId: number): Promise<MeetupParticipant[]> {
+    return Array.from(this.meetupParticipants.values())
+      .filter(participant => participant.meetupId === meetupId);
+  }
+
+  async updateParticipantStatus(id: number, status: string): Promise<MeetupParticipant | undefined> {
+    const participant = this.meetupParticipants.get(id);
+    if (!participant) return undefined;
+    
+    const updatedParticipant = { ...participant, status };
+    this.meetupParticipants.set(id, updatedParticipant);
+    return updatedParticipant;
+  }
+
+  async removeMeetupParticipant(meetupId: number, userId: number): Promise<boolean> {
+    for (const [id, participant] of this.meetupParticipants.entries()) {
+      if (participant.meetupId === meetupId && participant.userId === userId) {
+        this.meetupParticipants.delete(id);
+        return true;
+      }
+    }
+    return false;
   }
 }
 
