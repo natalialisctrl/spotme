@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, real, time } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -92,6 +92,49 @@ export const compatibilityResponses = pgTable("compatibility_responses", {
   responses: jsonb("responses").notNull(),
 });
 
+// Workout routines
+export const workoutRoutines = pgTable("workout_routines", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  exercises: jsonb("exercises").notNull(), // Array of exercise objects with name, sets, reps, etc.
+  targetMuscleGroups: jsonb("target_muscle_groups").notNull(), // Array of muscle groups
+  difficulty: text("difficulty").notNull(), // beginner, intermediate, advanced
+  estimatedDuration: integer("estimated_duration").notNull(), // in minutes
+  isPublic: boolean("is_public").default(false),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
+});
+
+// Scheduled meetups between users
+export const scheduledMeetups = pgTable("scheduled_meetups", {
+  id: serial("id").primaryKey(),
+  creatorId: integer("creator_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  gymLocation: text("gym_location"),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+  date: timestamp("date").notNull(),
+  startTime: time("start_time").notNull(),
+  endTime: time("end_time"),
+  workoutRoutineId: integer("workout_routine_id").references(() => workoutRoutines.id),
+  maxParticipants: integer("max_participants"),
+  status: text("status").notNull().default("scheduled"), // scheduled, in_progress, completed, cancelled
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
+});
+
+// Meetup participants
+export const meetupParticipants = pgTable("meetup_participants", {
+  id: serial("id").primaryKey(),
+  meetupId: integer("meetup_id").notNull().references(() => scheduledMeetups.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  status: text("status").notNull(), // confirmed, tentative, declined
+  joinedAt: timestamp("joined_at").notNull(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertWorkoutFocusSchema = createInsertSchema(workoutFocus).omit({ id: true });
@@ -99,6 +142,9 @@ export const insertConnectionRequestSchema = createInsertSchema(connectionReques
 export const insertConnectionSchema = createInsertSchema(connections).omit({ id: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true });
 export const insertCompatibilityResponseSchema = createInsertSchema(compatibilityResponses).omit({ id: true });
+export const insertWorkoutRoutineSchema = createInsertSchema(workoutRoutines).omit({ id: true });
+export const insertScheduledMeetupSchema = createInsertSchema(scheduledMeetups).omit({ id: true });
+export const insertMeetupParticipantSchema = createInsertSchema(meetupParticipants).omit({ id: true });
 
 // Custom schemas for specific operations
 export const loginSchema = z.object({
@@ -171,6 +217,41 @@ export const nearbyUsersSchema = z.object({
   sameGymOnly: z.boolean().default(false),
 });
 
+// Define an exercise schema for workout routines
+export const exerciseSchema = z.object({
+  name: z.string().min(1, "Exercise name is required"),
+  sets: z.number().int().min(1, "At least 1 set is required"),
+  reps: z.number().int().min(1, "At least 1 rep is required"),
+  weight: z.number().optional(),
+  duration: z.number().optional(), // in seconds
+  notes: z.string().optional(),
+});
+
+// Workout routine validation
+export const workoutRoutineSchema = z.object({
+  name: z.string().min(3, "Routine name must be at least 3 characters"),
+  description: z.string().optional(),
+  exercises: z.array(exerciseSchema).min(1, "Add at least one exercise"),
+  targetMuscleGroups: z.array(z.string()).min(1, "Select at least one target muscle group"),
+  difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+  estimatedDuration: z.number().int().min(5, "Duration must be at least 5 minutes"),
+  isPublic: z.boolean().default(false),
+});
+
+// Scheduled meetup validation
+export const scheduledMeetupSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  description: z.string().optional(),
+  gymLocation: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  date: z.date({ required_error: "Date is required" }),
+  startTime: z.string({ required_error: "Start time is required" }),
+  endTime: z.string().optional(),
+  workoutRoutineId: z.number().optional(),
+  maxParticipants: z.number().int().min(2).optional(),
+});
+
 // Types for the schemas
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertWorkoutFocus = z.infer<typeof insertWorkoutFocusSchema>;
@@ -178,6 +259,9 @@ export type InsertConnectionRequest = z.infer<typeof insertConnectionRequestSche
 export type InsertConnection = z.infer<typeof insertConnectionSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type InsertCompatibilityResponse = z.infer<typeof insertCompatibilityResponseSchema>;
+export type InsertWorkoutRoutine = z.infer<typeof insertWorkoutRoutineSchema>;
+export type InsertScheduledMeetup = z.infer<typeof insertScheduledMeetupSchema>;
+export type InsertMeetupParticipant = z.infer<typeof insertMeetupParticipantSchema>;
 
 export type User = typeof users.$inferSelect;
 export type WorkoutFocus = typeof workoutFocus.$inferSelect;
@@ -185,6 +269,9 @@ export type ConnectionRequest = typeof connectionRequests.$inferSelect;
 export type Connection = typeof connections.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type CompatibilityResponse = typeof compatibilityResponses.$inferSelect;
+export type WorkoutRoutine = typeof workoutRoutines.$inferSelect;
+export type ScheduledMeetup = typeof scheduledMeetups.$inferSelect;
+export type MeetupParticipant = typeof meetupParticipants.$inferSelect;
 
 export type Login = z.infer<typeof loginSchema>;
 export type ChangePassword = z.infer<typeof changePasswordSchema>;
@@ -195,10 +282,15 @@ export type RequestPasswordReset = z.infer<typeof requestPasswordResetSchema>;
 export type ResetPassword = z.infer<typeof resetPasswordSchema>;
 export type UpdateLocation = z.infer<typeof updateLocationSchema>;
 export type NearbyUsersParams = z.infer<typeof nearbyUsersSchema>;
+export type Exercise = z.infer<typeof exerciseSchema>;
+export type WorkoutRoutineData = z.infer<typeof workoutRoutineSchema>;
+export type ScheduledMeetupData = z.infer<typeof scheduledMeetupSchema>;
 
 // Type for WebSocket messages
 export type WebSocketMessage = {
-  type: 'message' | 'connection_request' | 'connection_accepted' | 'user_location';
+  type: 'message' | 'connection_request' | 'connection_accepted' | 'user_location' | 
+        'meetup_invitation' | 'meetup_updated' | 'meetup_cancelled' | 'meetup_joined' | 
+        'workout_shared';
   senderId: number;
   receiverId?: number;
   data: any;
