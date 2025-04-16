@@ -1,5 +1,5 @@
 // Script to test our API endpoints
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 async function testApi() {
   const base = 'http://localhost:5000';
@@ -14,7 +14,7 @@ async function testApi() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        username: 'demo',
+        username: 'testuser',
         password: 'password123',
       }),
     });
@@ -108,7 +108,7 @@ async function testApi() {
       body: JSON.stringify({
         title: 'Morning Workout Session',
         description: 'Let\'s meet for a morning workout session at the gym',
-        date: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+        date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
         startTime: '08:30',
         gymName: 'Fitness Center',
         latitude: 37.7749,
