@@ -49,7 +49,9 @@ async function testApi() {
         targetMuscleGroups: ['chest', 'legs', 'back'],
         difficulty: 'intermediate',
         estimatedDuration: 45,
-        isPublic: true
+        isPublic: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }),
     });
     
@@ -114,7 +116,9 @@ async function testApi() {
         latitude: 37.7749,
         longitude: -122.4194,
         workoutType: 'strength',
-        maxParticipants: 5
+        maxParticipants: 5,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }),
     });
     
