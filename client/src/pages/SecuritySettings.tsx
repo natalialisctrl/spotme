@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -41,6 +42,7 @@ import {
   AlertTitle,
 } from "@/components/ui/alert";
 import MfaSetup from "@/components/security/MfaSetup";
+import PasswordManagement from "@/components/security/PasswordManagement";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -247,7 +249,9 @@ export default function SecuritySettings() {
                           </div>
                           
                           <DialogFooter>
-                            <Button variant="ghost">Close</Button>
+                            <DialogClose asChild>
+                              <Button variant="ghost">Close</Button>
+                            </DialogClose>
                           </DialogFooter>
                         </DialogContent>
                       </Dialog>
