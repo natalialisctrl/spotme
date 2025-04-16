@@ -103,13 +103,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.patch('/api/users/location', async (req, res) => {
-    if (!req.session || !req.session.userId) {
+    // Log session details for debugging
+    console.log("Location update - Session info:", {
+      hasSession: !!req.session,
+      userId: req.session?.userId,
+      isAuthenticated: req.isAuthenticated(),
+      hasUser: !!req.user
+    });
+    
+    // First try to use req.user if user is authenticated
+    let userId = req.user?.id;
+    
+    // Then fallback to session.userId
+    if (!userId && req.session?.userId) {
+      userId = req.session.userId;
+    }
+    
+    // If both checks fail, user is not authenticated
+    if (!userId) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
     
     try {
       const locationData = updateLocationSchema.parse(req.body);
-      const user = await storage.updateUserLocation(req.session.userId, locationData);
+      
+      // Log the data we're updating with
+      console.log(`Updating location for user ${userId}:`, locationData);
+      
+      const user = await storage.updateUserLocation(userId, locationData);
       
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
@@ -119,6 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password, ...userWithoutPassword } = user;
       return res.json(userWithoutPassword);
     } catch (error) {
+      console.error("Error updating location:", error);
       if (error instanceof ZodError) {
         return res.status(400).json({ message: error.errors });
       }
