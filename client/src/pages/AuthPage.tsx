@@ -22,7 +22,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Dumbbell } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Logo } from '@/components/ui/logo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MfaVerification from '@/components/security/MfaVerification';
 
@@ -143,12 +144,9 @@ const AuthPage: FC = () => {
         <Card className="w-full">
           <CardHeader>
             <div className="flex justify-center mb-4">
-              <Dumbbell className="h-10 w-10 text-primary" />
+              <Logo size="lg" showTagline={true} />
             </div>
             <CardTitle className="text-2xl font-bold text-center">Welcome to SpotMe</CardTitle>
-            <CardDescription className="text-center">
-              Never lift solo again.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab}>
@@ -356,8 +354,9 @@ const AuthPage: FC = () => {
         
         {/* Hero section */}
         <div className="hidden md:flex flex-col">
-          <h1 className="text-4xl font-bold tracking-tight mb-4">SpotMe</h1>
-          <p className="text-2xl font-semibold text-primary mb-2">Never lift solo again.</p>
+          <div className="mb-6">
+            <Logo size="xl" showTagline={true} className="mb-4" />
+          </div>
           <p className="text-lg text-gray-600 mb-6">
             Connect with like-minded fitness enthusiasts, find workout buddies, and achieve your fitness goals together.
           </p>
