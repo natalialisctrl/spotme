@@ -144,7 +144,7 @@ const AuthPage: FC = () => {
         <Card className="w-full">
           <CardHeader>
             <div className="flex justify-center mb-4">
-              <Logo size="lg" showTagline={true} />
+              <Logo size="lg" />
             </div>
             <CardTitle className="text-2xl font-bold text-center">Welcome to SpotMe</CardTitle>
           </CardHeader>
@@ -355,7 +355,7 @@ const AuthPage: FC = () => {
         {/* Hero section */}
         <div className="hidden md:flex flex-col">
           <div className="mb-6">
-            <Logo size="xl" showTagline={true} className="mb-4" />
+            <Logo size="xl" className="mb-4" />
           </div>
           <p className="text-lg text-gray-600 mb-6">
             Connect with like-minded fitness enthusiasts, find workout buddies, and achieve your fitness goals together.

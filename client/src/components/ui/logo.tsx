@@ -3,13 +3,11 @@ import { cn } from '@/lib/utils';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
-  showTagline?: boolean;
   className?: string;
 }
 
 export function Logo({
   size = 'md',
-  showTagline = false,
   className,
 }: LogoProps) {
   const sizeClasses = {
@@ -19,12 +17,7 @@ export function Logo({
     xl: 'h-24 w-24',
   };
 
-  const taglineClasses = {
-    sm: 'text-xs',
-    md: 'text-sm',
-    lg: 'text-base',
-    xl: 'text-lg',
-  };
+
 
   return (
     <div className={cn('flex flex-col', className)}>
@@ -43,11 +36,7 @@ export function Logo({
           })}>
             SpotMe
           </span>
-          {showTagline && (
-            <p className={cn('text-muted-foreground', taglineClasses[size])}>
-              Never lift solo again.
-            </p>
-          )}
+
         </div>
       </div>
     </div>
@@ -57,7 +46,7 @@ export function Logo({
 export function LogoWithoutText({ 
   size = 'md',
   className,
-}: Omit<LogoProps, 'showTagline'>) {
+}: LogoProps) {
   const sizeClasses = {
     sm: 'h-8 w-8',
     md: 'h-10 w-10',
