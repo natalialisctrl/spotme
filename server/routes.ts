@@ -4,7 +4,9 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { 
   loginSchema, insertUserSchema, updateLocationSchema, insertWorkoutFocusSchema,
-  insertConnectionRequestSchema, insertMessageSchema, nearbyUsersSchema, WebSocketMessage
+  insertConnectionRequestSchema, insertMessageSchema, nearbyUsersSchema, WebSocketMessage,
+  workoutRoutineSchema, scheduledMeetupSchema, insertWorkoutRoutineSchema, insertScheduledMeetupSchema,
+  insertMeetupParticipantSchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { generatePersonalityInsights, PersonalityQuizResponses } from "./openai";
@@ -825,6 +827,507 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error saving personality insights:', error);
       return res.status(500).json({ message: 'Failed to save personality insights' });
+    }
+  });
+
+  // Workout Routine Routes
+  app.post('/api/workout-routines', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const routineData = insertWorkoutRoutineSchema.parse({
+        ...req.body,
+        userId: req.session.userId,
+      });
+      
+      const routine = await storage.createWorkoutRoutine(routineData);
+      return res.status(201).json(routine);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
+      return res.status(500).json({ message: 'Failed to create workout routine' });
+    }
+  });
+
+  app.get('/api/workout-routines', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const routines = await storage.getWorkoutRoutinesByUserId(req.session.userId);
+      return res.json(routines);
+    } catch (error) {
+      console.error('Error fetching workout routines:', error);
+      return res.status(500).json({ message: 'Failed to fetch workout routines' });
+    }
+  });
+
+  app.get('/api/workout-routines/public', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const routines = await storage.getPublicWorkoutRoutines();
+      return res.json(routines);
+    } catch (error) {
+      console.error('Error fetching public workout routines:', error);
+      return res.status(500).json({ message: 'Failed to fetch public workout routines' });
+    }
+  });
+
+  app.get('/api/workout-routines/:id', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const routineId = parseInt(req.params.id);
+      if (isNaN(routineId)) {
+        return res.status(400).json({ message: 'Invalid routine ID' });
+      }
+      
+      const routine = await storage.getWorkoutRoutine(routineId);
+      if (!routine) {
+        return res.status(404).json({ message: 'Workout routine not found' });
+      }
+      
+      // Only allow access to public routines or own routines
+      if (routine.userId !== req.session.userId && !routine.isPublic) {
+        return res.status(403).json({ message: 'Not authorized to view this routine' });
+      }
+      
+      return res.json(routine);
+    } catch (error) {
+      console.error('Error fetching workout routine:', error);
+      return res.status(500).json({ message: 'Failed to fetch workout routine' });
+    }
+  });
+
+  app.patch('/api/workout-routines/:id', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const routineId = parseInt(req.params.id);
+      if (isNaN(routineId)) {
+        return res.status(400).json({ message: 'Invalid routine ID' });
+      }
+      
+      const routine = await storage.getWorkoutRoutine(routineId);
+      if (!routine) {
+        return res.status(404).json({ message: 'Workout routine not found' });
+      }
+      
+      // Only allow updating own routines
+      if (routine.userId !== req.session.userId) {
+        return res.status(403).json({ message: 'Not authorized to update this routine' });
+      }
+      
+      const updateData = req.body;
+      const updatedRoutine = await storage.updateWorkoutRoutine(routineId, updateData);
+      
+      return res.json(updatedRoutine);
+    } catch (error) {
+      console.error('Error updating workout routine:', error);
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
+      return res.status(500).json({ message: 'Failed to update workout routine' });
+    }
+  });
+
+  app.delete('/api/workout-routines/:id', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const routineId = parseInt(req.params.id);
+      if (isNaN(routineId)) {
+        return res.status(400).json({ message: 'Invalid routine ID' });
+      }
+      
+      const routine = await storage.getWorkoutRoutine(routineId);
+      if (!routine) {
+        return res.status(404).json({ message: 'Workout routine not found' });
+      }
+      
+      // Only allow deleting own routines
+      if (routine.userId !== req.session.userId) {
+        return res.status(403).json({ message: 'Not authorized to delete this routine' });
+      }
+      
+      const success = await storage.deleteWorkoutRoutine(routineId);
+      if (success) {
+        return res.status(204).end();
+      } else {
+        return res.status(500).json({ message: 'Failed to delete workout routine' });
+      }
+    } catch (error) {
+      console.error('Error deleting workout routine:', error);
+      return res.status(500).json({ message: 'Failed to delete workout routine' });
+    }
+  });
+
+  // Scheduled Meetup Routes
+  app.post('/api/meetups', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const meetupData = insertScheduledMeetupSchema.parse({
+        ...req.body,
+        creatorId: req.session.userId
+      });
+      
+      const meetup = await storage.createScheduledMeetup(meetupData);
+      
+      // Automatically add creator as a participant
+      await storage.addMeetupParticipant({
+        meetupId: meetup.id,
+        userId: req.session.userId,
+        status: 'confirmed'
+      });
+      
+      return res.status(201).json(meetup);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
+      console.error('Error creating meetup:', error);
+      return res.status(500).json({ message: 'Failed to create scheduled meetup' });
+    }
+  });
+
+  app.get('/api/meetups', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const meetups = await storage.getScheduledMeetupsByUser(req.session.userId);
+      return res.json(meetups);
+    } catch (error) {
+      console.error('Error fetching meetups:', error);
+      return res.status(500).json({ message: 'Failed to fetch scheduled meetups' });
+    }
+  });
+
+  app.get('/api/meetups/upcoming', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const meetups = await storage.getUpcomingMeetups(req.session.userId);
+      return res.json(meetups);
+    } catch (error) {
+      console.error('Error fetching upcoming meetups:', error);
+      return res.status(500).json({ message: 'Failed to fetch upcoming meetups' });
+    }
+  });
+
+  app.get('/api/meetups/:id', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const meetupId = parseInt(req.params.id);
+      if (isNaN(meetupId)) {
+        return res.status(400).json({ message: 'Invalid meetup ID' });
+      }
+      
+      const meetup = await storage.getScheduledMeetup(meetupId);
+      if (!meetup) {
+        return res.status(404).json({ message: 'Scheduled meetup not found' });
+      }
+      
+      // Get participants
+      const participants = await storage.getMeetupParticipants(meetupId);
+      
+      // Check if user is part of this meetup
+      const isParticipant = participants.some(p => p.userId === req.session!.userId);
+      const isCreator = meetup.creatorId === req.session!.userId;
+      
+      if (!isParticipant && !isCreator) {
+        return res.status(403).json({ message: 'Not authorized to view this meetup' });
+      }
+      
+      // Get user details for each participant
+      const participantsWithDetails = await Promise.all(
+        participants.map(async (p) => {
+          const user = await storage.getUser(p.userId);
+          if (user) {
+            const { password, ...userData } = user;
+            return {
+              ...p,
+              user: userData
+            };
+          }
+          return p;
+        })
+      );
+      
+      const result = {
+        ...meetup,
+        participants: participantsWithDetails
+      };
+      
+      return res.json(result);
+    } catch (error) {
+      console.error('Error fetching meetup details:', error);
+      return res.status(500).json({ message: 'Failed to fetch meetup details' });
+    }
+  });
+
+  app.patch('/api/meetups/:id', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const meetupId = parseInt(req.params.id);
+      if (isNaN(meetupId)) {
+        return res.status(400).json({ message: 'Invalid meetup ID' });
+      }
+      
+      const meetup = await storage.getScheduledMeetup(meetupId);
+      if (!meetup) {
+        return res.status(404).json({ message: 'Scheduled meetup not found' });
+      }
+      
+      // Only allow creator to update meetup details
+      if (meetup.creatorId !== req.session.userId) {
+        return res.status(403).json({ message: 'Not authorized to update this meetup' });
+      }
+      
+      const updateData = req.body;
+      const updatedMeetup = await storage.updateScheduledMeetup(meetupId, updateData);
+      
+      // Notify participants of the update
+      const participants = await storage.getMeetupParticipants(meetupId);
+      participants.forEach(participant => {
+        if (participant.userId !== req.session!.userId) { // Don't notify the updater
+          const participantWs = activeConnections.get(participant.userId);
+          if (participantWs && participantWs.readyState === WebSocket.OPEN) {
+            const wsMessage: WebSocketMessage = {
+              type: 'meetup_updated',
+              senderId: req.session!.userId,
+              receiverId: participant.userId,
+              data: {
+                meetup: updatedMeetup
+              }
+            };
+            participantWs.send(JSON.stringify(wsMessage));
+          }
+        }
+      });
+      
+      return res.json(updatedMeetup);
+    } catch (error) {
+      console.error('Error updating meetup:', error);
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
+      return res.status(500).json({ message: 'Failed to update scheduled meetup' });
+    }
+  });
+
+  app.post('/api/meetups/:id/cancel', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const meetupId = parseInt(req.params.id);
+      if (isNaN(meetupId)) {
+        return res.status(400).json({ message: 'Invalid meetup ID' });
+      }
+      
+      const meetup = await storage.getScheduledMeetup(meetupId);
+      if (!meetup) {
+        return res.status(404).json({ message: 'Scheduled meetup not found' });
+      }
+      
+      // Only allow creator to cancel meetup
+      if (meetup.creatorId !== req.session.userId) {
+        return res.status(403).json({ message: 'Not authorized to cancel this meetup' });
+      }
+      
+      const success = await storage.cancelScheduledMeetup(meetupId);
+      if (!success) {
+        return res.status(500).json({ message: 'Failed to cancel meetup' });
+      }
+      
+      // Get updated meetup data
+      const updatedMeetup = await storage.getScheduledMeetup(meetupId);
+      
+      // Notify participants of the cancellation
+      const participants = await storage.getMeetupParticipants(meetupId);
+      participants.forEach(participant => {
+        if (participant.userId !== req.session!.userId) { // Don't notify the canceller
+          const participantWs = activeConnections.get(participant.userId);
+          if (participantWs && participantWs.readyState === WebSocket.OPEN) {
+            const wsMessage: WebSocketMessage = {
+              type: 'meetup_cancelled',
+              senderId: req.session!.userId,
+              receiverId: participant.userId,
+              data: {
+                meetup: updatedMeetup
+              }
+            };
+            participantWs.send(JSON.stringify(wsMessage));
+          }
+        }
+      });
+      
+      return res.json(updatedMeetup);
+    } catch (error) {
+      console.error('Error cancelling meetup:', error);
+      return res.status(500).json({ message: 'Failed to cancel scheduled meetup' });
+    }
+  });
+
+  // Meetup Participant Routes
+  app.post('/api/meetups/:id/join', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const meetupId = parseInt(req.params.id);
+      if (isNaN(meetupId)) {
+        return res.status(400).json({ message: 'Invalid meetup ID' });
+      }
+      
+      const meetup = await storage.getScheduledMeetup(meetupId);
+      if (!meetup) {
+        return res.status(404).json({ message: 'Scheduled meetup not found' });
+      }
+      
+      // Check if the meetup is cancelled
+      if (meetup.status === 'cancelled') {
+        return res.status(400).json({ message: 'Cannot join a cancelled meetup' });
+      }
+      
+      // Check if user is already a participant
+      const participants = await storage.getMeetupParticipants(meetupId);
+      const existingParticipant = participants.find(p => p.userId === req.session!.userId);
+      
+      if (existingParticipant) {
+        return res.status(400).json({ message: 'Already joined this meetup' });
+      }
+      
+      // Check if the meetup has reached its maximum number of participants
+      if (meetup.maxParticipants && participants.length >= meetup.maxParticipants) {
+        return res.status(400).json({ message: 'Meetup is already full' });
+      }
+      
+      // Add user as participant
+      const participant = await storage.addMeetupParticipant({
+        meetupId,
+        userId: req.session.userId,
+        status: req.body.status || 'confirmed'
+      });
+      
+      // Notify meetup creator
+      const creatorWs = activeConnections.get(meetup.creatorId);
+      if (creatorWs && creatorWs.readyState === WebSocket.OPEN) {
+        const user = await storage.getUser(req.session.userId);
+        if (user) {
+          const { password, ...userData } = user;
+          const wsMessage: WebSocketMessage = {
+            type: 'meetup_joined',
+            senderId: req.session.userId,
+            receiverId: meetup.creatorId,
+            data: {
+              meetupId,
+              participant,
+              user: userData
+            }
+          };
+          creatorWs.send(JSON.stringify(wsMessage));
+        }
+      }
+      
+      return res.status(201).json(participant);
+    } catch (error) {
+      console.error('Error joining meetup:', error);
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
+      return res.status(500).json({ message: 'Failed to join meetup' });
+    }
+  });
+
+  app.post('/api/meetups/:id/leave', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const meetupId = parseInt(req.params.id);
+      if (isNaN(meetupId)) {
+        return res.status(400).json({ message: 'Invalid meetup ID' });
+      }
+      
+      const meetup = await storage.getScheduledMeetup(meetupId);
+      if (!meetup) {
+        return res.status(404).json({ message: 'Scheduled meetup not found' });
+      }
+      
+      // Check if user is a participant
+      const participants = await storage.getMeetupParticipants(meetupId);
+      const existingParticipant = participants.find(p => p.userId === req.session!.userId);
+      
+      if (!existingParticipant) {
+        return res.status(400).json({ message: 'Not a participant in this meetup' });
+      }
+      
+      // Don't allow creator to leave their own meetup
+      if (meetup.creatorId === req.session.userId) {
+        return res.status(400).json({ message: 'Creator cannot leave their own meetup, cancel it instead' });
+      }
+      
+      // Remove user from participants
+      const success = await storage.removeMeetupParticipant(meetupId, req.session.userId);
+      
+      if (!success) {
+        return res.status(500).json({ message: 'Failed to leave meetup' });
+      }
+      
+      // Notify meetup creator
+      const creatorWs = activeConnections.get(meetup.creatorId);
+      if (creatorWs && creatorWs.readyState === WebSocket.OPEN) {
+        const user = await storage.getUser(req.session.userId);
+        if (user) {
+          const { password, ...userData } = user;
+          const wsMessage: WebSocketMessage = {
+            type: 'meetup_participant_left',
+            senderId: req.session.userId,
+            receiverId: meetup.creatorId,
+            data: {
+              meetupId,
+              userId: req.session.userId,
+              user: userData
+            }
+          };
+          creatorWs.send(JSON.stringify(wsMessage));
+        }
+      }
+      
+      return res.status(204).end();
+    } catch (error) {
+      console.error('Error leaving meetup:', error);
+      return res.status(500).json({ message: 'Failed to leave meetup' });
     }
   });
 
