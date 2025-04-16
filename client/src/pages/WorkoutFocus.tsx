@@ -117,8 +117,10 @@ const WorkoutFocusPage: FC = () => {
   const queryClient = useQueryClient();
 
   // Get current workout focus
-  const { data: currentWorkoutFocus, isLoading: isLoadingWorkout } = useQuery<WorkoutFocus>({
+  const { data: currentWorkoutFocus, isLoading: isLoadingWorkout, isError } = useQuery<WorkoutFocus>({
     queryKey: ['/api/workout-focus'],
+    retry: false, // Don't retry if it fails
+    refetchOnWindowFocus: false, // Don't refetch on window focus
   });
 
   // Set workout focus
@@ -163,7 +165,7 @@ const WorkoutFocusPage: FC = () => {
   };
 
   // Render loading state
-  if (authLoading || isLoadingWorkout || isSettingWorkout) {
+  if (authLoading || (isLoadingWorkout && !isError) || isSettingWorkout) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-8 w-8 text-primary animate-spin" />

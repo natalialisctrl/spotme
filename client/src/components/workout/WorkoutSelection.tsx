@@ -17,6 +17,8 @@ const WorkoutSelection: FC<WorkoutSelectionProps> = ({ onSelectWorkout }) => {
   // Get current workout focus
   const { data: currentWorkoutFocus, isLoading: isLoadingWorkout } = useQuery<WorkoutFocus>({
     queryKey: ['/api/workout-focus'],
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
   // Set workout focus
