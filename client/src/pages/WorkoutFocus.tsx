@@ -1,15 +1,13 @@
-import { FC, useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { FC, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import WorkoutSelection from "@/components/workout/WorkoutSelection";
 import { workoutTypes } from "@shared/schema";
 import { Loader2, Calendar, Dumbbell, Trophy, Clock, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { WorkoutFocus } from "@shared/schema";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -116,17 +114,30 @@ const WorkoutFocusPage: FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Get current workout focus
-  const { data: currentWorkoutFocus, isLoading: isLoadingWorkout, isError } = useQuery<WorkoutFocus>({
-    queryKey: ['/api/workout-focus'],
-    retry: false, // Don't retry if it fails
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-  });
+  // Handle workout selection
+  const handleWorkoutSelected = (workoutType: string) => {
+    setSelectedWorkout(workoutType);
+    
+    // Save workout focus to server
+    setWorkoutFocus(workoutType);
+    
+    // Show success toast
+    toast({
+      title: "Workout focus updated!",
+      description: `You've set your focus for today to ${workoutType.charAt(0).toUpperCase() + workoutType.slice(1).replace('_', ' ')}.`,
+    });
+  };
 
   // Set workout focus
   const { mutate: setWorkoutFocus, isPending: isSettingWorkout } = useMutation({
     mutationFn: async (workoutType: string) => {
-      return apiRequest('POST', '/api/workout-focus', { workoutType });
+      try {
+        const response = await apiRequest('POST', '/api/workout-focus', { workoutType });
+        return response;
+      } catch (error) {
+        console.error("Error setting workout focus:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/workout-focus'] });
@@ -141,31 +152,12 @@ const WorkoutFocusPage: FC = () => {
     }
   });
 
-  useEffect(() => {
-    if (currentWorkoutFocus && !selectedWorkout) {
-      setSelectedWorkout(currentWorkoutFocus.workoutType);
-    }
-  }, [currentWorkoutFocus, selectedWorkout]);
-
-  const handleWorkoutSelected = (workoutType: string) => {
-    setSelectedWorkout(workoutType);
-    
-    // Save workout focus to server
-    setWorkoutFocus(workoutType);
-    
-    // Show success toast
-    toast({
-      title: "Workout focus updated!",
-      description: `You've set your focus for today to ${workoutType.charAt(0).toUpperCase() + workoutType.slice(1).replace('_', ' ')}.`,
-    });
-  };
-
   const handleFindPartners = () => {
     navigate("/");
   };
 
-  // Render loading state
-  if (authLoading || (isLoadingWorkout && !isError) || isSettingWorkout) {
+  // Render loading state only when authenticating
+  if (authLoading || isSettingWorkout) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -210,7 +202,23 @@ const WorkoutFocusPage: FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <WorkoutSelection onSelectWorkout={handleWorkoutSelected} />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {workoutTypes.map((workoutType) => (
+              <button
+                key={workoutType}
+                className={`flex flex-col items-center justify-center bg-white hover:bg-gray-50 border-2 ${selectedWorkout === workoutType ? 'border-primary' : 'border-transparent'} p-4 rounded-xl`}
+                onClick={() => !isSettingWorkout && handleWorkoutSelected(workoutType)}
+                disabled={isSettingWorkout}
+              >
+                <div className={`${selectedWorkout === workoutType ? 'text-primary' : 'text-gray-500'}`}>
+                  <Dumbbell className="h-8 w-8" />
+                </div>
+                <span className={`mt-2 font-medium ${selectedWorkout === workoutType ? 'text-primary' : ''}`}>
+                  {workoutType.charAt(0).toUpperCase() + workoutType.slice(1).replace('_', ' ')}
+                </span>
+              </button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
