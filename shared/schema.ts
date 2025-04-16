@@ -290,7 +290,7 @@ export type ScheduledMeetupData = z.infer<typeof scheduledMeetupSchema>;
 export type WebSocketMessage = {
   type: 'message' | 'connection_request' | 'connection_accepted' | 'user_location' | 
         'meetup_invitation' | 'meetup_updated' | 'meetup_cancelled' | 'meetup_joined' | 
-        'workout_shared';
+        'meetup_participant_left' | 'workout_shared';
   senderId: number;
   receiverId?: number;
   data: any;

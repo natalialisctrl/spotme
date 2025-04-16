@@ -837,9 +837,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
+      const now = new Date();
       const routineData = insertWorkoutRoutineSchema.parse({
         ...req.body,
         userId: req.session.userId,
+        createdAt: now,
+        updatedAt: now
       });
       
       const routine = await storage.createWorkoutRoutine(routineData);
@@ -982,18 +985,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
+      const now = new Date();
       const meetupData = insertScheduledMeetupSchema.parse({
         ...req.body,
-        creatorId: req.session.userId
+        creatorId: req.session.userId,
+        createdAt: now,
+        updatedAt: now,
+        status: 'active'
       });
       
       const meetup = await storage.createScheduledMeetup(meetupData);
       
       // Automatically add creator as a participant
+      const joinedAt = new Date();
       await storage.addMeetupParticipant({
         meetupId: meetup.id,
         userId: req.session.userId,
-        status: 'confirmed'
+        status: 'confirmed',
+        joinedAt
       });
       
       return res.status(201).json(meetup);
@@ -1232,10 +1241,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Add user as participant
+      const joinedAt = new Date();
       const participant = await storage.addMeetupParticipant({
         meetupId,
         userId: req.session.userId,
-        status: req.body.status || 'confirmed'
+        status: req.body.status || 'confirmed',
+        joinedAt
       });
       
       // Notify meetup creator
