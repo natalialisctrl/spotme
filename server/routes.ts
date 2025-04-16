@@ -102,6 +102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Route for updating user location with proper debugging
   app.patch('/api/users/location', async (req, res) => {
     // Log session details for debugging
     console.log("Location update - Session info:", {
@@ -130,21 +131,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log the data we're updating with
       console.log(`Updating location for user ${userId}:`, locationData);
       
-      const user = await storage.updateUserLocation(userId, locationData);
-      
-      if (!user) {
+      // Get current user to verify they exist before updating
+      const existingUser = await storage.getUser(userId);
+      if (!existingUser) {
         return res.status(404).json({ message: 'User not found' });
       }
       
+      // Direct update without additional authorization checks
+      const user = await storage.updateUserLocation(userId, locationData);
+      
       // Don't return password in response
       const { password, ...userWithoutPassword } = user;
+      
+      // Log successful update
+      console.log(`Successfully updated location for user ${userId}`);
       return res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error updating location:", error);
       if (error instanceof ZodError) {
         return res.status(400).json({ message: error.errors });
       }
-      return res.status(500).json({ message: 'Failed to update location' });
+      return res.status(500).json({ message: `Failed to update location: ${error.message}` });
     }
   });
   
