@@ -12,6 +12,7 @@ import Connections from "@/pages/Connections";
 import ProfileSetup from "@/pages/ProfileSetup";
 import UploadProfilePicture from "@/pages/UploadProfilePicture";
 import SecuritySettings from "@/pages/SecuritySettings";
+import WorkoutFocus from "@/pages/WorkoutFocus"; // Import the workout focus page
 import AuthPage from "@/pages/AuthPage";
 import { Loader2 } from "lucide-react";
 
@@ -38,6 +39,10 @@ function ProfileSetupPage() {
 
 function SecuritySettingsPage() {
   return <SecuritySettings />;
+}
+
+function WorkoutFocusPage() {
+  return <WorkoutFocus />;
 }
 
 function Router() {
