@@ -304,10 +304,11 @@ const ScheduledMeetups = () => {
         description: 'You have left the meetup.',
       });
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error',
-        description: `Failed to leave meetup: ${error.message}`,
+        description: `Failed to leave meetup: ${errorMessage}`,
         variant: 'destructive',
       });
     }
@@ -368,9 +369,10 @@ const ScheduledMeetups = () => {
       setSelectedMeetup(meetupData);
       setIsDetailsDialogOpen(true);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error',
-        description: `Failed to load meetup details: ${error.message}`,
+        description: `Failed to load meetup details: ${errorMessage}`,
         variant: 'destructive',
       });
     }
