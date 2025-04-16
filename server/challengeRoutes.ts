@@ -58,6 +58,30 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
     }
   });
   
+  // Get public challenges (no authentication required)
+  app.get("/api/challenges/public", async (req, res) => {
+    try {
+      const challenges = await storage.getAllChallenges();
+      
+      // Filter for public challenges only (or all challenges if none are marked public yet)
+      const publicChallenges = challenges.filter(challenge => challenge.isPublic !== false);
+      
+      // For each challenge, get the creator's name
+      const challengesWithCreatorNames = await Promise.all(publicChallenges.map(async (challenge) => {
+        const creator = await storage.getUser(challenge.creatorId);
+        return {
+          ...challenge,
+          creatorName: creator ? creator.name : 'Unknown'
+        };
+      }));
+      
+      return res.json(challengesWithCreatorNames);
+    } catch (error) {
+      console.error("Error fetching public challenges:", error);
+      return res.status(500).json({ message: "Failed to fetch public challenges" });
+    }
+  });
+  
   // Get a specific challenge by ID
   app.get("/api/challenges/:id", isAuthenticated, async (req, res) => {
     try {
