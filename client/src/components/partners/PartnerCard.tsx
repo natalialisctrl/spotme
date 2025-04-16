@@ -2,7 +2,16 @@ import { FC, useState } from "react";
 import { User } from "@shared/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { CheckCircle, Zap, ThumbsUp, ThumbsDown, Info } from "lucide-react";
+import { 
+  CheckCircle, 
+  Zap, 
+  ThumbsUp, 
+  ThumbsDown, 
+  Info, 
+  UserPlus, 
+  X,
+  ArrowRight
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { 
@@ -22,6 +31,15 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface PartnerCardProps {
   user: User;
@@ -32,6 +50,8 @@ interface PartnerCardProps {
 const PartnerCard: FC<PartnerCardProps> = ({ user, distance, currentUser }) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionSent, setConnectionSent] = useState(false);
+  const [showOneTapDialog, setShowOneTapDialog] = useState(false);
+  const [showCompatibilityPreview, setShowCompatibilityPreview] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user: authUser } = useAuth();
@@ -43,6 +63,15 @@ const PartnerCard: FC<PartnerCardProps> = ({ user, distance, currentUser }) => {
   const compatibilityScore = loggedInUser && user ? calculateCompatibilityScore(loggedInUser, user) : 0;
   const compatibilityLabel = getCompatibilityLabel(compatibilityScore);
   const compatibilityColor = getCompatibilityColor(compatibilityScore);
+  
+  // Get detailed breakdown of compatibility scores for preview
+  const breakdown = loggedInUser ? calculateCompatibilityWithBreakdown(loggedInUser, user) : {
+    workoutStyleScore: 0,
+    goalScore: 0,
+    experienceScore: 0,
+    preferenceScore: 0,
+    totalScore: 0
+  };
 
   // Send connection request mutation
   const { mutate: sendConnectionRequest } = useMutation({
@@ -60,6 +89,10 @@ const PartnerCard: FC<PartnerCardProps> = ({ user, distance, currentUser }) => {
         duration: 3000,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/connection-requests/sent'] });
+      
+      // Close dialogs if open
+      setShowOneTapDialog(false);
+      setShowCompatibilityPreview(false);
     },
     onError: (error) => {
       toast({
@@ -99,10 +132,61 @@ const PartnerCard: FC<PartnerCardProps> = ({ user, distance, currentUser }) => {
       sendConnectionRequest();
     }
   };
+  
+  // Handle one-tap connect button click
+  const handleOneTapConnect = () => {
+    // If compatibility is high, show quick connect dialog
+    if (compatibilityScore >= 70) {
+      setShowOneTapDialog(true);
+    } else {
+      // Otherwise show compatibility preview first
+      setShowCompatibilityPreview(true);
+    }
+  };
+  
+  // Format score as percentage for display
+  const formatScore = (score: number) => `${score}%`;
+  
+  // Generate a color class based on score
+  const getScoreColorClass = (score: number) => {
+    if (score >= 80) return "text-green-600";
+    if (score >= 60) return "text-emerald-500";
+    if (score >= 50) return "text-blue-500";
+    if (score >= 30) return "text-amber-500";
+    return "text-gray-500";
+  };
+  
+  // Calculate score bar width for UI
+  const getScoreBarWidth = (score: number) => {
+    return `${Math.max(5, score)}%`;
+  };
 
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden">
-      <div className="md:flex">
+    <div className="bg-white rounded-xl shadow-md overflow-hidden relative">
+      {/* One-tap connect button that appears on hover */}
+      {!connectionSent && !isConnecting && (
+        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  size="icon" 
+                  variant="secondary"
+                  className="h-10 w-10 rounded-full shadow-md hover:shadow-lg transition-all duration-300"
+                  onClick={handleOneTapConnect}
+                >
+                  <UserPlus className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Quick Connect with {user.name}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
+      
+      <div className="md:flex group">
         <div className="md:flex-shrink-0">
           <div 
             className="h-48 w-full md:w-48 flex items-center justify-center text-white text-4xl font-bold"
@@ -191,6 +275,200 @@ const PartnerCard: FC<PartnerCardProps> = ({ user, distance, currentUser }) => {
           </div>
         </div>
       </div>
+      
+      {/* One-tap Connect Dialog */}
+      <Dialog open={showOneTapDialog} onOpenChange={setShowOneTapDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-xl">
+              <Zap className="h-5 w-5 mr-2 text-primary" />
+              Great Match with {user.name}!
+            </DialogTitle>
+            <DialogDescription>
+              {compatibilityScore >= 80 ? 
+                `Excellent match for your workout style and goals!` : 
+                `This partner matches well with your fitness profile.`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-gray-700">Overall Compatibility</span>
+                <div className="flex items-center mt-1">
+                  <span className={`text-lg font-bold ${getScoreColorClass(compatibilityScore)}`}>
+                    {formatScore(compatibilityScore)}
+                  </span>
+                  <span className="text-sm text-gray-500 ml-2">
+                    {compatibilityLabel}
+                  </span>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => setShowCompatibilityPreview(true)}
+                className="text-sm text-primary flex items-center hover:underline"
+              >
+                See details
+                <ArrowRight className="h-3 w-3 ml-1" />
+              </button>
+            </div>
+            
+            <div className="bg-primary-50 p-3 rounded-lg text-sm flex items-start">
+              <Info className="h-4 w-4 text-primary mt-0.5 mr-2 flex-shrink-0" />
+              <p className="text-gray-700">
+                Workout partners with high compatibility typically lead to more effective sessions and better progress.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter className="flex sm:justify-between">
+            <Button variant="outline" onClick={() => setShowOneTapDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConnect}
+              disabled={connectionSent || isConnecting}
+              className="gap-2"
+            >
+              {isConnecting ? 'Sending...' : 'Send Connection Request'}
+              <UserPlus className="h-4 w-4" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Compatibility Preview Dialog */}
+      <Dialog open={showCompatibilityPreview} onOpenChange={setShowCompatibilityPreview}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Zap className="h-5 w-5 mr-2 text-primary" />
+              Compatibility with {user.name}
+            </DialogTitle>
+            <DialogDescription>
+              Review how you match with {user.name} before connecting
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-2">
+            {/* Compatibility breakdown */}
+            <div className="space-y-3 mb-4">
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm font-medium text-gray-700">Workout Style</span>
+                  <span className={`text-sm font-medium ${getScoreColorClass(breakdown.workoutStyleScore)}`}>
+                    {formatScore(breakdown.workoutStyleScore)}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full ${getScoreColorClass(breakdown.workoutStyleScore).replace('text-', 'bg-')}`}
+                    style={{ width: getScoreBarWidth(breakdown.workoutStyleScore) }}
+                  ></div>
+                </div>
+              </div>
+              
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm font-medium text-gray-700">Fitness Goals</span>
+                  <span className={`text-sm font-medium ${getScoreColorClass(breakdown.goalScore)}`}>
+                    {formatScore(breakdown.goalScore)}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full ${getScoreColorClass(breakdown.goalScore).replace('text-', 'bg-')}`}
+                    style={{ width: getScoreBarWidth(breakdown.goalScore) }}
+                  ></div>
+                </div>
+              </div>
+              
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm font-medium text-gray-700">Experience Level</span>
+                  <span className={`text-sm font-medium ${getScoreColorClass(breakdown.experienceScore)}`}>
+                    {formatScore(breakdown.experienceScore)}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full ${getScoreColorClass(breakdown.experienceScore).replace('text-', 'bg-')}`}
+                    style={{ width: getScoreBarWidth(breakdown.experienceScore) }}
+                  ></div>
+                </div>
+              </div>
+              
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm font-medium text-gray-700">Partner Preferences</span>
+                  <span className={`text-sm font-medium ${getScoreColorClass(breakdown.preferenceScore)}`}>
+                    {formatScore(breakdown.preferenceScore)}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full ${getScoreColorClass(breakdown.preferenceScore).replace('text-', 'bg-')}`}
+                    style={{ width: getScoreBarWidth(breakdown.preferenceScore) }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Overall score */}
+            <div className="bg-gray-50 p-3 rounded-md mb-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-900">Overall Compatibility</span>
+                <span className={`text-sm font-bold ${getScoreColorClass(breakdown.totalScore)}`}>
+                  {formatScore(breakdown.totalScore)}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3 mt-2">
+                <div 
+                  className={`h-3 rounded-full ${getScoreColorClass(breakdown.totalScore).replace('text-', 'bg-')}`}
+                  style={{ width: getScoreBarWidth(breakdown.totalScore) }}
+                ></div>
+              </div>
+            </div>
+            
+            {/* Short summary about the match */}
+            <div className={`p-3 rounded-md text-sm mb-3 
+              ${compatibilityScore >= 80 ? 'bg-green-50 text-green-800' : 
+                compatibilityScore >= 60 ? 'bg-blue-50 text-blue-800' : 
+                'bg-amber-50 text-amber-800'}`}
+            >
+              {compatibilityScore >= 80 ? (
+                <p>You and {user.name} have highly compatible workout styles and fitness goals. This could be an excellent match!</p>
+              ) : compatibilityScore >= 60 ? (
+                <p>You match well with {user.name} in several areas. You might complement each other's fitness journey.</p>
+              ) : compatibilityScore >= 40 ? (
+                <p>You have some differences with {user.name}, but these could provide valuable contrast in your workouts.</p>
+              ) : (
+                <p>Your workout styles differ significantly from {user.name}. This could be challenging but potentially growth-oriented.</p>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter className="flex sm:justify-between">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowCompatibilityPreview(false)}
+              className="gap-2"
+            >
+              <X className="h-4 w-4" />
+              Not Interested
+            </Button>
+            <Button 
+              onClick={handleConnect}
+              disabled={connectionSent || isConnecting}
+              className="gap-2"
+            >
+              {isConnecting ? 'Sending...' : 'Send Connection Request'}
+              <UserPlus className="h-4 w-4" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

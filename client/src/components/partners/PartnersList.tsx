@@ -2,7 +2,7 @@ import { FC, useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { User } from "@shared/schema";
 import PartnerCard from "./PartnerCard";
-import { Loader2, SlidersHorizontal, Share2, Sliders } from "lucide-react";
+import { Loader2, SlidersHorizontal, Share2, Sliders, Info, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { 
   calculateCompatibilityWithBreakdown, 
@@ -24,6 +24,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface FilterParams {
   workoutType?: string;
@@ -49,6 +56,7 @@ const PartnersList: FC<PartnersListProps> = ({ filterParams }) => {
   const { user: currentUser } = useAuth();
   const [sortBy, setSortBy] = useState<SortType>('compatibility');
   const [animateIn, setAnimateIn] = useState<Record<number, boolean>>({});
+  const [showOneTapTip, setShowOneTapTip] = useState(true);
   
   const { data: nearbyUsers, isLoading, error } = useQuery<NearbyUser[]>({
     queryKey: ['/api/users/nearby', filterParams],
@@ -143,6 +151,21 @@ const PartnersList: FC<PartnersListProps> = ({ filterParams }) => {
       return `${distance.toFixed(1)} miles away`;
     }
   };
+  
+  // Dismiss one-tap tip
+  const dismissTip = () => {
+    setShowOneTapTip(false);
+    // Could store this preference in localStorage to remember across sessions
+    localStorage.setItem('oneTapTipDismissed', 'true');
+  };
+  
+  // Check if tip was previously dismissed
+  useEffect(() => {
+    const tipDismissed = localStorage.getItem('oneTapTipDismissed');
+    if (tipDismissed === 'true') {
+      setShowOneTapTip(false);
+    }
+  }, []);
 
   return (
     <section className="mb-8 px-4">
@@ -282,6 +305,22 @@ const PartnersList: FC<PartnersListProps> = ({ filterParams }) => {
           </div>
         )}
       </div>
+      
+      {/* Feature tip for one-tap connect */}
+      {showOneTapTip && sortedUsers && sortedUsers.length > 0 && (
+        <Alert className="mb-4 bg-primary-50 border-primary/30">
+          <Zap className="h-4 w-4 text-primary" />
+          <AlertTitle className="text-primary">New Feature: One-tap Fitness Buddy Connect</AlertTitle>
+          <AlertDescription className="text-gray-700 flex justify-between items-center">
+            <span>
+              Hover over a potential partner card to see the quick connect button. Get instant compatibility details before sending a request.
+            </span>
+            <Button variant="ghost" size="sm" onClick={dismissTip} className="text-gray-500">
+              Dismiss
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
       
       {isLoading ? (
         <div className="flex justify-center py-10">
