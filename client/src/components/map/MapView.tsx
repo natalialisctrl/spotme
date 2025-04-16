@@ -14,7 +14,7 @@ interface MapViewProps {
 
 // Define the main component with no dependency on MapBox
 const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams, onUpdateFilters }) => {
-  const { latitude, longitude, error: locationError } = useGeolocation();
+  const { latitude, longitude, error: locationError, accuracy } = useGeolocation();
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
@@ -77,6 +77,15 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
               </div>
               <div>
                 <p className="text-sm font-medium">Your Location</p>
+                <p className="text-xs text-gray-500">
+                  {accuracy ? 
+                    (accuracy < 500 ? 
+                      'High accuracy location detected' : 
+                      accuracy < 1000 ? 
+                        'Moderate accuracy location' : 
+                        'Approximate location')
+                    : 'Location found'}
+                </p>
                 <p className="text-xs text-gray-500">Showing partners within 5 miles</p>
               </div>
             </div>
