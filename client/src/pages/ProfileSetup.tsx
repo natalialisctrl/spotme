@@ -4,8 +4,9 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import PersonalityQuiz from '@/components/profile/PersonalityQuiz';
-import PersonalityInsights from '@/components/profile/PersonalityInsights';
+import ProfileInsights from '@/components/profile/ProfileInsights';
 import { PersonalityInsight } from '@/lib/openai';
 
 const ProfileSetup: FC = () => {
@@ -136,11 +137,16 @@ const ProfileSetup: FC = () => {
       )}
       
       {step === 'insights' && insights && (
-        <PersonalityInsights 
-          insights={insights}
-          onSave={handleInsightsSave}
-          onEdit={handleInsightsEdit}
-        />
+        <div className="max-w-2xl mx-auto">
+          <ProfileInsights 
+            insights={insights}
+            isProfile={false}
+          />
+          <div className="flex justify-between mt-6">
+            <Button variant="outline" onClick={handleInsightsEdit}>Edit Responses</Button>
+            <Button onClick={handleInsightsSave}>Save to Profile</Button>
+          </div>
+        </div>
       )}
     </div>
   );
