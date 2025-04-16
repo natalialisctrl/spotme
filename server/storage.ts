@@ -197,7 +197,46 @@ export class MemStorage implements IStorage {
       checkPeriod: 86400000 // prune expired entries every 24h
     });
     
-    // Add some demo users for testing - we'll do this manually via API now
+    // Add natalia user directly for testing
+    const nataliaUser: User = {
+      id: this.currentUserId++,
+      username: "natalia",
+      password: "liscr12",
+      email: "natalia@spotme.com",
+      name: "Natalia Liscio",
+      gender: "female",
+      experienceLevel: "intermediate",
+      experienceYears: 5,
+      bio: "Certified personal trainer who loves connecting with fitness enthusiasts",
+      gymName: "FitZone Gym",
+      latitude: 30.2267,  // Austin-based location
+      longitude: -97.7476,
+      profilePictureUrl: null,
+      firebaseUid: null,
+      aiGeneratedInsights: JSON.stringify({
+        workoutStyle: "balanced",
+        motivationTips: [
+          "Track your progress with a fitness journal",
+          "Set specific, achievable weekly goals",
+          "Join group classes to stay motivated"
+        ],
+        recommendedGoals: [
+          "Increase strength by 15% in three months",
+          "Improve cardiovascular endurance",
+          "Maintain consistent workout schedule"
+        ],
+        partnerPreferences: "Looking for dedicated partners who want to improve their form and technique"
+      }),
+      mfaEnabled: false,
+      mfaVerified: false,
+      mfaSecret: null,
+      lastActive: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      passwordResetToken: null,
+      resetPasswordExpires: null
+    };
+    this.users.set(nataliaUser.id, nataliaUser);
     // Removed call to initializeDemoData - this will be done through API endpoint
   }
 

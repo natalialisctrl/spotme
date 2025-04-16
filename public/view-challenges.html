@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpotMe Challenges Viewer</title>
+  <style>
+    :root {
+      --primary: #f5338e;
+      --primary-light: #ffeef7;
+      --background: #ffffff;
+      --foreground: #111111;
+      --muted: #f5f5f5;
+      --border: #e0e0e0;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+      color: var(--foreground);
+      background-color: var(--background);
+    }
+    
+    h1, h2, h3 {
+      color: var(--primary);
+    }
+    
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 30px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 15px;
+    }
+    
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--primary);
+      margin-right: 20px;
+    }
+    
+    button {
+      padding: 10px 16px;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 10px;
+    }
+    
+    .button-secondary {
+      background-color: var(--muted);
+      color: var(--foreground);
+    }
+    
+    .section {
+      margin-bottom: 40px;
+    }
+    
+    .challenge-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    
+    .challenge-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      background-color: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .challenge-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .challenge-header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .challenge-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 0 0 5px 0;
+      color: var(--primary);
+    }
+    
+    .challenge-creator {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .challenge-dates {
+      margin: 10px 0;
+      font-size: 14px;
+    }
+    
+    .challenge-goal {
+      font-weight: bold;
+      margin: 15px 0;
+    }
+    
+    .challenge-status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-top: 10px;
+    }
+    
+    .status-active {
+      background-color: #e6f7ee;
+      color: #0f9d58;
+    }
+    
+    .status-completed {
+      background-color: #e0e0e0;
+      color: #606060;
+    }
+    
+    .status-upcoming {
+      background-color: #e8f0fe;
+      color: #4285f4;
+    }
+    
+    .leaderboard {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    
+    .leaderboard th, .leaderboard td {
+      padding: 12px 15px;
+      text-align: left;
+    }
+    
+    .leaderboard thead {
+      background-color: var(--primary-light);
+      color: var(--primary);
+    }
+    
+    .leaderboard th {
+      font-weight: bold;
+    }
+    
+    .leaderboard tbody tr {
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .leaderboard tbody tr:nth-child(even) {
+      background-color: var(--muted);
+    }
+    
+    .leaderboard tbody tr:hover {
+      background-color: var(--primary-light);
+    }
+    
+    .progress-bar {
+      height: 10px;
+      background-color: #e0e0e0;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background-color: var(--primary);
+      transition: width 0.3s ease;
+    }
+    
+    .loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 200px;
+    }
+    
+    .loading:after {
+      content: " ";
+      display: block;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 6px solid var(--primary);
+      border-color: var(--primary) transparent var(--primary) transparent;
+      animation: loading 1.2s linear infinite;
+    }
+    
+    @keyframes loading {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">SpotMe</div>
+    <h1>Challenges Viewer</h1>
+  </div>
+  
+  <div class="section">
+    <h2>Active Challenges</h2>
+    <button id="createDemoDataBtn">Create Demo Data</button>
+    <button id="refreshBtn" class="button-secondary">Refresh</button>
+    
+    <div id="challengesContainer" class="challenge-grid">
+      <div class="loading"></div>
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2>Leaderboards</h2>
+    <div id="leaderboardsContainer">
+      <div class="loading"></div>
+    </div>
+  </div>
+  
+  <script>
+    // DOM elements
+    const challengesContainer = document.getElementById('challengesContainer');
+    const leaderboardsContainer = document.getElementById('leaderboardsContainer');
+    const createDemoDataBtn = document.getElementById('createDemoDataBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    
+    // Current challenges data
+    let challenges = [];
+    
+    // Initialize
+    fetchChallenges();
+    
+    // Event Listeners
+    createDemoDataBtn.addEventListener('click', createDemoData);
+    refreshBtn.addEventListener('click', () => {
+      challengesContainer.innerHTML = '<div class="loading"></div>';
+      leaderboardsContainer.innerHTML = '<div class="loading"></div>';
+      fetchChallenges();
+    });
+    
+    // Functions
+    async function createDemoData() {
+      try {
+        createDemoDataBtn.disabled = true;
+        createDemoDataBtn.textContent = 'Creating...';
+        
+        const response = await fetch('/api/demo/initialize', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert(`Demo data created successfully!\nCreated ${data.data.users} users, ${data.data.challenges} challenges, and ${data.data.participants} participants.`);
+          fetchChallenges();
+        } else {
+          alert('Error creating demo data: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        alert('Error: ' + error.message);
+      } finally {
+        createDemoDataBtn.disabled = false;
+        createDemoDataBtn.textContent = 'Create Demo Data';
+      }
+    }
+    
+    async function fetchChallenges() {
+      try {
+        // First fetch public challenges (no auth required)
+        const response = await fetch('/api/challenges/public');
+        const data = await response.json();
+        
+        challenges = data;
+        renderChallenges();
+        renderLeaderboards();
+      } catch (error) {
+        challengesContainer.innerHTML = `<div>Error loading challenges: ${error.message}</div>`;
+      }
+    }
+    
+    function renderChallenges() {
+      if (!challenges || challenges.length === 0) {
+        challengesContainer.innerHTML = `
+          <div style="grid-column: 1/-1; text-align: center; padding: 40px;">
+            <p>No challenges found. Click the "Create Demo Data" button to generate some demo challenges.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      const challengesHTML = challenges.map(challenge => {
+        const startDate = new Date(challenge.startDate);
+        const endDate = new Date(challenge.endDate);
+        
+        let statusClass = 'status-active';
+        let statusText = 'Active';
+        
+        if (new Date() < startDate) {
+          statusClass = 'status-upcoming';
+          statusText = 'Upcoming';
+        } else if (new Date() > endDate) {
+          statusClass = 'status-completed';
+          statusText = 'Completed';
+        }
+        
+        return `
+          <div class="challenge-card">
+            <div class="challenge-header">
+              <h3 class="challenge-title">${challenge.name}</h3>
+              <div class="challenge-creator">Created by ${challenge.creatorName || 'Anonymous'}</div>
+            </div>
+            <div class="challenge-dates">
+              ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}
+            </div>
+            <div class="challenge-goal">
+              Goal: ${challenge.goalValue} ${challenge.goalType} of ${challenge.targetExercise}
+            </div>
+            <div class="challenge-status ${statusClass}">${statusText}</div>
+          </div>
+        `;
+      }).join('');
+      
+      challengesContainer.innerHTML = challengesHTML;
+    }
+    
+    async function renderLeaderboards() {
+      if (!challenges || challenges.length === 0) {
+        leaderboardsContainer.innerHTML = '<p>No challenges available for leaderboards.</p>';
+        return;
+      }
+      
+      try {
+        let leaderboardsHTML = '';
+        
+        for (const challenge of challenges) {
+          // Fetch leaderboard for each challenge
+          const response = await fetch(`/api/challenges/${challenge.id}/leaderboard`);
+          const leaderboard = await response.json();
+          
+          if (leaderboard && leaderboard.length > 0) {
+            leaderboardsHTML += `
+              <div style="margin-bottom: 30px;">
+                <h3>${challenge.name} Leaderboard</h3>
+                <table class="leaderboard">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Name</th>
+                      <th>Progress</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${leaderboard.map((entry, index) => {
+                      const progressPercent = Math.min(100, Math.round((entry.progress / challenge.goalValue) * 100));
+                      return `
+                        <tr>
+                          <td>${index + 1}</td>
+                          <td>${entry.name}</td>
+                          <td>
+                            <div>${entry.progress} / ${challenge.goalValue} ${challenge.goalType}</div>
+                            <div class="progress-bar">
+                              <div class="progress-fill" style="width: ${progressPercent}%;"></div>
+                            </div>
+                          </td>
+                          <td>${entry.completed ? '✓ Completed' : 'In Progress'}</td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `;
+          } else {
+            leaderboardsHTML += `
+              <div style="margin-bottom: 30px;">
+                <h3>${challenge.name} Leaderboard</h3>
+                <p>No participants yet.</p>
+              </div>
+            `;
+          }
+        }
+        
+        leaderboardsContainer.innerHTML = leaderboardsHTML;
+      } catch (error) {
+        leaderboardsContainer.innerHTML = `<div>Error loading leaderboards: ${error.message}</div>`;
+      }
+    }
+  </script>
+</body>
+</html>
