@@ -72,12 +72,16 @@ function Router() {
   
   if (needsProfileSetup) {
     return (
-      <Switch>
-        <Route path="/profile-setup" component={ProfileSetupPage} />
-        <Route>
-          <ProfileSetupPage />
-        </Route>
-      </Switch>
+      <div className="min-h-screen bg-background">
+        <Switch>
+          <Route path="/profile-setup" component={ProfileSetupPage} />
+          <Route path="/auth" component={AuthPage} />
+          <Route>
+            <ProfileSetupPage />
+          </Route>
+        </Switch>
+        <Toaster />
+      </div>
     );
   }
 
