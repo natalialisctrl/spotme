@@ -100,35 +100,79 @@ export class MemStorage implements IStorage {
     this.createDemoUsers();
   }
 
+  // Helper method to generate a nearby location within a given radius in miles
+  private generateNearbyLocation(baseLat: number, baseLng: number, radiusMiles: number): { latitude: number, longitude: number } {
+    // Earth's radius in miles
+    const earthRadius = 3958.8;
+    
+    // Convert radius from miles to radians
+    const radiusRadians = radiusMiles / earthRadius;
+    
+    // Random distance within radius (using square root for more uniform distribution)
+    const distance = radiusMiles * Math.sqrt(Math.random());
+    
+    // Random angle
+    const angle = Math.random() * 2 * Math.PI;
+    
+    // Convert base coordinates to radians
+    const baseLatRad = this.toRadians(baseLat);
+    const baseLngRad = this.toRadians(baseLng);
+    
+    // Calculate new position
+    const newLatRad = Math.asin(
+      Math.sin(baseLatRad) * Math.cos(distance / earthRadius) +
+      Math.cos(baseLatRad) * Math.sin(distance / earthRadius) * Math.cos(angle)
+    );
+    
+    const newLngRad = baseLngRad + Math.atan2(
+      Math.sin(angle) * Math.sin(distance / earthRadius) * Math.cos(baseLatRad),
+      Math.cos(distance / earthRadius) - Math.sin(baseLatRad) * Math.sin(newLatRad)
+    );
+    
+    // Convert back to degrees
+    const newLat = newLatRad * 180 / Math.PI;
+    const newLng = newLngRad * 180 / Math.PI;
+    
+    return { latitude: newLat, longitude: newLng };
+  }
+
   private createDemoUsers() {
-    const demoUsers: InsertUser[] = [
-      {
-        username: "natalia",
-        password: "liscr12",
-        email: "natalia@spotme.com",
-        name: "Natalia Trainer",
-        gender: "female",
-        experienceLevel: "advanced",
-        experienceYears: 5,
-        bio: "Certified personal trainer who loves connecting with fitness enthusiasts",
-        gymName: "FitZone Gym",
-        latitude: 37.7749,
-        longitude: -122.4194,
-        aiGeneratedInsights: JSON.stringify({
-          workoutStyle: "balanced",
-          motivationTips: [
-            "Track your progress with a fitness journal",
-            "Set specific, achievable weekly goals",
-            "Join group classes to stay motivated"
-          ],
-          recommendedGoals: [
-            "Increase strength by 15% in three months",
-            "Improve cardiovascular endurance",
-            "Maintain consistent workout schedule"
-          ],
-          partnerPreferences: "Looking for dedicated partners who want to improve their form and technique"
-        })
-      },
+    // Austin-based coordinates (for Natalia's default location)
+    const baseLatitude = 30.2267;
+    const baseLongitude = -97.7476;
+    
+    // First create our primary user
+    const nataliaUser: InsertUser = {
+      username: "natalia",
+      password: "liscr12",
+      email: "natalia@spotme.com",
+      name: "Natalia Liscio",
+      gender: "female",
+      experienceLevel: "intermediate",
+      experienceYears: 5,
+      bio: "Certified personal trainer who loves connecting with fitness enthusiasts",
+      gymName: "FitZone Gym",
+      latitude: baseLatitude,  // Austin-based location
+      longitude: baseLongitude,
+      aiGeneratedInsights: JSON.stringify({
+        workoutStyle: "balanced",
+        motivationTips: [
+          "Track your progress with a fitness journal",
+          "Set specific, achievable weekly goals",
+          "Join group classes to stay motivated"
+        ],
+        recommendedGoals: [
+          "Increase strength by 15% in three months",
+          "Improve cardiovascular endurance",
+          "Maintain consistent workout schedule"
+        ],
+        partnerPreferences: "Looking for dedicated partners who want to improve their form and technique"
+      })
+    };
+    this.createUser(nataliaUser);
+    
+    // Define the rest of the demo users without specific locations
+    const otherUsers = [
       {
         username: "newuser",
         password: "password123",
@@ -139,8 +183,6 @@ export class MemStorage implements IStorage {
         experienceYears: 0,
         bio: "Just starting my fitness journey and looking for guidance",
         gymName: "Community Fitness Center",
-        latitude: 37.7650,
-        longitude: -122.4230,
         aiGeneratedInsights: null
       },
       {
@@ -153,8 +195,6 @@ export class MemStorage implements IStorage {
         experienceYears: 4,
         bio: "Love challenging workouts and helping others reach their goals",
         gymName: "FitZone Gym",
-        latitude: 37.775,
-        longitude: -122.42,
         aiGeneratedInsights: JSON.stringify({
           workoutStyle: "balanced",
           motivationTips: [
@@ -180,8 +220,6 @@ export class MemStorage implements IStorage {
         experienceYears: 7,
         bio: "Powerlifting enthusiast looking to help beginners and intermediates",
         gymName: "Strength Central",
-        latitude: 37.77,
-        longitude: -122.41,
         aiGeneratedInsights: JSON.stringify({
           workoutStyle: "high intensity",
           motivationTips: [
@@ -207,8 +245,6 @@ export class MemStorage implements IStorage {
         experienceYears: 1,
         bio: "Just getting started with fitness after years of yoga practice",
         gymName: "Wellness Studio",
-        latitude: 37.78,
-        longitude: -122.43,
         aiGeneratedInsights: JSON.stringify({
           workoutStyle: "methodical",
           motivationTips: [
@@ -234,8 +270,6 @@ export class MemStorage implements IStorage {
         experienceYears: 3,
         bio: "Fitness should be fun! Looking for workout buddies who enjoy social training",
         gymName: "FitZone Gym",
-        latitude: 37.773,
-        longitude: -122.415,
         aiGeneratedInsights: JSON.stringify({
           workoutStyle: "social",
           motivationTips: [
@@ -253,7 +287,18 @@ export class MemStorage implements IStorage {
       }
     ];
 
-    demoUsers.forEach(user => this.createUser(user));
+    // Create each user with a random location near base coordinates
+    otherUsers.forEach(user => {
+      // Generate location within 0.5-3 miles of the base location
+      const nearbyLocation = this.generateNearbyLocation(baseLatitude, baseLongitude, 2);
+      
+      // Create the user with nearby location
+      this.createUser({
+        ...user,
+        latitude: nearbyLocation.latitude,
+        longitude: nearbyLocation.longitude
+      });
+    });
   }
 
   // User operations

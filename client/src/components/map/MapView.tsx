@@ -163,7 +163,9 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
                   </div>
                   <div className="overflow-hidden">
                     <p className="text-sm font-medium truncate">{user.name}</p>
-                    <p className="text-xs text-gray-500 truncate">{Math.round(user.distance * 10) / 10} miles</p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {(user as any).distance ? `${Math.round((user as any).distance * 10) / 10} miles` : 'Nearby'}
+                    </p>
                   </div>
                 </div>
               ))}
