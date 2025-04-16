@@ -84,8 +84,39 @@ const FindPartners: FC = () => {
   return (
     <div className="space-y-6">
       <section className="bg-white p-6 rounded-xl shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome back, {user?.name}</h1>
-        <p className="text-gray-600">Set your workout focus for today and find compatible partners nearby.</p>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome back, {user?.name}</h1>
+            <p className="text-gray-600">Set your workout focus for today and find compatible partners nearby.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Link href="/challenges">
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Trophy className="h-4 w-4" />
+                View Challenges
+              </Button>
+            </Link>
+            <Button 
+              variant="default" 
+              size="sm" 
+              className="flex items-center gap-2"
+              onClick={() => createDemoDataMutation.mutate()}
+              disabled={createDemoDataMutation.isPending}
+            >
+              {createDemoDataMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  Generate Demo Data
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </section>
       
       <div className="bg-white rounded-xl shadow-sm p-6">
