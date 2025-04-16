@@ -44,6 +44,11 @@ export function Logo({
           })}>
             SpotMe
           </span>
+          {showTagline && (
+            <p className={cn('text-muted-foreground', taglineClasses[size])}>
+              Never lift solo again.
+            </p>
+          )}
 
         </div>
       </div>
