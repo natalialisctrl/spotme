@@ -96,10 +96,11 @@ const WorkoutRoutines = () => {
       resetForm();
       setIsCreateDialogOpen(false);
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error',
-        description: `Failed to create workout routine: ${error.message}`,
+        description: `Failed to create workout routine: ${errorMessage}`,
         variant: 'destructive',
       });
     }
@@ -120,10 +121,11 @@ const WorkoutRoutines = () => {
       resetForm();
       setIsEditDialogOpen(false);
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error',
-        description: `Failed to update workout routine: ${error.message}`,
+        description: `Failed to update workout routine: ${errorMessage}`,
         variant: 'destructive',
       });
     }
@@ -143,10 +145,11 @@ const WorkoutRoutines = () => {
         description: 'Workout routine deleted!',
       });
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error',
-        description: `Failed to delete workout routine: ${error.message}`,
+        description: `Failed to delete workout routine: ${errorMessage}`,
         variant: 'destructive',
       });
     }
@@ -165,10 +168,11 @@ const WorkoutRoutines = () => {
         description: 'Workout routine shared with your connections!',
       });
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error',
-        description: `Failed to share workout routine: ${error.message}`,
+        description: `Failed to share workout routine: ${errorMessage}`,
         variant: 'destructive',
       });
     }
