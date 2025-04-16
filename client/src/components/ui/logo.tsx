@@ -3,11 +3,13 @@ import { cn } from '@/lib/utils';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  showTagline?: boolean;
   className?: string;
 }
 
 export function Logo({
   size = 'md',
+  showTagline = false,
   className,
 }: LogoProps) {
   const sizeClasses = {
@@ -17,6 +19,12 @@ export function Logo({
     xl: 'h-24 w-24',
   };
 
+  const taglineClasses = {
+    sm: 'text-xs',
+    md: 'text-sm',
+    lg: 'text-base',
+    xl: 'text-lg',
+  };
 
 
   return (

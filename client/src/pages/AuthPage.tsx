@@ -144,7 +144,7 @@ const AuthPage: FC = () => {
         <Card className="w-full">
           <CardHeader>
             <div className="flex justify-center mb-4">
-              <Logo size="lg" />
+              <Logo size="lg" showTagline={true} />
             </div>
             <CardTitle className="text-2xl font-bold text-center">Welcome to SpotMe</CardTitle>
           </CardHeader>
