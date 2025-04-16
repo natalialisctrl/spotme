@@ -27,27 +27,29 @@ export function Logo({
   };
 
   return (
-    <div className={cn('flex flex-col items-center', className)}>
+    <div className={cn('flex flex-col', className)}>
       <div className="flex items-center gap-2">
         <img
           src="/assets/spotme-logo.png"
           alt="SpotMe Logo"
           className={cn('rounded-lg', sizeClasses[size])}
         />
-        <span className={cn('font-bold text-primary', {
-          'text-lg': size === 'sm',
-          'text-xl': size === 'md',
-          'text-2xl': size === 'lg',
-          'text-3xl': size === 'xl',
-        })}>
-          SpotMe
-        </span>
+        <div className="flex flex-col">
+          <span className={cn('font-bold text-primary', {
+            'text-lg': size === 'sm',
+            'text-xl': size === 'md',
+            'text-2xl': size === 'lg',
+            'text-3xl': size === 'xl',
+          })}>
+            SpotMe
+          </span>
+          {showTagline && (
+            <p className={cn('text-muted-foreground', taglineClasses[size])}>
+              Never lift solo again.
+            </p>
+          )}
+        </div>
       </div>
-      {showTagline && (
-        <p className={cn('text-muted-foreground mt-1', taglineClasses[size])}>
-          Never lift solo again.
-        </p>
-      )}
     </div>
   );
 }
