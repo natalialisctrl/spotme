@@ -98,7 +98,6 @@ const WorkoutSelection: FC<WorkoutSelectionProps> = ({ onSelectWorkout }) => {
 
   return (
     <section className="mb-8 px-4">
-      <h2 className="text-xl font-bold font-poppins text-dark mb-4">Today's Workout Focus</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {workoutTypes.map((workoutType) => (
           <button
