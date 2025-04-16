@@ -91,6 +91,7 @@ function Router() {
         <Route path="/profile-setup" component={ProfileSetupPage} />
         <Route path="/upload-profile-picture" component={UploadProfilePicture} />
         <Route path="/security-settings" component={SecuritySettingsPage} />
+        <Route path="/workout-focus" component={WorkoutFocusPage} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>

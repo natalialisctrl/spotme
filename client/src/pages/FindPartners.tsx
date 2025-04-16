@@ -1,11 +1,12 @@
 import { FC, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useAuth } from "@/hooks/use-auth";
 import WorkoutSelection from "@/components/workout/WorkoutSelection";
 import MapView from "@/components/map/MapView";
 import PartnersList from "@/components/partners/PartnersList";
-import { Loader2 } from "lucide-react";
+import { Loader2, Dumbbell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@shared/schema";
@@ -60,11 +61,22 @@ const FindPartners: FC = () => {
         <p className="text-gray-600">Set your workout focus for today and find compatible partners nearby.</p>
       </section>
       
-      <WorkoutSelection onSelectWorkout={handleWorkoutSelect} />
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-2 md:mb-0">Today's Workout Focus</h2>
+          <Link href="/workout-focus">
+            <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <Dumbbell className="h-4 w-4" />
+              Detailed Workout Page
+            </Button>
+          </Link>
+        </div>
+        <WorkoutSelection onSelectWorkout={handleWorkoutSelect} />
+      </div>
       
       <MapView 
         nearbyUsers={[]} 
-        currentUser={user}
+        currentUser={user || undefined}
         filterParams={filterParams}
         onUpdateFilters={handleUpdateFilters}
       />
