@@ -70,6 +70,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes are now handled by setupAuth()
 
   // User routes
+  // Route for updating user location with proper debugging - IMPORTANT: Specific routes must come BEFORE parameterized routes
+  app.patch('/api/users/location', async (req, res) => {
+    // Log session details for debugging
+    console.log("Location update - Session info:", {
+      hasSession: !!req.session,
+      userId: req.session?.userId,
+      isAuthenticated: req.isAuthenticated(),
+      hasUser: !!req.user
+    });
+    
+    // First try to use req.user if user is authenticated
+    let userId = req.user?.id;
+    
+    // Then fallback to session.userId
+    if (!userId && req.session?.userId) {
+      userId = req.session.userId;
+    }
+    
+    // If both checks fail, user is not authenticated
+    if (!userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const locationData = updateLocationSchema.parse(req.body);
+      
+      // Log the data we're updating with
+      console.log(`Updating location for user ${userId}:`, locationData);
+      
+      // Get current user to verify they exist before updating
+      const existingUser = await storage.getUser(userId);
+      if (!existingUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Direct update without additional authorization checks
+      const user = await storage.updateUserLocation(userId, locationData);
+      
+      // Don't return password in response
+      if (user) {
+        const { password, ...userWithoutPassword } = user;
+        
+        // Log successful update
+        console.log(`Successfully updated location for user ${userId}`);
+        return res.json(userWithoutPassword);
+      } else {
+        return res.status(500).json({ message: 'Failed to update location: User data missing after update' });
+      }
+    } catch (error: any) {
+      console.error("Error updating location:", error);
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.errors });
+      }
+      return res.status(500).json({ message: `Failed to update location: ${error.message || 'Unknown error'}` });
+    }
+  });
+  
+  // Generic user update endpoint (AFTER specific routes)
   app.patch('/api/users/:id', async (req, res) => {
     // Log session details for debugging
     console.log("User update - Session info:", {
@@ -121,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Don't return password in response
         const { password, ...userWithoutPassword } = user;
         return res.json(userWithoutPassword);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error updating location:", error);
         return res.status(500).json({ message: `Failed to update location: ${error.message}` });
       }
@@ -144,65 +202,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Don't return password in response
       const { password, ...userWithoutPassword } = user;
       return res.json(userWithoutPassword);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating user:", error);
       if (error instanceof ZodError) {
         return res.status(400).json({ message: error.errors });
       }
       return res.status(500).json({ message: 'Failed to update user' });
-    }
-  });
-  
-  // Route for updating user location with proper debugging
-  app.patch('/api/users/location', async (req, res) => {
-    // Log session details for debugging
-    console.log("Location update - Session info:", {
-      hasSession: !!req.session,
-      userId: req.session?.userId,
-      isAuthenticated: req.isAuthenticated(),
-      hasUser: !!req.user
-    });
-    
-    // First try to use req.user if user is authenticated
-    let userId = req.user?.id;
-    
-    // Then fallback to session.userId
-    if (!userId && req.session?.userId) {
-      userId = req.session.userId;
-    }
-    
-    // If both checks fail, user is not authenticated
-    if (!userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    try {
-      const locationData = updateLocationSchema.parse(req.body);
-      
-      // Log the data we're updating with
-      console.log(`Updating location for user ${userId}:`, locationData);
-      
-      // Get current user to verify they exist before updating
-      const existingUser = await storage.getUser(userId);
-      if (!existingUser) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-      
-      // Direct update without additional authorization checks
-      const user = await storage.updateUserLocation(userId, locationData);
-      
-      // Don't return password in response
-      const { password, ...userWithoutPassword } = user;
-      
-      // Log successful update
-      console.log(`Successfully updated location for user ${userId}`);
-      return res.json(userWithoutPassword);
-    } catch (error) {
-      console.error("Error updating location:", error);
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: error.errors });
-      }
-      return res.status(500).json({ message: `Failed to update location: ${error.message}` });
     }
   });
   
