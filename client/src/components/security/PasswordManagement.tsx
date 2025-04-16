@@ -1,226 +1,273 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { z } from "zod";
-import { 
-  Form, 
-  FormControl, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
-} from "@/components/ui/form";
+import { Loader2, Lock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, LockKeyhole, Eye, EyeOff } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-
-// Password schema with validation rules
-const passwordSchema = z.string()
-  .min(8, "Password must be at least 8 characters")
-  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-  .regex(/[0-9]/, "Password must contain at least one number")
-  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
-
-// Form schema
-const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
-  newPassword: passwordSchema,
-  confirmPassword: z.string().min(1, "Confirm password is required")
-}).refine(data => data.newPassword === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"]
-});
-
-type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
+import { apiRequest } from "@/lib/queryClient";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 export default function PasswordManagement() {
   const { toast } = useToast();
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const form = useForm<ChangePasswordFormValues>({
-    resolver: zodResolver(changePasswordSchema),
-    defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: ""
-    }
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string>("");
+  
+  // Password change form
+  const [changePasswordForm, setChangePasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
-
-  const changePasswordMutation = useMutation({
-    mutationFn: async (data: ChangePasswordFormValues) => {
-      const res = await apiRequest("POST", "/api/change-password", {
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword
+  
+  // Email change form
+  const [changeEmailForm, setChangeEmailForm] = useState({
+    currentPassword: "",
+    newEmail: "",
+  });
+  
+  // Handle change password form
+  const handleChangePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setChangePasswordForm(prev => ({ ...prev, [name]: value }));
+  };
+  
+  // Handle change email form
+  const handleChangeEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setChangeEmailForm(prev => ({ ...prev, [name]: value }));
+  };
+  
+  // Submit change password
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+    
+    const { currentPassword, newPassword, confirmPassword } = changePasswordForm;
+    
+    // Validate passwords
+    if (newPassword !== confirmPassword) {
+      setError("New passwords do not match");
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters long");
+      setIsSubmitting(false);
+      return;
+    }
+    
+    try {
+      const res = await apiRequest("POST", "/api/user/change-password", {
+        currentPassword,
+        newPassword,
       });
-      return res.json();
-    },
-    onSuccess: () => {
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to change password");
+      }
+      
+      // Reset form
+      setChangePasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      
       toast({
         title: "Password Updated",
         description: "Your password has been successfully changed.",
       });
-      form.reset();
-    },
-    onError: (error) => {
-      toast({
-        title: "Password Change Failed",
-        description: error.message || "Failed to change password. Please check your current password.",
-        variant: "destructive",
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to change password");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  // Submit change email
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+    
+    const { currentPassword, newEmail } = changeEmailForm;
+    
+    // Validate email
+    if (!newEmail.includes("@")) {
+      setError("Please enter a valid email address");
+      setIsSubmitting(false);
+      return;
+    }
+    
+    try {
+      const res = await apiRequest("POST", "/api/user/change-email", {
+        currentPassword,
+        newEmail,
       });
-    },
-  });
-
-  const onSubmit = (data: ChangePasswordFormValues) => {
-    changePasswordMutation.mutate(data);
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to change email");
+      }
+      
+      // Reset form
+      setChangeEmailForm({
+        currentPassword: "",
+        newEmail: "",
+      });
+      
+      toast({
+        title: "Email Update Initiated",
+        description: "A verification email has been sent to your new email address. Please check your inbox to complete the update.",
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update email");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <LockKeyhole className="h-5 w-5" />
-          Change Password
-        </CardTitle>
-        <CardDescription>
-          Update your account password. Choose a strong, unique password.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="currentPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Current Password</FormLabel>
-                  <div className="relative">
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter current password" 
-                        type={showCurrentPassword ? "text" : "password"} 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    >
-                      {showCurrentPassword ? 
-                        <EyeOff className="h-4 w-4 text-muted-foreground" /> : 
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      }
-                    </Button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="newPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>New Password</FormLabel>
-                  <div className="relative">
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter new password" 
-                        type={showNewPassword ? "text" : "password"} 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                    >
-                      {showNewPassword ? 
-                        <EyeOff className="h-4 w-4 text-muted-foreground" /> : 
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      }
-                    </Button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm New Password</FormLabel>
-                  <div className="relative">
-                    <FormControl>
-                      <Input 
-                        placeholder="Confirm new password" 
-                        type={showConfirmPassword ? "text" : "password"} 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? 
-                        <EyeOff className="h-4 w-4 text-muted-foreground" /> : 
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      }
-                    </Button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="text-sm space-y-1 mt-2">
-              <p className="text-muted-foreground font-medium">Password Requirements:</p>
-              <ul className="text-xs text-muted-foreground pl-4 space-y-1">
-                <li>At least 8 characters long</li>
-                <li>At least one uppercase letter (A-Z)</li>
-                <li>At least one lowercase letter (a-z)</li>
-                <li>At least one number (0-9)</li>
-                <li>At least one special character (!@#$%^&*)</li>
-              </ul>
+    <div className="space-y-6">
+      {error && (
+        <div className="p-3 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
+          {error}
+        </div>
+      )}
+      
+      <Tabs defaultValue="password" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="password">Change Password</TabsTrigger>
+          <TabsTrigger value="email">Update Recovery Email</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="password" className="mt-6">
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Current Password</Label>
+              <Input
+                id="currentPassword"
+                name="currentPassword"
+                type="password"
+                required
+                value={changePasswordForm.currentPassword}
+                onChange={handleChangePasswordChange}
+              />
             </div>
-
-            <CardFooter className="px-0 pt-4">
-              <Button
-                type="submit"
-                className="ml-auto"
-                disabled={changePasswordMutation.isPending}
-              >
-                {changePasswordMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Updating...
-                  </>
-                ) : (
-                  <>Change Password</>
-                )}
-              </Button>
-            </CardFooter>
+            
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                name="newPassword"
+                type="password"
+                required
+                minLength={8}
+                value={changePasswordForm.newPassword}
+                onChange={handleChangePasswordChange}
+              />
+              <p className="text-xs text-muted-foreground">
+                Password must be at least 8 characters long
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                value={changePasswordForm.confirmPassword}
+                onChange={handleChangePasswordChange}
+              />
+            </div>
+            
+            <Button 
+              type="submit" 
+              className="w-full"
+              disabled={isSubmitting || 
+                !changePasswordForm.currentPassword || 
+                !changePasswordForm.newPassword || 
+                !changePasswordForm.confirmPassword}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  Update Password
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </>
+              )}
+            </Button>
           </form>
-        </Form>
-      </CardContent>
-    </Card>
+        </TabsContent>
+        
+        <TabsContent value="email" className="mt-6">
+          <form onSubmit={handleChangeEmail} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="currentPasswordEmail">Current Password</Label>
+              <Input
+                id="currentPasswordEmail"
+                name="currentPassword"
+                type="password"
+                required
+                value={changeEmailForm.currentPassword}
+                onChange={handleChangeEmailChange}
+              />
+              <p className="text-xs text-muted-foreground">
+                For security, please enter your current password
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="newEmail">New Recovery Email</Label>
+              <Input
+                id="newEmail"
+                name="newEmail"
+                type="email"
+                required
+                value={changeEmailForm.newEmail}
+                onChange={handleChangeEmailChange}
+              />
+              <p className="text-xs text-muted-foreground">
+                This email will be used for account recovery and security notifications
+              </p>
+            </div>
+            
+            <Button 
+              type="submit" 
+              className="w-full"
+              disabled={isSubmitting || 
+                !changeEmailForm.currentPassword || 
+                !changeEmailForm.newEmail}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  Update Email
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </>
+              )}
+            </Button>
+          </form>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

@@ -1,185 +1,171 @@
 import { useState } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { apiRequest } from "@/lib/queryClient";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Loader2, Shield } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-
-// Verification code schema
-const verificationSchema = z.object({
-  verificationCode: z.string().min(6, "Code must be 6 digits").max(6)
-});
-
-type VerificationFormValues = z.infer<typeof verificationSchema>;
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { apiRequest } from "@/lib/queryClient";
 
 interface MfaVerificationProps {
   userId: number;
-  onSuccess: () => void;
-  onCancel?: () => void;
+  onComplete: (userData: any) => void;
+  onCancel: () => void;
 }
 
-export default function MfaVerification({ userId, onSuccess, onCancel }: MfaVerificationProps) {
-  const { toast } = useToast();
+export default function MfaVerification({ 
+  userId, 
+  onComplete, 
+  onCancel 
+}: MfaVerificationProps) {
+  const [verificationCode, setVerificationCode] = useState<string>("");
+  const [backupCode, setBackupCode] = useState<string>("");
+  const [error, setError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Form setup
-  const form = useForm<VerificationFormValues>({
-    resolver: zodResolver(verificationSchema),
-    defaultValues: {
-      verificationCode: ""
+  
+  // Verify with authenticator app
+  const handleVerifyWithApp = async () => {
+    if (!verificationCode.trim() || verificationCode.length !== 6) {
+      setError("Please enter a valid 6-digit verification code");
+      return;
     }
-  });
-
-  // Form submission
-  const onSubmit = async (data: VerificationFormValues) => {
+    
+    await verifyCode("totp", verificationCode);
+  };
+  
+  // Verify with backup code
+  const handleVerifyWithBackup = async () => {
+    if (!backupCode.trim() || backupCode.length < 8) {
+      setError("Please enter a valid backup code");
+      return;
+    }
+    
+    await verifyCode("backup", backupCode);
+  };
+  
+  // Verify code with the API
+  const verifyCode = async (type: "totp" | "backup", code: string) => {
     setIsSubmitting(true);
-    setError(null);
+    setError("");
     
     try {
-      const res = await apiRequest("POST", "/api/mfa/verify", {
+      const res = await apiRequest("POST", "/api/mfa/login-verify", {
         userId,
-        verificationCode: data.verificationCode
+        type,
+        code,
       });
       
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Verification failed");
+        throw new Error(errorData.message || "Invalid verification code");
       }
       
-      toast({
-        title: "Verification Successful",
-        description: "You have successfully verified your identity.",
-      });
-      
-      onSuccess();
+      const userData = await res.json();
+      onComplete(userData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Verification failed. Please try again.");
-      toast({
-        title: "Verification Failed",
-        description: err instanceof Error ? err.message : "Invalid verification code. Please try again.",
-        variant: "destructive",
-      });
+      setError(err instanceof Error ? err.message : "Failed to verify code");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle backup code
-  const handleUseBackupCode = async () => {
-    try {
-      const res = await apiRequest("GET", `/api/mfa/backup/${userId}`);
-      
-      if (!res.ok) {
-        throw new Error("Could not switch to backup code verification");
-      }
-      
-      // Redirect to backup code verification
-      window.location.href = `/auth/backup-code?userId=${userId}`;
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Could not switch to backup code verification",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Shield className="h-5 w-5" />
-          Two-Factor Authentication
-        </CardTitle>
-        <CardDescription>
-          Enter the verification code from your authenticator app.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="verificationCode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Verification Code</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter 6-digit code"
-                      maxLength={6}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {error && (
-              <div className="text-sm text-red-500 mt-2">
-                {error}
-              </div>
-            )}
-
+    <div>
+      <DialogHeader>
+        <DialogTitle>Two-Factor Authentication</DialogTitle>
+        <DialogDescription>
+          Verify your identity using your authentication app or a backup code
+        </DialogDescription>
+      </DialogHeader>
+      
+      <div className="py-4">
+        {error && (
+          <div className="mb-4 p-3 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
+            {error}
+          </div>
+        )}
+        
+        <Tabs defaultValue="authenticator">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="authenticator">Authenticator App</TabsTrigger>
+            <TabsTrigger value="backup">Backup Code</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="authenticator" className="mt-4 space-y-4">
+            <div>
+              <Label htmlFor="totp-code">Enter the 6-digit code from your authenticator app</Label>
+              <Input
+                id="totp-code"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                placeholder="000000"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/[^0-9]/g, ""))}
+                className="mt-2 text-center text-lg tracking-widest font-mono"
+              />
+            </div>
+            
             <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={isSubmitting}
+              onClick={handleVerifyWithApp} 
+              className="w-full"
+              disabled={isSubmitting || verificationCode.length !== 6}
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Verifying...
                 </>
-              ) : (
-                "Verify"
-              )}
+              ) : "Verify"}
             </Button>
-          </form>
-        </Form>
-
-        <div className="mt-4 text-center">
-          <Button 
-            variant="link" 
-            className="text-sm text-muted-foreground" 
-            onClick={handleUseBackupCode}
-          >
-            Use backup code instead
-          </Button>
-        </div>
-      </CardContent>
-      {onCancel && (
-        <CardFooter>
-          <Button 
-            variant="ghost" 
-            className="w-full" 
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-        </CardFooter>
-      )}
-    </Card>
+          </TabsContent>
+          
+          <TabsContent value="backup" className="mt-4 space-y-4">
+            <div>
+              <Label htmlFor="backup-code">Enter one of your backup codes</Label>
+              <Input
+                id="backup-code"
+                type="text"
+                placeholder="xxxxx-xxxxx"
+                value={backupCode}
+                onChange={(e) => setBackupCode(e.target.value)}
+                className="mt-2 text-center text-lg font-mono"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Use one of the backup codes you saved when setting up two-factor authentication.
+                Each code can only be used once.
+              </p>
+            </div>
+            
+            <Button 
+              onClick={handleVerifyWithBackup} 
+              className="w-full"
+              disabled={isSubmitting || backupCode.length < 8}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Verifying...
+                </>
+              ) : "Verify with Backup Code"}
+            </Button>
+          </TabsContent>
+        </Tabs>
+      </div>
+      
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>
+          Cancel
+        </Button>
+      </DialogFooter>
+    </div>
   );
 }

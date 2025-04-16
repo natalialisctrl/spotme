@@ -1,119 +1,169 @@
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useState } from "react";
+import { Loader2, Mail, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, Mail, CheckCircle, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface EmailVerificationProps {
   email: string;
-  isVerified: boolean;
-  onVerificationStatusChange: () => void;
+  onComplete: () => void;
 }
 
-export default function EmailVerification({ 
-  email, 
-  isVerified,
-  onVerificationStatusChange
-}: EmailVerificationProps) {
+export default function EmailVerification({ email, onComplete }: EmailVerificationProps) {
   const { toast } = useToast();
-
-  const resendMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/resend-verification");
-      return res.json();
-    },
-    onSuccess: () => {
+  const [verificationCode, setVerificationCode] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<string>("");
+  const [isVerified, setIsVerified] = useState(false);
+  
+  // Request verification email
+  const requestVerificationEmail = async () => {
+    setIsSending(true);
+    setError("");
+    
+    try {
+      const res = await apiRequest("POST", "/api/email/request-verification");
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to send verification email");
+      }
+      
       toast({
-        title: "Email Sent",
-        description: "A new verification email has been sent. Please check your inbox.",
+        title: "Verification Email Sent",
+        description: `We've sent a verification code to ${email}. Please check your inbox and spam folder.`,
       });
-    },
-    onError: (error) => {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send verification email");
       toast({
-        title: "Failed to Send",
-        description: error.message || "Could not send verification email. Please try again later.",
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to send verification email",
         variant: "destructive",
       });
-    },
-  });
-
-  const handleResendVerification = () => {
-    resendMutation.mutate();
+    } finally {
+      setIsSending(false);
+    }
+  };
+  
+  // Verify email code
+  const verifyEmail = async () => {
+    if (!verificationCode.trim()) {
+      setError("Please enter the verification code");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setError("");
+    
+    try {
+      const res = await apiRequest("POST", "/api/email/verify", {
+        code: verificationCode,
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Invalid verification code");
+      }
+      
+      setIsVerified(true);
+      setTimeout(() => {
+        onComplete();
+      }, 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to verify email");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isVerified) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            Email Verified
-          </CardTitle>
-          <CardDescription>
-            Your email address has been successfully verified.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-2">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            <span>{email}</span>
-            <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200">
-              Verified
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center py-8 text-center">
+        <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+          <CheckCircle2 className="h-6 w-6 text-green-600" />
+        </div>
+        <h3 className="font-medium text-lg mb-2">Email Verified!</h3>
+        <p className="text-muted-foreground">
+          Your email has been successfully verified. You'll be redirected in a moment.
+        </p>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-amber-500" />
-          Email Verification Required
-        </CardTitle>
-        <CardDescription>
-          Please verify your email address to unlock all features of your account.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Alert className="mb-4">
-          <AlertDescription>
-            We've sent a verification email to <strong>{email}</strong>. 
-            Please check your inbox and click the verification link in the email.
-          </AlertDescription>
-        </Alert>
-        <div className="flex items-center space-x-2">
-          <Mail className="h-4 w-4 text-muted-foreground" />
-          <span>{email}</span>
-          <Badge variant="outline" className="ml-2 bg-amber-50 text-amber-700 border-amber-200">
-            Unverified
-          </Badge>
+    <div className="space-y-6">
+      {error && (
+        <div className="p-3 text-sm text-red-700 bg-red-50 rounded-md border border-red-200">
+          {error}
         </div>
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        <div className="text-sm text-muted-foreground">
-          Didn't receive the email?
+      )}
+      
+      <div className="text-center py-4">
+        <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Mail className="h-6 w-6 text-blue-600" />
         </div>
-        <Button
-          variant="outline"
-          onClick={handleResendVerification}
-          disabled={resendMutation.isPending}
+        <h3 className="font-medium text-lg mb-2">Verify Your Email</h3>
+        <p className="text-muted-foreground">
+          We need to verify that {email} belongs to you. 
+          Click the button below to receive a verification code.
+        </p>
+      </div>
+      
+      <Button 
+        className="w-full"
+        onClick={requestVerificationEmail}
+        disabled={isSending}
+      >
+        {isSending ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Sending...
+          </>
+        ) : "Send Verification Code"}
+      </Button>
+      
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">
+            Enter Code
+          </span>
+        </div>
+      </div>
+      
+      <div className="space-y-4">
+        <div>
+          <Input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="Verification code"
+            className="text-center text-lg tracking-wider"
+            value={verificationCode}
+            onChange={(e) => setVerificationCode(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Enter the 6-digit code sent to your email
+          </p>
+        </div>
+        
+        <Button 
+          className="w-full"
+          onClick={verifyEmail}
+          disabled={isSubmitting || !verificationCode.trim()}
         >
-          {resendMutation.isPending ? (
+          {isSubmitting ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Sending...
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Verifying...
             </>
-          ) : (
-            <>Resend Verification Email</>
-          )}
+          ) : "Verify Email"}
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }

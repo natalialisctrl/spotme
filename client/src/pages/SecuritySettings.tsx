@@ -9,6 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -99,11 +100,19 @@ export default function SecuritySettings() {
     }
   });
 
+  // Define log entry type
+  interface SecurityLogEntry {
+    timestamp: string;
+    activity: string;
+    ipAddress: string;
+    status: 'success' | 'failed';
+  }
+
   // Get security logs
   const { 
     data: logsData, 
     isLoading: logsLoading 
-  } = useQuery({
+  } = useQuery<SecurityLogEntry[]>({
     queryKey: ["/api/security/logs"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/security/logs");
@@ -234,13 +243,7 @@ export default function SecuritySettings() {
                           </DialogHeader>
                           
                           <div className="space-y-4 py-4">
-                            <Button className="w-full" variant="outline">
-                              Change Password
-                            </Button>
-                            
-                            <Button className="w-full" variant="outline">
-                              Update Recovery Email
-                            </Button>
+                            <PasswordManagement />
                           </div>
                           
                           <DialogFooter>
@@ -306,7 +309,7 @@ export default function SecuritySettings() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {logsData.map((log, index) => (
+                    {logsData.map((log: SecurityLogEntry, index: number) => (
                       <TableRow key={index}>
                         <TableCell>{new Date(log.timestamp).toLocaleString()}</TableCell>
                         <TableCell>{log.activity}</TableCell>

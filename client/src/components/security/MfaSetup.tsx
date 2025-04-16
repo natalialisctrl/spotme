@@ -1,47 +1,10 @@
 import { useState, useEffect } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { apiRequest } from "@/lib/queryClient";
+import { Loader2, CheckCircle2, Copy, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Shield, ClipboardCopy, QrCode, Check, RefreshCw } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-
-// Verification code schema
-const verificationSchema = z.object({
-  verificationCode: z.string().length(6, "Code must be 6 digits")
-});
-
-type VerificationFormValues = z.infer<typeof verificationSchema>;
+import { Label } from "@/components/ui/label";
+import { DialogTitle, DialogHeader, DialogDescription } from "@/components/ui/dialog";
+import { apiRequest } from "@/lib/queryClient";
 
 interface MfaSetupProps {
   onComplete: () => void;
@@ -49,276 +12,315 @@ interface MfaSetupProps {
 }
 
 export default function MfaSetup({ onComplete, onCancel }: MfaSetupProps) {
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
-  const [setupData, setSetupData] = useState<{
-    qrCode: string;
-    secret: string;
-    backupCodes: string[];
-  } | null>(null);
-  const [secretCopied, setSecretCopied] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Form setup
-  const form = useForm<VerificationFormValues>({
-    resolver: zodResolver(verificationSchema),
-    defaultValues: {
-      verificationCode: ""
-    }
-  });
-
+  const [step, setStep] = useState<"loading" | "setup" | "verify" | "backup">("loading");
+  const [qrCode, setQrCode] = useState<string>("");
+  const [secret, setSecret] = useState<string>("");
+  const [verificationCode, setVerificationCode] = useState<string>("");
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [error, setError] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showBackupCodes, setShowBackupCodes] = useState(false);
+  
+  // Load setup data
   useEffect(() => {
-    // Fetch MFA setup data (QR code, secret, backup codes)
-    async function fetchSetupData() {
-      setIsLoading(true);
+    const fetchSetupData = async () => {
       try {
         const res = await apiRequest("GET", "/api/mfa/setup");
         
         if (!res.ok) {
-          throw new Error("Failed to setup MFA");
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Failed to load MFA setup data");
         }
         
         const data = await res.json();
-        setSetupData({
-          qrCode: data.qrCode,
-          secret: data.secret,
-          backupCodes: data.backupCodes || []
-        });
+        setQrCode(data.qrCode);
+        setSecret(data.secret);
+        setStep("setup");
       } catch (err) {
-        toast({
-          title: "Error",
-          description: err instanceof Error ? err.message : "Failed to setup MFA",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
+        setError(err instanceof Error ? err.message : "Failed to load MFA setup");
+        setStep("setup"); // Move to setup anyway to show error
       }
-    }
+    };
     
     fetchSetupData();
-  }, [toast]);
-
-  // Form submission
-  const onSubmit = async (data: VerificationFormValues) => {
-    setIsVerifying(true);
-    setError(null);
+  }, []);
+  
+  // Verify the code
+  const handleVerifyCode = async () => {
+    if (!verificationCode || verificationCode.length !== 6) {
+      setError("Please enter a valid 6-digit verification code");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setError("");
     
     try {
-      const res = await apiRequest("POST", "/api/mfa/verify-setup", {
-        verificationCode: data.verificationCode
+      const res = await apiRequest("POST", "/api/mfa/verify", {
+        code: verificationCode,
       });
       
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Verification failed");
+        throw new Error(errorData.message || "Invalid verification code");
       }
       
-      toast({
-        title: "MFA Enabled",
-        description: "Two-factor authentication has been successfully set up for your account.",
-      });
+      const data = await res.json();
+      setBackupCodes(data.backupCodes);
+      setStep("backup");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to verify code");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  // Complete setup
+  const handleComplete = async () => {
+    try {
+      // Final confirmation
+      const res = await apiRequest("POST", "/api/mfa/enable");
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to enable MFA");
+      }
       
       onComplete();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Verification failed. Please try again.");
-      toast({
-        title: "Verification Failed",
-        description: err instanceof Error ? err.message : "Invalid verification code. Please try again.",
-        variant: "destructive",
-      });
+      setError(err instanceof Error ? err.message : "Failed to complete MFA setup");
+    }
+  };
+  
+  // Copy backup codes to clipboard
+  const copyBackupCodes = () => {
+    navigator.clipboard.writeText(backupCodes.join("\n"));
+    setShowBackupCodes(true);
+  };
+  
+  // Regenerate backup codes
+  const regenerateBackupCodes = async () => {
+    setIsSubmitting(true);
+    try {
+      const res = await apiRequest("POST", "/api/mfa/regenerate-backup-codes");
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to regenerate backup codes");
+      }
+      
+      const data = await res.json();
+      setBackupCodes(data.backupCodes);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to regenerate backup codes");
     } finally {
-      setIsVerifying(false);
+      setIsSubmitting(false);
     }
   };
-
-  const handleCopySecret = () => {
-    if (setupData?.secret) {
-      navigator.clipboard.writeText(setupData.secret);
-      setSecretCopied(true);
-      setTimeout(() => setSecretCopied(false), 2000);
-      toast({
-        title: "Secret Copied",
-        description: "The secret key has been copied to your clipboard.",
-      });
-    }
-  };
-
-  const handleCopyBackupCodes = () => {
-    if (setupData?.backupCodes) {
-      navigator.clipboard.writeText(setupData.backupCodes.join('\n'));
-      toast({
-        title: "Backup Codes Copied",
-        description: "Your backup codes have been copied to your clipboard.",
-      });
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <Card className="w-full max-w-md">
-        <CardContent className="flex flex-col items-center justify-center pt-6 pb-6">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="mt-4 text-sm text-muted-foreground">Setting up two-factor authentication...</p>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
-    <Card className="w-full max-w-xl">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Shield className="h-5 w-5" />
-          Set Up Two-Factor Authentication
-        </CardTitle>
-        <CardDescription>
-          Protect your account with an additional layer of security.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="qrcode">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="qrcode">QR Code</TabsTrigger>
-            <TabsTrigger value="manual">Manual Setup</TabsTrigger>
-          </TabsList>
-          <TabsContent value="qrcode" className="mt-4">
-            <div className="flex flex-col items-center space-y-4">
-              <p className="text-sm text-center text-muted-foreground mb-2">
-                Scan this QR code with your authenticator app.
-              </p>
-              {setupData?.qrCode && (
-                <div className="p-4 bg-white rounded-md border">
+    <>
+      <DialogHeader>
+        <DialogTitle>
+          {step === "loading" && "Setting up Two-Factor Authentication"}
+          {step === "setup" && "Set up Two-Factor Authentication"}
+          {step === "verify" && "Verify Authentication App"}
+          {step === "backup" && "Save Your Backup Codes"}
+        </DialogTitle>
+        <DialogDescription>
+          {step === "loading" && "Preparing your two-factor authentication setup..."}
+          {step === "setup" && "Scan the QR code with your authentication app (Google Authenticator, Authy, etc.)"}
+          {step === "verify" && "Enter the 6-digit code from your authentication app to verify setup"}
+          {step === "backup" && "Save these codes in a secure place. They can be used to access your account if you lose your device."}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="py-6">
+        {step === "loading" && (
+          <div className="flex flex-col items-center justify-center py-10">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+            <p>Loading setup data...</p>
+          </div>
+        )}
+
+        {step === "setup" && (
+          <div className="space-y-6">
+            {error && (
+              <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+            
+            <div className="flex flex-col items-center justify-center">
+              {qrCode ? (
+                <div className="bg-white p-4 rounded-md shadow-sm border">
                   <img 
-                    src={setupData.qrCode} 
-                    alt="MFA QR Code" 
-                    className="w-48 h-48"
+                    src={`data:image/png;base64,${qrCode}`} 
+                    alt="QR Code for 2FA setup" 
+                    width={200} 
+                    height={200} 
                   />
                 </div>
-              )}
-              <p className="text-xs text-center text-muted-foreground mt-2">
-                Use an app like Google Authenticator, Authy, or Microsoft Authenticator.
-              </p>
-            </div>
-          </TabsContent>
-          <TabsContent value="manual" className="mt-4">
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                If you can't scan the QR code, you can manually set up your authenticator app using this secret key:
-              </p>
-              <div className="flex items-center">
-                <div className="flex-1 p-3 bg-muted rounded-l-md font-mono break-all text-sm">
-                  {setupData?.secret}
+              ) : (
+                <div className="bg-gray-50 p-4 rounded-md w-[200px] h-[200px] flex items-center justify-center border">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                 </div>
-                <Button 
-                  variant="secondary" 
-                  size="icon" 
-                  className="rounded-l-none h-12" 
-                  onClick={handleCopySecret}
-                >
-                  {secretCopied ? <Check className="h-4 w-4" /> : <ClipboardCopy className="h-4 w-4" />}
-                </Button>
+              )}
+            </div>
+            
+            {secret && (
+              <div className="space-y-2">
+                <Label>Manual Entry Code:</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={secret} 
+                    readOnly 
+                    className="font-mono tracking-widest text-center"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => navigator.clipboard.writeText(secret)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  If you can't scan the QR code, enter this code manually in your authenticator app.
+                </p>
               </div>
+            )}
+            
+            <div className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={onCancel}>
+                Cancel
+              </Button>
+              <Button onClick={() => setStep("verify")}>
+                Continue
+              </Button>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
 
-        <Separator className="my-6" />
-
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Verify Setup</h3>
-          <p className="text-sm text-muted-foreground">
-            Enter the verification code from your authenticator app to complete the setup.
-          </p>
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="verificationCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Verification Code</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Enter 6-digit code"
-                        maxLength={6}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {error && (
-                <div className="text-sm text-red-500 mt-2">
-                  {error}
-                </div>
-              )}
-
+        {step === "verify" && (
+          <div className="space-y-6">
+            {error && (
+              <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+            
+            <div>
+              <Label htmlFor="verification-code">Enter Verification Code:</Label>
+              <div className="mt-2">
+                <Input
+                  id="verification-code"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  className="text-center text-lg tracking-widest font-mono"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="000000"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Open your authentication app and enter the 6-digit code displayed for this account.
+              </p>
+            </div>
+            
+            <div className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={() => setStep("setup")}>
+                Back
+              </Button>
               <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={isVerifying}
+                onClick={handleVerifyCode} 
+                disabled={isSubmitting || verificationCode.length !== 6}
               >
-                {isVerifying ? (
+                {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Verifying...
                   </>
-                ) : (
-                  "Verify & Enable MFA"
-                )}
+                ) : "Verify Code"}
               </Button>
-            </form>
-          </Form>
-        </div>
-
-        <Separator className="my-6" />
-
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Backup Codes</h3>
-          <p className="text-sm text-muted-foreground">
-            Save these backup codes in a secure place. You can use them to access your account if you lose your authenticator device.
-          </p>
-
-          <Alert>
-            <AlertTitle className="flex items-center">
-              <Shield className="h-4 w-4 mr-2" />
-              Important
-            </AlertTitle>
-            <AlertDescription className="text-sm">
-              Each backup code can only be used once. Keep them secure and accessible.
-            </AlertDescription>
-          </Alert>
-
-          <div className="grid grid-cols-2 gap-2">
-            {setupData?.backupCodes.map((code, index) => (
-              <div key={index} className="p-2 bg-muted rounded-md font-mono text-sm">
-                {code}
-              </div>
-            ))}
+            </div>
           </div>
+        )}
 
-          <Button 
-            variant="outline" 
-            className="w-full" 
-            onClick={handleCopyBackupCodes}
-          >
-            <ClipboardCopy className="mr-2 h-4 w-4" />
-            Copy All Backup Codes
-          </Button>
-        </div>
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button 
-          variant="ghost" 
-          onClick={onCancel}
-        >
-          Cancel
-        </Button>
-      </CardFooter>
-    </Card>
+        {step === "backup" && (
+          <div className="space-y-6">
+            {error && (
+              <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+            
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <Label>Your Backup Codes</Label>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={regenerateBackupCodes}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Regenerate
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              <div className="border rounded-md p-4 bg-gray-50">
+                <div className="grid grid-cols-2 gap-2">
+                  {backupCodes.map((code, i) => (
+                    <div key={i} className="font-mono text-sm bg-white py-1 px-2 rounded border">
+                      {code}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2 w-full"
+                onClick={copyBackupCodes}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy all codes
+              </Button>
+              
+              {showBackupCodes && (
+                <div className="mt-2 flex items-center text-sm text-green-600">
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                  Backup codes copied to clipboard
+                </div>
+              )}
+              
+              <p className="text-xs text-muted-foreground mt-4">
+                <strong>Important:</strong> Each code can only be used once. Store these somewhere safe and accessible, like a password manager.
+                You'll need these codes if you lose access to your authentication app.
+              </p>
+            </div>
+            
+            <div className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={() => setStep("verify")}>
+                Back
+              </Button>
+              <Button onClick={handleComplete}>
+                Complete Setup
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
