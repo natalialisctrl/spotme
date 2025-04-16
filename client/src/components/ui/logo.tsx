@@ -30,7 +30,7 @@ export function Logo({
     <div className={cn('flex flex-col', className)}>
       <div className="flex items-center gap-2">
         <img
-          src="/assets/spotme-logo.png"
+          src="/spotme-logo.png"
           alt="SpotMe Logo"
           className={cn('rounded-lg', sizeClasses[size])}
         />
@@ -67,7 +67,7 @@ export function LogoWithoutText({
 
   return (
     <img
-      src="/assets/spotme-logo.png"
+      src="/spotme-logo.png"
       alt="SpotMe Logo"
       className={cn('rounded-lg', sizeClasses[size], className)}
     />
