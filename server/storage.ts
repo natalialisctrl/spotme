@@ -79,36 +79,52 @@ export interface IStorage {
   updateParticipantStatus(id: number, status: string): Promise<MeetupParticipant | undefined>;
   removeMeetupParticipant(meetupId: number, userId: number): Promise<boolean>;
 
+  // Friend-related operations
+  getFriendIds(userId: number): Promise<number[]>;
+  
   // Challenge operations
   createChallenge(challenge: InsertChallenge): Promise<Challenge>;
   getChallenge(id: number): Promise<Challenge | undefined>;
   getAllChallenges(): Promise<Challenge[]>;
   getActiveChallenges(): Promise<Challenge[]>;
   getChallengesByUser(userId: number): Promise<Challenge[]>;
+  getChallengesByCreatorId(userId: number): Promise<Challenge[]>;
+  getChallengesByCreatorIds(userIds: number[]): Promise<Challenge[]>;
+  getChallengesByIds(challengeIds: number[]): Promise<Challenge[]>;
   updateChallenge(id: number, challenge: Partial<Challenge>): Promise<Challenge | undefined>;
   updateChallengeStatus(id: number, status: string): Promise<Challenge | undefined>;
   deleteChallenge(id: number): Promise<boolean>;
   
   // Challenge participant operations
-  joinChallenge(participant: InsertChallengeParticipant): Promise<ChallengeParticipant>;
+  joinChallenge(userId: number, challengeId: number): Promise<ChallengeParticipant>;
   getChallengeParticipant(id: number): Promise<ChallengeParticipant | undefined>;
+  getChallengeParticipation(userId: number, challengeId: number): Promise<ChallengeParticipant | undefined>;
   getChallengeParticipantByUserAndChallenge(userId: number, challengeId: number): Promise<ChallengeParticipant | undefined>;
   getChallengeParticipants(challengeId: number): Promise<ChallengeParticipant[]>;
+  getChallengeParticipationsByUserId(userId: number): Promise<ChallengeParticipant[]>;
   getUserChallenges(userId: number): Promise<ChallengeParticipant[]>;
   updateChallengeProgress(id: number, currentProgress: number): Promise<ChallengeParticipant | undefined>;
+  updateChallengeParticipation(id: number, currentProgress: number, completed: boolean, completedAt: Date | null): Promise<ChallengeParticipant | undefined>;
   completeChallenge(id: number): Promise<ChallengeParticipant | undefined>;
+  leaveChallenge(userId: number, challengeId: number): Promise<boolean>;
   leaveChallengeByUserId(challengeId: number, userId: number): Promise<boolean>;
   
   // Progress entry operations
   addProgressEntry(entry: InsertProgressEntry): Promise<ProgressEntry>;
   getProgressEntries(challengeParticipantId: number): Promise<ProgressEntry[]>;
+  addChallengeProgress(entry: InsertProgressEntry): Promise<ProgressEntry>;
+  getChallengeProgressEntries(challengeParticipantId: number): Promise<ProgressEntry[]>;
   
   // Challenge comment operations
   addChallengeComment(comment: InsertChallengeComment): Promise<ChallengeComment>;
   getChallengeComments(challengeId: number): Promise<ChallengeComment[]>;
   
   // Leaderboard operations
-  getChallengeLeaderboard(challengeId: number): Promise<{userId: number, username: string, name: string, progress: number, completed: boolean}[]>;
+  getChallengeLeaderboard(challengeId: number, currentUserId?: number): Promise<{userId: number, username: string, name: string, progress: number, completed: boolean, profilePictureUrl?: string | null, isFriend?: boolean}[]>;
+  
+  // Demo data generation
+  createDemoUsers(count?: number): Promise<User[]>;
+  createDemoChallenges(count?: number, creatorId?: number, friendIds?: number[]): Promise<Challenge[]>;
   
   // Session storage
   sessionStore: any; // Using 'any' to avoid TypeScript errors with SessionStore
@@ -182,7 +198,7 @@ export class MemStorage implements IStorage {
     });
     
     // Add some demo users for testing
-    this.createDemoUsers();
+    this.initializeDemoData();
   }
 
   // Helper method to generate a nearby location within a given radius in miles
@@ -221,7 +237,7 @@ export class MemStorage implements IStorage {
     return { latitude: newLat, longitude: newLng };
   }
 
-  private createDemoUsers() {
+  async createDemoUsers(count: number = 5): Promise<User[]> {
     // Austin-based coordinates (for Natalia's default location)
     const baseLatitude = 30.2267;
     const baseLongitude = -97.7476;
@@ -949,6 +965,21 @@ export class MemStorage implements IStorage {
       .filter(challenge => challenge.creatorId === userId);
   }
   
+  async getChallengesByCreatorId(userId: number): Promise<Challenge[]> {
+    return Array.from(this.challenges.values())
+      .filter(challenge => challenge.creatorId === userId);
+  }
+  
+  async getChallengesByCreatorIds(userIds: number[]): Promise<Challenge[]> {
+    return Array.from(this.challenges.values())
+      .filter(challenge => userIds.includes(challenge.creatorId));
+  }
+  
+  async getChallengesByIds(challengeIds: number[]): Promise<Challenge[]> {
+    return Array.from(this.challenges.values())
+      .filter(challenge => challengeIds.includes(challenge.id));
+  }
+  
   async updateChallenge(id: number, challenge: Partial<Challenge>): Promise<Challenge | undefined> {
     const existingChallenge = this.challenges.get(id);
     if (!existingChallenge) return undefined;
@@ -982,21 +1013,43 @@ export class MemStorage implements IStorage {
   }
   
   // Challenge participant operations
-  async joinChallenge(participant: InsertChallengeParticipant): Promise<ChallengeParticipant> {
+  async joinChallenge(userId: number, challengeId: number): Promise<ChallengeParticipant> {
+    const participant: InsertChallengeParticipant = {
+      userId,
+      challengeId,
+      joinedAt: new Date(),
+      currentProgress: 0,
+      completed: false,
+      completedAt: null
+    };
+    
     const id = this.currentChallengeParticipantId++;
-    const now = new Date();
     
     const newParticipant: ChallengeParticipant = {
       ...participant,
-      id,
-      joinedAt: now,
-      status: participant.status || "active",
-      currentProgress: participant.currentProgress || 0,
-      completed: participant.completed || false
+      id
     };
     
     this.challengeParticipants.set(id, newParticipant);
     return newParticipant;
+  }
+  
+  async getChallengeParticipation(userId: number, challengeId: number): Promise<ChallengeParticipant | undefined> {
+    for (const participant of this.challengeParticipants.values()) {
+      if (participant.userId === userId && participant.challengeId === challengeId) {
+        return participant;
+      }
+    }
+    return undefined;
+  }
+  
+  async getChallengeParticipationsByUserId(userId: number): Promise<ChallengeParticipant[]> {
+    return Array.from(this.challengeParticipants.values())
+      .filter(participant => participant.userId === userId);
+  }
+  
+  async leaveChallenge(userId: number, challengeId: number): Promise<boolean> {
+    return this.leaveChallengeByUserId(challengeId, userId);
   }
   
   async getChallengeParticipant(id: number): Promise<ChallengeParticipant | undefined> {
@@ -1034,6 +1087,35 @@ export class MemStorage implements IStorage {
     
     this.challengeParticipants.set(id, updatedParticipant);
     return updatedParticipant;
+  }
+  
+  async updateChallengeParticipation(
+    id: number, 
+    currentProgress: number, 
+    completed: boolean, 
+    completedAt: Date | null
+  ): Promise<ChallengeParticipant | undefined> {
+    const participant = this.challengeParticipants.get(id);
+    if (!participant) return undefined;
+    
+    const updatedParticipant = {
+      ...participant,
+      currentProgress,
+      completed,
+      completedAt,
+      updatedAt: new Date()
+    };
+    
+    this.challengeParticipants.set(id, updatedParticipant);
+    return updatedParticipant;
+  }
+  
+  async addChallengeProgress(entry: InsertProgressEntry): Promise<ProgressEntry> {
+    return this.addProgressEntry(entry);
+  }
+  
+  async getChallengeProgressEntries(challengeParticipantId: number): Promise<ProgressEntry[]> {
+    return this.getProgressEntries(challengeParticipantId);
   }
   
   async completeChallenge(id: number): Promise<ChallengeParticipant | undefined> {
@@ -1120,20 +1202,34 @@ export class MemStorage implements IStorage {
   }
   
   // Leaderboard operations
-  async getChallengeLeaderboard(challengeId: number): Promise<{userId: number, username: string, name: string, progress: number, completed: boolean}[]> {
+  async getChallengeLeaderboard(
+    challengeId: number, 
+    currentUserId?: number
+  ): Promise<{userId: number, username: string, name: string, progress: number, completed: boolean, profilePictureUrl?: string | null, isFriend?: boolean}[]> {
     const participants = await this.getChallengeParticipants(challengeId);
+    
+    // Get friend IDs if the current user ID is provided
+    let friendIds: number[] = [];
+    if (currentUserId) {
+      friendIds = await this.getFriendIds(currentUserId);
+    }
     
     const leaderboardData = await Promise.all(
       participants.map(async (participant) => {
         const user = await this.getUser(participant.userId);
         if (!user) return null;
         
+        // Check if the participant is a friend of the current user
+        const isFriend = currentUserId && friendIds.includes(participant.userId);
+        
         return {
           userId: participant.userId,
           username: user.username,
           name: user.name,
-          progress: participant.currentProgress,
-          completed: participant.completed
+          progress: participant.currentProgress || 0,
+          completed: participant.completed || false,
+          profilePictureUrl: user.profilePictureUrl,
+          isFriend: !!isFriend
         };
       })
     );
@@ -1141,7 +1237,158 @@ export class MemStorage implements IStorage {
     // Sort by progress (highest first) and filter out nulls
     return leaderboardData
       .filter(entry => entry !== null)
-      .sort((a, b) => b.progress - a.progress);
+      .sort((a, b) => {
+        if (a && b) {
+          return (b.progress || 0) - (a.progress || 0);
+        }
+        return 0;
+      });
+  }
+  
+  // Demo data generation
+  async createDemoUsers(count: number = 5): Promise<User[]> {
+    const demoUsers: User[] = [];
+    
+    const experienceLevels = ['beginner', 'intermediate', 'advanced'];
+    const genders = ['male', 'female', 'non-binary'];
+    
+    for (let i = 0; i < count; i++) {
+      const username = `demouser${this.currentUserId}`;
+      const user = await this.createUser({
+        username,
+        password: 'Password123!',
+        email: `${username}@example.com`,
+        name: `Demo User ${this.currentUserId}`,
+        gender: genders[Math.floor(Math.random() * genders.length)],
+        experienceLevel: experienceLevels[Math.floor(Math.random() * experienceLevels.length)],
+        experienceYears: Math.floor(Math.random() * 5) + 1,
+        bio: `I'm a demo user with ID ${this.currentUserId}`,
+        aiGeneratedInsights: JSON.stringify({
+          workoutStyle: "Regular",
+          motivationTips: ["Stay consistent", "Focus on form"],
+          recommendedGoals: ["Build strength", "Improve endurance"],
+          partnerPreferences: "Prefers partners with similar experience level"
+        })
+      });
+      
+      demoUsers.push(user);
+    }
+    
+    return demoUsers;
+  }
+  
+  async createDemoChallenges(count: number = 3, creatorId: number, friendIds: number[] = []): Promise<Challenge[]> {
+    const demoChallenges: Challenge[] = [];
+    const goalTypes = ['reps', 'weight', 'distance', 'duration', 'frequency'];
+    const exerciseNames = [
+      'Push-ups', 'Pull-ups', 'Squats', 'Deadlifts', 'Bench Press', 
+      'Lunges', 'Planks', 'Burpees', 'Running', 'Cycling'
+    ];
+    
+    // Create challenges by the current user
+    for (let i = 0; i < count; i++) {
+      const now = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 2);
+      
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 28);
+      
+      const goalType = goalTypes[Math.floor(Math.random() * goalTypes.length)];
+      const targetExercise = exerciseNames[Math.floor(Math.random() * exerciseNames.length)];
+      
+      const challenge = await this.createChallenge({
+        name: `Demo Challenge ${i + 1}`,
+        description: `This is a demo challenge for ${targetExercise}. Try to complete it by the end date!`,
+        creatorId,
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        goalType,
+        goalValue: Math.floor(Math.random() * 100) + 50,
+        targetExercise,
+        isPublic: true,
+        createdAt: now,
+        updatedAt: now,
+        status: 'active'
+      });
+      
+      demoChallenges.push(challenge);
+      
+      // Add the creator as a participant
+      await this.joinChallenge(creatorId, challenge.id);
+      
+      // Randomly add some friends as participants
+      if (friendIds.length > 0) {
+        const participantCount = Math.min(friendIds.length, Math.floor(Math.random() * 3) + 1);
+        
+        for (let j = 0; j < participantCount; j++) {
+          const friendId = friendIds[j];
+          await this.joinChallenge(friendId, challenge.id);
+          
+          // Add some random progress for each friend
+          const participation = await this.getChallengeParticipation(friendId, challenge.id);
+          if (participation) {
+            const progressValue = Math.floor(Math.random() * (challenge.goalValue * 0.8));
+            
+            await this.addChallengeProgress({
+              challengeParticipantId: participation.id,
+              value: progressValue,
+              notes: `Demo progress for ${targetExercise}`,
+              proofImageUrl: null,
+              createdAt: new Date()
+            });
+            
+            // Add some comments
+            await this.addChallengeComment({
+              challengeId: challenge.id,
+              userId: friendId,
+              content: `This is a great challenge! I'm at ${progressValue} ${goalType} so far.`,
+              createdAt: new Date()
+            });
+          }
+        }
+      }
+    }
+    
+    // If there are friends, also create some challenges by friends
+    if (friendIds.length > 0 && count > 1) {
+      const friendCreatorId = friendIds[0];
+      
+      const now = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 5);
+      
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 25);
+      
+      const goalType = goalTypes[Math.floor(Math.random() * goalTypes.length)];
+      const targetExercise = exerciseNames[Math.floor(Math.random() * exerciseNames.length)];
+      
+      const challenge = await this.createChallenge({
+        name: `Friend's Challenge`,
+        description: `This challenge was created by your friend. Can you complete it?`,
+        creatorId: friendCreatorId,
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        goalType,
+        goalValue: Math.floor(Math.random() * 100) + 50,
+        targetExercise,
+        isPublic: true,
+        createdAt: now,
+        updatedAt: now,
+        status: 'active'
+      });
+      
+      demoChallenges.push(challenge);
+      
+      // Add the friend creator as a participant
+      await this.joinChallenge(friendCreatorId, challenge.id);
+      
+      // Add the main user as a participant
+      await this.joinChallenge(creatorId, challenge.id);
+    }
+    
+    return demoChallenges;
   }
 }
 
