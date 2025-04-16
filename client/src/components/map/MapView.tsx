@@ -8,8 +8,8 @@ import { Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import FilterModal from "@/components/filters/FilterModal";
 
-// Set your Mapbox access token here (fallback to a default for development)
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || "pk.eyJ1IjoiZ3ltYnVkZHkiLCJhIjoiY2txMnlvdHNtMDNpZDJ1cGVwcjJyMTJvYiJ9.lN9OkTFtPkzoH6E5QfXbjA";
+// Set your Mapbox access token here
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || "";
 
 interface MapViewProps {
   nearbyUsers?: User[];
@@ -27,17 +27,21 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
 
   // Initialize map when container and location are available
   useEffect(() => {
-    if (mapContainer.current && latitude && longitude && !map.current) {
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v11',
-        center: [longitude, latitude],
-        zoom: 14
-      });
+    if (mapContainer.current && latitude && longitude && !map.current && mapboxgl.accessToken) {
+      try {
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: 'mapbox://styles/mapbox/streets-v11',
+          center: [longitude, latitude],
+          zoom: 14
+        });
 
-      map.current.on('load', () => {
-        setIsMapLoaded(true);
-      });
+        map.current.on('load', () => {
+          setIsMapLoaded(true);
+        });
+      } catch (error) {
+        console.error("Error initializing Mapbox:", error);
+      }
     }
   }, [mapContainer, latitude, longitude]);
 
@@ -145,7 +149,30 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
       </div>
       
       <div className="relative bg-white rounded-xl overflow-hidden shadow-md h-64 md:h-96">
-        {locationError ? (
+        {!mapboxgl.accessToken ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-200 p-4">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-700">Map View Unavailable</h3>
+              <p className="text-sm text-gray-600 mt-1">We're currently showing demo partners without map visualization.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 w-full max-w-md">
+              {nearbyUsers.slice(0, 4).map((user, index) => (
+                <div key={user.id || index} className="bg-white p-2 rounded-lg shadow-sm flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white">
+                    {user.name.charAt(0)}
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-sm font-medium truncate">{user.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{Math.round(user.distance * 10) / 10} miles</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {nearbyUsers.length > 4 && (
+              <p className="text-xs text-gray-500 mt-2">+{nearbyUsers.length - 4} more partners available</p>
+            )}
+          </div>
+        ) : locationError ? (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
             <div className="text-center p-4">
               <p className="text-red-500 font-medium">Unable to access your location</p>
@@ -162,33 +189,35 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
           <div ref={mapContainer} className="absolute inset-0" />
         )}
         
-        {/* Map controls */}
-        <div className="absolute bottom-4 right-4 flex flex-col space-y-2">
-          <button 
-            className="bg-white p-2 rounded-full shadow-md text-gray-600 hover:bg-gray-50"
-            onClick={handleZoomIn}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-          </button>
-          <button 
-            className="bg-white p-2 rounded-full shadow-md text-gray-600 hover:bg-gray-50"
-            onClick={handleZoomOut}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 12H6" />
-            </svg>
-          </button>
-          <button 
-            className="bg-white p-2 rounded-full shadow-md text-gray-600 hover:bg-gray-50"
-            onClick={handleRecenterMap}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
-            </svg>
-          </button>
-        </div>
+        {/* Map controls - only show if map is likely to render */}
+        {mapboxgl.accessToken && (
+          <div className="absolute bottom-4 right-4 flex flex-col space-y-2">
+            <button 
+              className="bg-white p-2 rounded-full shadow-md text-gray-600 hover:bg-gray-50"
+              onClick={handleZoomIn}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </button>
+            <button 
+              className="bg-white p-2 rounded-full shadow-md text-gray-600 hover:bg-gray-50"
+              onClick={handleZoomOut}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 12H6" />
+              </svg>
+            </button>
+            <button 
+              className="bg-white p-2 rounded-full shadow-md text-gray-600 hover:bg-gray-50"
+              onClick={handleRecenterMap}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
       
       {/* Filter Modal */}
