@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Plus, Edit, Trash2, Share2 } from 'lucide-react';
+import { Loader2, Plus, Edit, Trash2, Share2, Sparkles, ListFilter, Dumbbell, Zap } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -58,6 +59,30 @@ type WorkoutRoutine = {
 const difficultyOptions = ['beginner', 'intermediate', 'advanced', 'expert'];
 const muscleGroupOptions = [
   'chest', 'back', 'shoulders', 'arms', 'legs', 'core', 'full body'
+];
+
+// Description templates for quick selection
+const descriptionTemplates = [
+  { 
+    icon: <Sparkles className="h-4 w-4 mr-2" />,
+    name: 'Strength Focus', 
+    value: 'A comprehensive strength-building routine designed to increase muscle mass and power. Focus on proper form and progressive overload for best results.'
+  },
+  { 
+    icon: <Zap className="h-4 w-4 mr-2" />,
+    name: 'HIIT Circuit', 
+    value: 'High-intensity interval training circuit that combines cardio and resistance exercises. Great for fat burning and improving endurance in a time-efficient manner.'
+  },
+  { 
+    icon: <Dumbbell className="h-4 w-4 mr-2" />,
+    name: 'Hypertrophy Program', 
+    value: 'Targeted muscle growth routine with moderate weights and higher repetitions. Focus on time under tension and mind-muscle connection for maximum hypertrophy.'
+  },
+  { 
+    icon: <ListFilter className="h-4 w-4 mr-2" />,
+    name: 'Full Body Workout', 
+    value: 'Balanced full-body workout hitting all major muscle groups in a single session. Ideal for those training 2-3 times per week or beginners establishing a foundation.'
+  }
 ];
 
 const WorkoutRoutines = () => {
@@ -422,7 +447,32 @@ const WorkoutRoutines = () => {
               </div>
               
               <div>
-                <Label htmlFor="description" className="mb-2">Description</Label>
+                <div className="flex justify-between items-center mb-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8">
+                        <Sparkles className="h-3.5 w-3.5 mr-1" />
+                        Use Template
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0" align="end">
+                      <div className="p-1">
+                        {descriptionTemplates.map((template, index) => (
+                          <Button
+                            key={index}
+                            variant="ghost"
+                            className="w-full justify-start font-normal px-2 py-2 h-auto mb-1"
+                            onClick={() => setDescription(template.value)}
+                          >
+                            {template.icon}
+                            {template.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <Textarea
                   id="description"
                   value={description}
@@ -606,7 +656,32 @@ const WorkoutRoutines = () => {
               </div>
               
               <div>
-                <Label htmlFor="edit-description" className="mb-2">Description</Label>
+                <div className="flex justify-between items-center mb-2">
+                  <Label htmlFor="edit-description">Description</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8">
+                        <Sparkles className="h-3.5 w-3.5 mr-1" />
+                        Use Template
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0" align="end">
+                      <div className="p-1">
+                        {descriptionTemplates.map((template, index) => (
+                          <Button
+                            key={index}
+                            variant="ghost"
+                            className="w-full justify-start font-normal px-2 py-2 h-auto mb-1"
+                            onClick={() => setDescription(template.value)}
+                          >
+                            {template.icon}
+                            {template.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <Textarea
                   id="edit-description"
                   value={description}
