@@ -10,7 +10,8 @@ import {
   LogOut, 
   Dumbbell, 
   Clipboard, 
-  CalendarDays 
+  CalendarDays,
+  Trophy
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,10 @@ const Sidebar: FC = () => {
             <Link href="/settings" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/settings' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <Settings className="h-5 w-5 mr-3 text-gray-500" />
                 Settings
+            </Link>
+            <Link href="/challenges" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/challenges' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+                <Trophy className="h-5 w-5 mr-3 text-gray-500" />
+                Challenges
             </Link>
             <Link href="/security-settings" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/security-settings' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <Shield className="h-5 w-5 mr-3 text-gray-500" />

@@ -1,17 +1,18 @@
 import { FC, useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useAuth } from "@/hooks/use-auth";
 import WorkoutSelection from "@/components/workout/WorkoutSelection";
 import MapView from "@/components/map/MapView";
 import PartnersList from "@/components/partners/PartnersList";
-import { Loader2, Dumbbell } from "lucide-react";
+import { Loader2, Dumbbell, Plus, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@shared/schema";
 import LoginForm from "@/components/auth/LoginForm";
 import RegisterForm from "@/components/auth/RegisterForm";
+import { apiRequest } from "@/lib/queryClient";
 
 const FindPartners: FC = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -24,6 +25,32 @@ const FindPartners: FC = () => {
     sameGymOnly: false
   });
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // Create demo data mutation
+  const createDemoDataMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/demo/initialize', {});
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Demo Data Created',
+        description: `Created ${data.data.users} users, ${data.data.challenges} challenges, and ${data.data.connections} connections.`,
+      });
+      // Invalidate all relevant queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/users/nearby'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/challenges'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: `Failed to create demo data: ${error.message}`,
+        variant: 'destructive',
+      });
+    }
+  });
 
   // Show error toast for location errors
   useEffect(() => {

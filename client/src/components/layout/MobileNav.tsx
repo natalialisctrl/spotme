@@ -11,7 +11,8 @@ import {
   LogOut, 
   Dumbbell, 
   Clipboard, 
-  CalendarDays 
+  CalendarDays,
+  Trophy
 } from "lucide-react";
 import { 
   Popover,
@@ -77,6 +78,10 @@ const MobileNav: FC = () => {
               <Link href="/scheduled-meetups" className="flex items-center p-3 hover:bg-gray-100">
                 <CalendarDays className="h-4 w-4 mr-2" />
                 <span className="text-sm">Scheduled Meetups</span>
+              </Link>
+              <Link href="/challenges" className="flex items-center p-3 hover:bg-gray-100">
+                <Trophy className="h-4 w-4 mr-2" />
+                <span className="text-sm">Challenges</span>
               </Link>
               <Separator />
               <button 
