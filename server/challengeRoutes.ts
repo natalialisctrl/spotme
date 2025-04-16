@@ -1,502 +1,551 @@
-import { Express } from 'express';
-import { WebSocket } from 'ws';
-import { storage } from './storage';
-import {
-  challengeSchema, progressEntrySchema, challengeCommentSchema,
-  insertChallengeSchema, insertChallengeParticipantSchema,
-  insertProgressEntrySchema, insertChallengeCommentSchema,
-  WebSocketMessage
-} from '@shared/schema';
-import { ZodError } from 'zod';
+import { Express, Request, Response, NextFunction } from "express";
+import { WebSocket } from "ws";
+import { storage } from "./storage";
+import { 
+  challengeSchema, 
+  progressEntrySchema, 
+  challengeCommentSchema
+} from "@shared/schema";
+import { z } from "zod";
 
-// Map to store active WebSocket connections by user ID (imported from routes.ts)
+interface WebSocketMessage {
+  type: string;
+  data: any;
+}
+
+// Middleware to check if a user is authenticated
+function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+  next();
+}
+
 export function setupChallengeRoutes(app: Express, activeConnections: Map<number, WebSocket>) {
-  // Challenge routes
-  app.post('/api/challenges', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
+  // Get all challenges
+  app.get("/api/challenges", isAuthenticated, async (req, res) => {
     try {
-      const challengeData = challengeSchema.parse({
-        ...req.body,
-        creatorId: req.session.userId
-      });
+      const { mine, participating, friendsOnly } = req.query;
+      const userId = req.user!.id;
       
-      const insertData = insertChallengeSchema.parse({
-        ...challengeData,
-        status: "active"
-      });
-      
-      const challenge = await storage.createChallenge(insertData);
-      
-      // Notify friends/connections about the new challenge
-      const connections = await storage.getConnectionsByUserId(req.session.userId);
-      for (const connection of connections) {
-        const friendId = connection.user1Id === req.session.userId ? connection.user2Id : connection.user1Id;
-        const ws = activeConnections.get(friendId);
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          const message: WebSocketMessage = {
-            type: 'challenge_created',
-            senderId: req.session.userId,
-            receiverId: friendId,
-            data: { challenge }
-          };
-          ws.send(JSON.stringify(message));
-        }
+      // If friendsOnly is set, get only challenges created by friends
+      if (friendsOnly === "true") {
+        const friendIds = await storage.getFriendIds(userId);
+        const challenges = await storage.getChallengesByCreatorIds(friendIds);
+        return res.status(200).json(challenges);
       }
       
-      return res.status(201).json(challenge);
+      // If mine is set, get only challenges created by the user
+      if (mine === "true") {
+        const challenges = await storage.getChallengesByCreatorId(userId);
+        return res.status(200).json(challenges);
+      }
+      
+      // If participating is set, get only challenges the user is participating in
+      if (participating === "true") {
+        const participations = await storage.getChallengeParticipationsByUserId(userId);
+        const challengeIds = participations.map(p => p.challengeId);
+        const challenges = await storage.getChallengesByIds(challengeIds);
+        return res.status(200).json(challenges);
+      }
+      
+      // Otherwise, get all challenges
+      const challenges = await storage.getAllChallenges();
+      res.status(200).json(challenges);
     } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: error.errors });
-      }
-      return res.status(500).json({ message: 'Failed to create challenge' });
+      console.error("Error fetching challenges:", error);
+      res.status(500).json({ message: "Failed to fetch challenges" });
     }
   });
   
-  app.get('/api/challenges', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const challenges = await storage.getAllChallenges();
-    return res.json(challenges);
-  });
-  
-  app.get('/api/challenges/active', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const challenges = await storage.getActiveChallenges();
-    return res.json(challenges);
-  });
-  
-  app.get('/api/challenges/user', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const challenges = await storage.getChallengesByUser(req.session.userId);
-    return res.json(challenges);
-  });
-  
-  app.get('/api/challenges/:id', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const challengeId = parseInt(req.params.id);
-    if (isNaN(challengeId)) {
-      return res.status(400).json({ message: 'Invalid challenge ID' });
-    }
-    
-    const challenge = await storage.getChallenge(challengeId);
-    if (!challenge) {
-      return res.status(404).json({ message: 'Challenge not found' });
-    }
-    
-    return res.json(challenge);
-  });
-  
-  app.patch('/api/challenges/:id', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const challengeId = parseInt(req.params.id);
-    if (isNaN(challengeId)) {
-      return res.status(400).json({ message: 'Invalid challenge ID' });
-    }
-    
-    const challenge = await storage.getChallenge(challengeId);
-    if (!challenge) {
-      return res.status(404).json({ message: 'Challenge not found' });
-    }
-    
-    // Only the creator can update a challenge
-    if (challenge.creatorId !== req.session.userId) {
-      return res.status(403).json({ message: 'Not authorized to update this challenge' });
-    }
-    
+  // Get a specific challenge by ID
+  app.get("/api/challenges/:id", isAuthenticated, async (req, res) => {
     try {
-      const updatedChallenge = await storage.updateChallenge(challengeId, req.body);
-      if (!updatedChallenge) {
-        return res.status(500).json({ message: 'Failed to update challenge' });
+      const challengeId = parseInt(req.params.id, 10);
+      if (isNaN(challengeId)) {
+        return res.status(400).json({ message: "Invalid challenge ID" });
       }
       
-      return res.json(updatedChallenge);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: error.errors });
-      }
-      return res.status(500).json({ message: 'Failed to update challenge' });
-    }
-  });
-  
-  app.delete('/api/challenges/:id', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const challengeId = parseInt(req.params.id);
-    if (isNaN(challengeId)) {
-      return res.status(400).json({ message: 'Invalid challenge ID' });
-    }
-    
-    const challenge = await storage.getChallenge(challengeId);
-    if (!challenge) {
-      return res.status(404).json({ message: 'Challenge not found' });
-    }
-    
-    // Only the creator can delete a challenge
-    if (challenge.creatorId !== req.session.userId) {
-      return res.status(403).json({ message: 'Not authorized to delete this challenge' });
-    }
-    
-    const success = await storage.deleteChallenge(challengeId);
-    if (!success) {
-      return res.status(500).json({ message: 'Failed to delete challenge' });
-    }
-    
-    return res.json({ success: true });
-  });
-  
-  // Challenge participation routes
-  app.post('/api/challenges/:id/join', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const challengeId = parseInt(req.params.id);
-    if (isNaN(challengeId)) {
-      return res.status(400).json({ message: 'Invalid challenge ID' });
-    }
-    
-    const challenge = await storage.getChallenge(challengeId);
-    if (!challenge) {
-      return res.status(404).json({ message: 'Challenge not found' });
-    }
-    
-    // Check if user is already participating
-    const existingParticipant = await storage.getChallengeParticipantByUserAndChallenge(
-      req.session.userId,
-      challengeId
-    );
-    
-    if (existingParticipant) {
-      return res.status(400).json({ message: 'Already participating in this challenge' });
-    }
-    
-    try {
-      const participant = await storage.joinChallenge({
-        userId: req.session.userId,
-        challengeId,
-        joinedAt: new Date(),
-        currentProgress: 0,
-        completed: false
-      });
-      
-      // Notify the challenge creator
-      const creatorWs = activeConnections.get(challenge.creatorId);
-      if (creatorWs && creatorWs.readyState === WebSocket.OPEN) {
-        const user = await storage.getUser(req.session.userId);
-        if (user) {
-          const { password, ...userData } = user;
-          const message: WebSocketMessage = {
-            type: 'challenge_joined',
-            senderId: req.session.userId,
-            receiverId: challenge.creatorId,
-            data: {
-              participant,
-              challenge,
-              user: userData
-            }
-          };
-          creatorWs.send(JSON.stringify(message));
-        }
-      }
-      
-      return res.status(201).json(participant);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: error.errors });
-      }
-      return res.status(500).json({ message: 'Failed to join challenge' });
-    }
-  });
-  
-  app.get('/api/challenges/:id/participants', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const challengeId = parseInt(req.params.id);
-    if (isNaN(challengeId)) {
-      return res.status(400).json({ message: 'Invalid challenge ID' });
-    }
-    
-    const participants = await storage.getChallengeParticipants(challengeId);
-    return res.json(participants);
-  });
-  
-  app.get('/api/challenges/:id/leaderboard', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const challengeId = parseInt(req.params.id);
-    if (isNaN(challengeId)) {
-      return res.status(400).json({ message: 'Invalid challenge ID' });
-    }
-    
-    const leaderboard = await storage.getChallengeLeaderboard(challengeId);
-    return res.json(leaderboard);
-  });
-  
-  app.post('/api/challenges/:id/progress', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const challengeId = parseInt(req.params.id);
-    if (isNaN(challengeId)) {
-      return res.status(400).json({ message: 'Invalid challenge ID' });
-    }
-    
-    // Get the user's participation in this challenge
-    const participant = await storage.getChallengeParticipantByUserAndChallenge(
-      req.session.userId,
-      challengeId
-    );
-    
-    if (!participant) {
-      return res.status(404).json({ message: 'Not participating in this challenge' });
-    }
-    
-    try {
-      const progressData = progressEntrySchema.parse({
-        ...req.body,
-        challengeParticipantId: participant.id
-      });
-      
-      const entry = await storage.addProgressEntry({
-        ...progressData,
-        createdAt: new Date()
-      });
-      
-      // Notify others about the progress update
       const challenge = await storage.getChallenge(challengeId);
-      if (challenge) {
-        const participants = await storage.getChallengeParticipants(challengeId);
-        
-        for (const p of participants) {
-          if (p.userId !== req.session.userId) {
-            const ws = activeConnections.get(p.userId);
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              const user = await storage.getUser(req.session.userId);
-              if (user) {
-                const { password, ...userData } = user;
-                const message: WebSocketMessage = {
-                  type: 'challenge_progress_updated',
-                  senderId: req.session.userId,
-                  receiverId: p.userId,
-                  data: {
-                    entry,
-                    participant,
-                    challenge,
-                    user: userData
-                  }
-                };
-                ws.send(JSON.stringify(message));
-              }
-            }
-          }
-        }
-        
-        // Also notify the challenge creator if they're not a participant
-        if (challenge.creatorId !== req.session.userId && !participants.some(p => p.userId === challenge.creatorId)) {
-          const creatorWs = activeConnections.get(challenge.creatorId);
-          if (creatorWs && creatorWs.readyState === WebSocket.OPEN) {
-            const user = await storage.getUser(req.session.userId);
-            if (user) {
-              const { password, ...userData } = user;
-              const message: WebSocketMessage = {
-                type: 'challenge_progress_updated',
-                senderId: req.session.userId,
-                receiverId: challenge.creatorId,
-                data: {
-                  entry,
-                  participant,
-                  challenge,
-                  user: userData
-                }
-              };
-              creatorWs.send(JSON.stringify(message));
-            }
-          }
-        }
+      if (!challenge) {
+        return res.status(404).json({ message: "Challenge not found" });
       }
       
-      return res.status(201).json(entry);
+      res.status(200).json(challenge);
     } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: error.errors });
-      }
-      return res.status(500).json({ message: 'Failed to add progress entry' });
+      console.error("Error fetching challenge:", error);
+      res.status(500).json({ message: "Failed to fetch challenge" });
     }
   });
   
-  app.get('/api/challenges/:id/progress', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const challengeId = parseInt(req.params.id);
-    if (isNaN(challengeId)) {
-      return res.status(400).json({ message: 'Invalid challenge ID' });
-    }
-    
-    // Get the user's participation in this challenge
-    const participant = await storage.getChallengeParticipantByUserAndChallenge(
-      req.session.userId,
-      challengeId
-    );
-    
-    if (!participant) {
-      return res.status(404).json({ message: 'Not participating in this challenge' });
-    }
-    
-    const entries = await storage.getProgressEntries(participant.id);
-    return res.json(entries);
-  });
-  
-  app.post('/api/challenges/:id/comment', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const challengeId = parseInt(req.params.id);
-    if (isNaN(challengeId)) {
-      return res.status(400).json({ message: 'Invalid challenge ID' });
-    }
-    
-    const challenge = await storage.getChallenge(challengeId);
-    if (!challenge) {
-      return res.status(404).json({ message: 'Challenge not found' });
-    }
-    
+  // Create a new challenge
+  app.post("/api/challenges", isAuthenticated, async (req, res) => {
     try {
-      const commentData = challengeCommentSchema.parse({
-        ...req.body,
-        challengeId,
-        userId: req.session.userId
+      const validationResult = challengeSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid challenge data", 
+          errors: validationResult.error.format() 
+        });
+      }
+      
+      const userId = req.user!.id;
+      const challenge = await storage.createChallenge({
+        ...validationResult.data,
+        creatorId: userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        status: "active",
       });
       
-      const comment = await storage.addChallengeComment({
-        ...commentData,
-        createdAt: new Date()
-      });
+      // Add the creator as a participant
+      await storage.joinChallenge(userId, challenge.id);
       
-      // Notify other participants about the new comment
-      const participants = await storage.getChallengeParticipants(challengeId);
-      const user = await storage.getUser(req.session.userId);
-      
-      if (user) {
-        const { password, ...userData } = user;
-        
-        for (const p of participants) {
-          if (p.userId !== req.session.userId) {
-            const ws = activeConnections.get(p.userId);
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              const message: WebSocketMessage = {
-                type: 'challenge_comment',
-                senderId: req.session.userId,
-                receiverId: p.userId,
-                data: {
-                  comment,
-                  challenge,
-                  user: userData
-                }
-              };
-              ws.send(JSON.stringify(message));
-            }
-          }
-        }
-        
-        // Also notify the challenge creator if they're not a participant
-        if (challenge.creatorId !== req.session.userId && !participants.some(p => p.userId === challenge.creatorId)) {
-          const creatorWs = activeConnections.get(challenge.creatorId);
-          if (creatorWs && creatorWs.readyState === WebSocket.OPEN) {
-            const message: WebSocketMessage = {
-              type: 'challenge_comment',
-              senderId: req.session.userId,
-              receiverId: challenge.creatorId,
-              data: {
-                comment,
-                challenge,
-                user: userData
-              }
-            };
-            creatorWs.send(JSON.stringify(message));
-          }
+      // Notify friends about the new challenge
+      const friendIds = await storage.getFriendIds(userId);
+      for (const friendId of friendIds) {
+        const socket = activeConnections.get(friendId);
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          const message: WebSocketMessage = {
+            type: "new_challenge",
+            data: {
+              challenge,
+              creatorName: req.user!.name,
+              creatorUsername: req.user!.username,
+            },
+          };
+          socket.send(JSON.stringify(message));
         }
       }
       
-      return res.status(201).json(comment);
+      res.status(201).json(challenge);
     } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: error.errors });
+      console.error("Error creating challenge:", error);
+      res.status(500).json({ message: "Failed to create challenge" });
+    }
+  });
+  
+  // Join a challenge
+  app.post("/api/challenges/:id/join", isAuthenticated, async (req, res) => {
+    try {
+      const challengeId = parseInt(req.params.id, 10);
+      if (isNaN(challengeId)) {
+        return res.status(400).json({ message: "Invalid challenge ID" });
       }
-      return res.status(500).json({ message: 'Failed to add comment' });
-    }
-  });
-  
-  app.get('/api/challenges/:id/comments', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const challengeId = parseInt(req.params.id);
-    if (isNaN(challengeId)) {
-      return res.status(400).json({ message: 'Invalid challenge ID' });
-    }
-    
-    const comments = await storage.getChallengeComments(challengeId);
-    
-    // Enhance comments with user information
-    const enhancedComments = await Promise.all(
-      comments.map(async (comment) => {
-        const user = await storage.getUser(comment.userId);
-        if (!user) return comment;
-        
-        const { password, ...userData } = user;
-        return {
-          ...comment,
-          user: userData
+      
+      const userId = req.user!.id;
+      
+      // Check if the challenge exists
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) {
+        return res.status(404).json({ message: "Challenge not found" });
+      }
+      
+      // Check if the user is already participating
+      const participation = await storage.getChallengeParticipation(userId, challengeId);
+      if (participation) {
+        return res.status(400).json({ message: "Already participating in this challenge" });
+      }
+      
+      // Add the user as a participant
+      const newParticipation = await storage.joinChallenge(userId, challengeId);
+      
+      // Notify challenge creator
+      const creatorSocket = activeConnections.get(challenge.creatorId);
+      if (creatorSocket && creatorSocket.readyState === WebSocket.OPEN) {
+        const message: WebSocketMessage = {
+          type: "challenge_joined",
+          data: {
+            challengeId,
+            challengeName: challenge.name,
+            participantId: userId,
+            participantName: req.user!.name,
+            participantUsername: req.user!.username,
+          },
         };
-      })
-    );
-    
-    return res.json(enhancedComments);
+        creatorSocket.send(JSON.stringify(message));
+      }
+      
+      res.status(201).json(newParticipation);
+    } catch (error) {
+      console.error("Error joining challenge:", error);
+      res.status(500).json({ message: "Failed to join challenge" });
+    }
   });
   
-  app.delete('/api/challenges/:id/leave', async (req, res) => {
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
+  // Leave a challenge
+  app.delete("/api/challenges/:id/leave", isAuthenticated, async (req, res) => {
+    try {
+      const challengeId = parseInt(req.params.id, 10);
+      if (isNaN(challengeId)) {
+        return res.status(400).json({ message: "Invalid challenge ID" });
+      }
+      
+      const userId = req.user!.id;
+      
+      // Check if the challenge exists
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) {
+        return res.status(404).json({ message: "Challenge not found" });
+      }
+      
+      // Check if the user is participating
+      const participation = await storage.getChallengeParticipation(userId, challengeId);
+      if (!participation) {
+        return res.status(400).json({ message: "Not participating in this challenge" });
+      }
+      
+      // Remove the user as a participant
+      await storage.leaveChallenge(userId, challengeId);
+      
+      // Notify challenge creator if it's not the creator leaving
+      if (challenge.creatorId !== userId) {
+        const creatorSocket = activeConnections.get(challenge.creatorId);
+        if (creatorSocket && creatorSocket.readyState === WebSocket.OPEN) {
+          const message: WebSocketMessage = {
+            type: "challenge_left",
+            data: {
+              challengeId,
+              challengeName: challenge.name,
+              participantId: userId,
+              participantName: req.user!.name,
+              participantUsername: req.user!.username,
+            },
+          };
+          creatorSocket.send(JSON.stringify(message));
+        }
+      }
+      
+      res.status(200).json({ message: "Successfully left the challenge" });
+    } catch (error) {
+      console.error("Error leaving challenge:", error);
+      res.status(500).json({ message: "Failed to leave challenge" });
     }
-    
-    const challengeId = parseInt(req.params.id);
-    if (isNaN(challengeId)) {
-      return res.status(400).json({ message: 'Invalid challenge ID' });
+  });
+  
+  // Get a user's participation in a challenge
+  app.get("/api/challenges/:id/participation", isAuthenticated, async (req, res) => {
+    try {
+      const challengeId = parseInt(req.params.id, 10);
+      if (isNaN(challengeId)) {
+        return res.status(400).json({ message: "Invalid challenge ID" });
+      }
+      
+      const userId = req.user!.id;
+      const participation = await storage.getChallengeParticipation(userId, challengeId);
+      
+      if (!participation) {
+        return res.status(404).json({ message: "Not participating in this challenge" });
+      }
+      
+      res.status(200).json(participation);
+    } catch (error) {
+      console.error("Error fetching participation:", error);
+      res.status(500).json({ message: "Failed to fetch participation" });
     }
-    
-    const success = await storage.leaveChallengeByUserId(challengeId, req.session.userId);
-    if (!success) {
-      return res.status(404).json({ message: 'Not participating in this challenge' });
+  });
+  
+  // Get all participations for a user
+  app.get("/api/challenges/my-participations", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const participations = await storage.getChallengeParticipationsByUserId(userId);
+      
+      res.status(200).json(participations);
+    } catch (error) {
+      console.error("Error fetching participations:", error);
+      res.status(500).json({ message: "Failed to fetch participations" });
     }
-    
-    return res.json({ success: true });
+  });
+  
+  // Add progress to a challenge
+  app.post("/api/challenges/:id/progress", isAuthenticated, async (req, res) => {
+    try {
+      const challengeId = parseInt(req.params.id, 10);
+      if (isNaN(challengeId)) {
+        return res.status(400).json({ message: "Invalid challenge ID" });
+      }
+      
+      const userId = req.user!.id;
+      
+      // Get the participation
+      const participation = await storage.getChallengeParticipation(userId, challengeId);
+      if (!participation) {
+        return res.status(404).json({ message: "Not participating in this challenge" });
+      }
+      
+      // Validate progress data
+      const { value, notes, proofImageUrl } = req.body;
+      
+      if (typeof value !== "number" || value <= 0) {
+        return res.status(400).json({ message: "Invalid progress value" });
+      }
+      
+      // Add the progress entry
+      const progressEntry = await storage.addChallengeProgress({
+        challengeParticipantId: participation.id,
+        value,
+        notes: notes || null,
+        proofImageUrl: proofImageUrl || null,
+        createdAt: new Date(),
+      });
+      
+      // Update the participant's progress
+      const newProgress = (participation.currentProgress || 0) + value;
+      
+      // Check if the challenge is completed with this progress
+      const challenge = await storage.getChallenge(challengeId);
+      const isCompleted = newProgress >= challenge!.goalValue;
+      
+      // Update the participation with new progress and completed status if needed
+      await storage.updateChallengeParticipation(
+        participation.id, 
+        newProgress,
+        isCompleted,
+        isCompleted ? new Date() : null
+      );
+      
+      // Notify challenge creator if it's not the creator adding progress
+      if (challenge!.creatorId !== userId) {
+        const creatorSocket = activeConnections.get(challenge!.creatorId);
+        if (creatorSocket && creatorSocket.readyState === WebSocket.OPEN) {
+          const message: WebSocketMessage = {
+            type: "challenge_progress",
+            data: {
+              challengeId,
+              challengeName: challenge!.name,
+              participantId: userId,
+              participantName: req.user!.name,
+              value,
+              newTotal: newProgress,
+              isCompleted,
+            },
+          };
+          creatorSocket.send(JSON.stringify(message));
+        }
+      }
+      
+      // Notify friends about progress
+      const friendIds = await storage.getFriendIds(userId);
+      for (const friendId of friendIds) {
+        if (friendId !== challenge!.creatorId) { // Don't notify creator twice
+          const socket = activeConnections.get(friendId);
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            const message: WebSocketMessage = {
+              type: "friend_challenge_progress",
+              data: {
+                challengeId,
+                challengeName: challenge!.name,
+                friendId: userId,
+                friendName: req.user!.name,
+                value,
+                newTotal: newProgress,
+                isCompleted,
+              },
+            };
+            socket.send(JSON.stringify(message));
+          }
+        }
+      }
+      
+      res.status(201).json(progressEntry);
+    } catch (error) {
+      console.error("Error adding progress:", error);
+      res.status(500).json({ message: "Failed to add progress" });
+    }
+  });
+  
+  // Get progress entries for a challenge
+  app.get("/api/challenges/:id/progress", isAuthenticated, async (req, res) => {
+    try {
+      const challengeId = parseInt(req.params.id, 10);
+      if (isNaN(challengeId)) {
+        return res.status(400).json({ message: "Invalid challenge ID" });
+      }
+      
+      const userId = req.user!.id;
+      
+      // Get the participation
+      const participation = await storage.getChallengeParticipation(userId, challengeId);
+      if (!participation) {
+        return res.status(404).json({ message: "Not participating in this challenge" });
+      }
+      
+      // Get progress entries for this participation
+      const progressEntries = await storage.getChallengeProgressEntries(participation.id);
+      
+      res.status(200).json(progressEntries);
+    } catch (error) {
+      console.error("Error fetching progress entries:", error);
+      res.status(500).json({ message: "Failed to fetch progress entries" });
+    }
+  });
+  
+  // Get leaderboard for a challenge
+  app.get("/api/challenges/:id/leaderboard", isAuthenticated, async (req, res) => {
+    try {
+      const challengeId = parseInt(req.params.id, 10);
+      if (isNaN(challengeId)) {
+        return res.status(400).json({ message: "Invalid challenge ID" });
+      }
+      
+      const leaderboard = await storage.getChallengeLeaderboard(challengeId, req.user!.id);
+      
+      res.status(200).json(leaderboard);
+    } catch (error) {
+      console.error("Error fetching leaderboard:", error);
+      res.status(500).json({ message: "Failed to fetch leaderboard" });
+    }
+  });
+  
+  // Add a comment to a challenge
+  app.post("/api/challenges/:id/comment", isAuthenticated, async (req, res) => {
+    try {
+      const challengeId = parseInt(req.params.id, 10);
+      if (isNaN(challengeId)) {
+        return res.status(400).json({ message: "Invalid challenge ID" });
+      }
+      
+      const { content } = req.body;
+      if (!content || typeof content !== "string" || !content.trim()) {
+        return res.status(400).json({ message: "Comment content is required" });
+      }
+      
+      const userId = req.user!.id;
+      
+      // Check if the challenge exists
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) {
+        return res.status(404).json({ message: "Challenge not found" });
+      }
+      
+      // Add the comment
+      const comment = await storage.addChallengeComment({
+        challengeId,
+        userId,
+        content,
+        createdAt: new Date(),
+      });
+      
+      // Notify challenge creator if it's not the creator commenting
+      if (challenge.creatorId !== userId) {
+        const creatorSocket = activeConnections.get(challenge.creatorId);
+        if (creatorSocket && creatorSocket.readyState === WebSocket.OPEN) {
+          const wsMessage: WebSocketMessage = {
+            type: "challenge_comment",
+            data: {
+              challengeId,
+              challengeName: challenge.name,
+              commentId: comment.id,
+              commentContent: content,
+              userId,
+              userName: req.user!.name,
+            },
+          };
+          creatorSocket.send(JSON.stringify(wsMessage));
+        }
+      }
+      
+      // Notify participants about the new comment
+      const participants = await storage.getChallengeParticipants(challengeId);
+      for (const participant of participants) {
+        if (participant.userId !== userId && participant.userId !== challenge.creatorId) {
+          const socket = activeConnections.get(participant.userId);
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            const wsMessage: WebSocketMessage = {
+              type: "challenge_comment",
+              data: {
+                challengeId,
+                challengeName: challenge.name,
+                commentId: comment.id,
+                commentContent: content,
+                userId,
+                userName: req.user!.name,
+              },
+            };
+            socket.send(JSON.stringify(wsMessage));
+          }
+        }
+      }
+      
+      res.status(201).json(comment);
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      res.status(500).json({ message: "Failed to add comment" });
+    }
+  });
+  
+  // Get comments for a challenge
+  app.get("/api/challenges/:id/comments", isAuthenticated, async (req, res) => {
+    try {
+      const challengeId = parseInt(req.params.id, 10);
+      if (isNaN(challengeId)) {
+        return res.status(400).json({ message: "Invalid challenge ID" });
+      }
+      
+      const comments = await storage.getChallengeComments(challengeId);
+      
+      res.status(200).json(comments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+  
+  // Create demo users for testing
+  app.post("/api/demo/create-users", isAuthenticated, async (req, res) => {
+    try {
+      const { count = 5, withFriendships = true } = req.body;
+      const userId = req.user!.id;
+      
+      // Create demo users
+      const demoUsers = await storage.createDemoUsers(count);
+      
+      // Create friendships between the current user and some demo users if requested
+      if (withFriendships && demoUsers.length > 0) {
+        // Make about half of the demo users friends with the current user
+        const friendCount = Math.ceil(demoUsers.length / 2);
+        const friendDemoUsers = demoUsers.slice(0, friendCount);
+        
+        for (const demoUser of friendDemoUsers) {
+          await storage.createConnection({
+            user1Id: userId,
+            user2Id: demoUser.id,
+            createdAt: new Date(),
+          });
+        }
+      }
+      
+      res.status(201).json({ 
+        message: `Created ${demoUsers.length} demo users${withFriendships ? ' with friendships' : ''}`,
+        users: demoUsers
+      });
+    } catch (error) {
+      console.error("Error creating demo users:", error);
+      res.status(500).json({ message: "Failed to create demo users" });
+    }
+  });
+  
+  // Create demo challenges for testing
+  app.post("/api/demo/create-challenges", isAuthenticated, async (req, res) => {
+    try {
+      const { count = 3 } = req.body;
+      const userId = req.user!.id;
+      
+      // Get user's friends for creating some challenges by friends
+      const friendIds = await storage.getFriendIds(userId);
+      
+      // Create demo challenges
+      const demoChallenges = await storage.createDemoChallenges(count, userId, friendIds);
+      
+      res.status(201).json({ 
+        message: `Created ${demoChallenges.length} demo challenges`,
+        challenges: demoChallenges
+      });
+    } catch (error) {
+      console.error("Error creating demo challenges:", error);
+      res.status(500).json({ message: "Failed to create demo challenges" });
+    }
   });
 }

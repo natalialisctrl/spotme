@@ -885,17 +885,46 @@ export class MemStorage implements IStorage {
     return false;
   }
   
+  // Friend-related operations
+  async getFriendIds(userId: number): Promise<number[]> {
+    const friendIds: number[] = [];
+    
+    // Check connections where the user is either user1Id or user2Id
+    for (const connection of this.connections.values()) {
+      if (connection.user1Id === userId) {
+        friendIds.push(connection.user2Id);
+      } else if (connection.user2Id === userId) {
+        friendIds.push(connection.user1Id);
+      }
+    }
+    
+    return friendIds;
+  }
+  
   // Challenge operations
   async createChallenge(challenge: InsertChallenge): Promise<Challenge> {
     const id = this.currentChallengeId++;
     const now = new Date();
     
+    // Convert Date objects to strings for startDate and endDate if they're not already strings
+    const startDate = typeof challenge.startDate === 'string' ? 
+      challenge.startDate : 
+      challenge.startDate.toISOString().split('T')[0];
+      
+    const endDate = typeof challenge.endDate === 'string' ? 
+      challenge.endDate : 
+      challenge.endDate.toISOString().split('T')[0];
+    
     const newChallenge: Challenge = {
       ...challenge,
       id,
+      startDate,
+      endDate,
       createdAt: now,
       updatedAt: now,
-      status: challenge.status || "active"
+      status: challenge.status || "active",
+      isPublic: challenge.isPublic === undefined ? true : challenge.isPublic,
+      imageUrl: challenge.imageUrl || null
     };
     
     this.challenges.set(id, newChallenge);

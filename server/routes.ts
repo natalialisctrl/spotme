@@ -1348,5 +1348,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Setup challenge routes
+  setupChallengeRoutes(app, activeConnections);
+
   return httpServer;
 }

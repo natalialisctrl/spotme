@@ -118,6 +118,8 @@ function Router() {
         <Route path="/workout-focus" component={WorkoutFocusPage} />
         <Route path="/workout-routines" component={WorkoutRoutinesPage} />
         <Route path="/scheduled-meetups" component={ScheduledMeetupsPage} />
+        <Route path="/challenges" component={ChallengesPage} />
+        <Route path="/challenges/:id" component={ChallengeDetailPage} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>
