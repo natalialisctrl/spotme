@@ -551,6 +551,10 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
   
   // Create complete demo data set including users, connections, and challenges
   app.post("/api/demo/create-all", async (req, res) => {
+    console.log("Demo data endpoint called with body:", req.body);
+    
+    // Set proper content type to ensure JSON response
+    res.setHeader('Content-Type', 'application/json');
     try {
       console.log("Creating full demo data set...");
       // First create demo users

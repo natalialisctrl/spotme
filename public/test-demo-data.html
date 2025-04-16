@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Demo Data Creation</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    button {
+      padding: 10px 16px;
+      background-color: #f5338e;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+    #responseContainer {
+      background-color: #f5f5f5;
+      padding: 20px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      max-height: 500px;
+      overflow: auto;
+    }
+    .hidden {
+      display: none;
+    }
+    .error {
+      color: red;
+    }
+    .success {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h1>SpotMe Demo Data Creator</h1>
+  <p>Click the button below to create demo data for testing the challenges and leaderboard functionality.</p>
+  
+  <button id="createDemoDataBtn">Create Demo Data</button>
+  
+  <div id="statusContainer" class="hidden">
+    <h3>Status: <span id="status"></span></h3>
+  </div>
+  
+  <div id="responseContainer" class="hidden"></div>
+  
+  <script>
+    const createDemoDataBtn = document.getElementById('createDemoDataBtn');
+    const statusContainer = document.getElementById('statusContainer');
+    const statusElement = document.getElementById('status');
+    const responseContainer = document.getElementById('responseContainer');
+    
+    createDemoDataBtn.addEventListener('click', async () => {
+      try {
+        statusContainer.classList.remove('hidden');
+        statusElement.textContent = 'Creating demo data...';
+        statusElement.className = '';
+        
+        const response = await fetch('/api/demo/initialize', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({})
+        });
+        
+        const data = await response.json();
+        responseContainer.classList.remove('hidden');
+        responseContainer.textContent = JSON.stringify(data, null, 2);
+        
+        if (data.success) {
+          statusElement.textContent = 'Demo data created successfully!';
+          statusElement.className = 'success';
+          
+          // Add login credentials to status
+          const credentialsDiv = document.createElement('div');
+          credentialsDiv.innerHTML = `
+            <h3>Login Credentials:</h3>
+            <p>Username: <strong>${data.data.loginCredentials.username}</strong></p>
+            <p>Password: <strong>${data.data.loginCredentials.password}</strong></p>
+            <p>Created ${data.data.users} users with ${data.data.connections} connections and ${data.data.challenges} challenges.</p>
+          `;
+          statusContainer.appendChild(credentialsDiv);
+        } else {
+          statusElement.textContent = 'Error creating demo data';
+          statusElement.className = 'error';
+        }
+      } catch (error) {
+        statusElement.textContent = 'Error: ' + error.message;
+        statusElement.className = 'error';
+        responseContainer.classList.remove('hidden');
+        responseContainer.textContent = 'Failed to create demo data: ' + error.message;
+      }
+    });
+  </script>
+</body>
+</html>

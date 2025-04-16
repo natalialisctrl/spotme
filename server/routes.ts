@@ -36,6 +36,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up challenge routes
   setupChallengeRoutes(app, activeConnections);
   
+  // Simple demo data setup endpoint (not requiring authentication)
+  app.post('/api/demo/initialize', async (req, res) => {
+    try {
+      console.log("Initializing demo data...");
+      
+      // Create demo users
+      const demoUsers = await storage.createDemoUsers(5);
+      console.log(`Created ${demoUsers.length} demo users`);
+      
+      if (demoUsers.length === 0) {
+        return res.status(500).json({ success: false, error: 'Failed to create demo users' });
+      }
+      
+      // Create connections between users
+      const mainUser = demoUsers[0];
+      const friendIds = [];
+      
+      for (let i = 1; i < demoUsers.length; i++) {
+        const friend = demoUsers[i];
+        await storage.createConnection({
+          user1Id: mainUser.id,
+          user2Id: friend.id,
+          createdAt: new Date()
+        });
+        friendIds.push(friend.id);
+      }
+      console.log(`Created ${friendIds.length} connections`);
+      
+      // Create challenges
+      const challenges = await storage.createDemoChallenges(3, mainUser.id, friendIds);
+      console.log(`Created ${challenges.length} challenges`);
+      
+      // Add participants and progress
+      let participantsCount = 0;
+      for (const challenge of challenges) {
+        // Main user joins
+        const mainParticipant = await storage.joinChallenge(mainUser.id, challenge.id);
+        await storage.updateChallengeProgress(mainParticipant.id, Math.floor(challenge.goalValue * 0.7));
+        participantsCount++;
+        
+        // Add friends with various progress
+        for (const friendId of friendIds) {
+          const participant = await storage.joinChallenge(friendId, challenge.id);
+          participantsCount++;
+          
+          // Random progress
+          const progress = Math.floor(Math.random() * challenge.goalValue);
+          await storage.updateChallengeProgress(participant.id, progress);
+          
+          // Complete some challenges
+          if (Math.random() > 0.7) {
+            await storage.completeChallenge(participant.id);
+          }
+        }
+      }
+      
+      console.log(`Added ${participantsCount} challenge participants`);
+      
+      return res.json({
+        success: true,
+        data: {
+          users: demoUsers.length,
+          connections: friendIds.length,
+          challenges: challenges.length,
+          participants: participantsCount,
+          loginCredentials: {
+            username: mainUser.username,
+            password: "liscr12"
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Error initializing demo data:", error);
+      return res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+  
   // Create WebSocket server
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
