@@ -238,6 +238,12 @@ export const workoutRoutineSchema = z.object({
   isPublic: z.boolean().default(false),
 });
 
+// Helper for date conversion
+const dateSchema = z.preprocess((arg) => {
+  if (typeof arg === 'string' || arg instanceof Date) return new Date(arg);
+  return arg;
+}, z.date({ required_error: "Date is required" }));
+
 // Scheduled meetup validation
 export const scheduledMeetupSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
@@ -245,7 +251,7 @@ export const scheduledMeetupSchema = z.object({
   gymLocation: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
-  date: z.date({ required_error: "Date is required" }),
+  date: dateSchema,
   startTime: z.string({ required_error: "Start time is required" }),
   endTime: z.string().optional(),
   workoutRoutineId: z.number().optional(),
