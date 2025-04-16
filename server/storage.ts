@@ -197,8 +197,8 @@ export class MemStorage implements IStorage {
       checkPeriod: 86400000 // prune expired entries every 24h
     });
     
-    // Add some demo users for testing
-    this.initializeDemoData();
+    // Add some demo users for testing - we'll do this manually via API now
+    // Removed call to initializeDemoData - this will be done through API endpoint
   }
 
   // Helper method to generate a nearby location within a given radius in miles
