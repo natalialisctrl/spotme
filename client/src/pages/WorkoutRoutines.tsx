@@ -360,9 +360,12 @@ const WorkoutRoutines = () => {
               <CardHeader>
                 <CardTitle>{routine.name}</CardTitle>
                 <CardDescription>
-                  <Badge className="mr-2 capitalize">{routine.difficulty}</Badge>
-                  <Badge variant="outline">{routine.estimatedDuration} min</Badge>
+                  Difficulty and duration information
                 </CardDescription>
+                <div className="flex gap-2 mt-2">
+                  <Badge className="capitalize">{routine.difficulty}</Badge>
+                  <Badge variant="outline">{routine.estimatedDuration} min</Badge>
+                </div>
               </CardHeader>
               <CardContent className="flex-grow">
                 <p className="text-sm text-muted-foreground mb-4">
