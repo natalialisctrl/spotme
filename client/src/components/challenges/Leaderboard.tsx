@@ -18,6 +18,7 @@ interface LeaderboardProps {
   showAllLink?: boolean;
   className?: string;
   title?: string;
+  challengeId?: number; // Optional challenge ID for challenge-specific leaderboards
 }
 
 interface LeaderboardEntry {
@@ -34,15 +35,22 @@ const Leaderboard: FC<LeaderboardProps> = ({
   maxEntries = 5,
   showAllLink = true,
   className = '',
-  title = 'Challenge Leaderboard'
+  title = 'Challenge Leaderboard',
+  challengeId = null
 }) => {
-  // Fetch leaderboard data
+  // Use the provided challengeId or null for global leaderboard
+  
+  // Fetch leaderboard data - either global or challenge-specific
   const { data: leaderboardData, isLoading, error } = useQuery({
-    queryKey: ['/api/leaderboard', maxEntries],
+    queryKey: [challengeId ? `/api/challenges/${challengeId}/leaderboard` : '/api/leaderboard', maxEntries, challengeId],
     queryFn: async () => {
       try {
-        // Use the maxEntries parameter to limit data returned from the server
-        const response = await fetch(`/api/leaderboard?limit=${maxEntries}`);
+        // Determine which API endpoint to use based on whether we have a challenge ID
+        const endpoint = challengeId 
+          ? `/api/challenges/${challengeId}/leaderboard` 
+          : `/api/leaderboard?limit=${maxEntries}`;
+          
+        const response = await fetch(endpoint);
         if (!response.ok) {
           throw new Error('Failed to fetch leaderboard data');
         }

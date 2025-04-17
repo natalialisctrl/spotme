@@ -47,9 +47,21 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
   // Get challenge-specific leaderboard data
   app.get("/api/challenges/leaderboard", async (req, res) => {
     try {
-      // Get all challenge participations with their progress
-      const leaderboardData = await storage.getLeaderboardData();
-      return res.status(200).json(leaderboardData);
+      // If a specific challenge ID is provided
+      if (req.query.challengeId) {
+        const challengeId = parseInt(req.query.challengeId as string, 10);
+        if (isNaN(challengeId)) {
+          return res.status(400).json({ message: "Invalid challenge ID" });
+        }
+        // If user is authenticated, pass user ID, otherwise pass null
+        const userId = req.isAuthenticated() ? req.user!.id : null;
+        const leaderboard = await storage.getChallengeLeaderboard(challengeId, userId);
+        return res.status(200).json(leaderboard);
+      } else {
+        // Otherwise, return top participants across all challenges
+        const leaderboardData = await storage.getLeaderboardData();
+        return res.status(200).json(leaderboardData);
+      }
     } catch (error) {
       console.error("Error fetching challenge leaderboard data:", error);
       return res.status(500).json({ message: "Failed to fetch leaderboard data" });

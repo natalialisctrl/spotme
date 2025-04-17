@@ -135,7 +135,11 @@ const FindPartners: FC = () => {
       
       {/* Leaderboard section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Leaderboard title="Top Fitness Champions" maxEntries={5} />
+        <Leaderboard 
+          title="Top Fitness Champions" 
+          maxEntries={5}
+          showAllLink={true}
+        />
         
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="space-y-4">
@@ -144,15 +148,21 @@ const FindPartners: FC = () => {
               Challenge Spotlight
             </h2>
             <p className="text-gray-600">
-              Join an active challenge to compete with others and track your progress!
+              Join an active challenge to compete with others and track your progress! Earn points by participating
+              in challenges and reaching your fitness goals.
             </p>
-            <div className="flex justify-end">
+            {user ? (
               <Link href="/challenges">
-                <Button variant="outline" size="sm" className="mt-2">
-                  Browse Challenges
+                <Button variant="default" size="sm" className="w-full mt-4 gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create or Join a Challenge
                 </Button>
               </Link>
-            </div>
+            ) : (
+              <p className="text-sm italic text-gray-500 mt-4">
+                Sign in to create and join challenges with other members.
+              </p>
+            )}
           </div>
         </div>
       </div>
