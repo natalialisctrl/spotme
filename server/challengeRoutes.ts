@@ -53,8 +53,8 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
         if (isNaN(challengeId)) {
           return res.status(400).json({ message: "Invalid challenge ID" });
         }
-        // If user is authenticated, pass user ID, otherwise pass null
-        const userId = req.isAuthenticated() ? req.user!.id : null;
+        // If user is authenticated, pass user ID, otherwise pass undefined
+        const userId = req.isAuthenticated() ? req.user!.id : undefined;
         const leaderboard = await storage.getChallengeLeaderboard(challengeId, userId);
         return res.status(200).json(leaderboard);
       } else {
@@ -168,8 +168,12 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
       }
       
       const userId = req.user!.id;
+      // Format the dates as ISO strings for storage
+      const { startDate, endDate, ...restData } = validationResult.data;
       const challenge = await storage.createChallenge({
-        ...validationResult.data,
+        ...restData,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
         creatorId: userId,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -472,8 +476,8 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
         return res.status(400).json({ message: "Invalid challenge ID" });
       }
       
-      // If user is authenticated, pass user ID, otherwise pass null
-      const userId = req.isAuthenticated() ? req.user!.id : null;
+      // If user is authenticated, pass user ID, otherwise pass undefined
+      const userId = req.isAuthenticated() ? req.user!.id : undefined;
       const leaderboard = await storage.getChallengeLeaderboard(challengeId, userId);
       
       res.status(200).json(leaderboard);
