@@ -20,6 +20,7 @@ const activeConnections = new Map<number, WebSocket>();
 
 import { setupAuth } from "./auth";
 import { setupChallengeRoutes } from "./challengeRoutes";
+import { setupAchievementRoutes } from "./routes/achievementRoutes";
 
 import express from 'express';
 
