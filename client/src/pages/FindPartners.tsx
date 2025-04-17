@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import WorkoutSelection from "@/components/workout/WorkoutSelection";
 import MapView from "@/components/map/MapView";
 import PartnersList from "@/components/partners/PartnersList";
+import Leaderboard from "@/components/challenges/Leaderboard";
 import { Loader2, Dumbbell, Plus, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -130,6 +131,30 @@ const FindPartners: FC = () => {
           </Link>
         </div>
         <WorkoutSelection onSelectWorkout={handleWorkoutSelect} />
+      </div>
+      
+      {/* Leaderboard section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Leaderboard title="Top Fitness Champions" maxEntries={5} />
+        
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center">
+              <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
+              Challenge Spotlight
+            </h2>
+            <p className="text-gray-600">
+              Join an active challenge to compete with others and track your progress!
+            </p>
+            <div className="flex justify-end">
+              <Link href="/challenges">
+                <Button variant="outline" size="sm" className="mt-2">
+                  Browse Challenges
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
       
       <MapView 

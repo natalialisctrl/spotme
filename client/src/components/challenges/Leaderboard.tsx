@@ -1,0 +1,148 @@
+import { FC, useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'wouter';
+import { 
+  Trophy,
+  ArrowRight,
+  Medal,
+  Loader2
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+interface LeaderboardProps {
+  maxEntries?: number;
+  showAllLink?: boolean;
+  className?: string;
+  title?: string;
+}
+
+interface LeaderboardEntry {
+  id: number;
+  userId: number;
+  username: string;
+  name: string;
+  avatarUrl?: string;
+  points: number;
+  rank: number;
+}
+
+const Leaderboard: FC<LeaderboardProps> = ({
+  maxEntries = 5,
+  showAllLink = true,
+  className = '',
+  title = 'Challenge Leaderboard'
+}) => {
+  // Fetch leaderboard data
+  const { data: leaderboardData, isLoading, error } = useQuery({
+    queryKey: ['/api/challenges/leaderboard'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/challenges/leaderboard');
+        if (!response.ok) {
+          throw new Error('Failed to fetch leaderboard data');
+        }
+        return await response.json();
+      } catch (err) {
+        console.error('Leaderboard fetch error:', err);
+        return [];
+      }
+    }
+  });
+
+  const medals = ['🥇', '🥈', '🥉'];
+
+  if (isLoading) {
+    return (
+      <Card className={`w-full ${className}`}>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl flex items-center">
+            <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error || !leaderboardData || leaderboardData.length === 0) {
+    return (
+      <Card className={`w-full ${className}`}>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl flex items-center">
+            <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-6 text-muted-foreground">
+            <p>No leaderboard data available yet.</p>
+            <p className="text-sm mt-2">Complete challenges to appear on the leaderboard!</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const displayEntries = leaderboardData.slice(0, maxEntries);
+
+  return (
+    <Card className={`w-full ${className}`}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xl flex items-center">
+          <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="space-y-3">
+          {displayEntries.map((entry: LeaderboardEntry, index: number) => (
+            <li key={entry.id} className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-6 text-center font-bold">
+                  {index < 3 ? (
+                    <span className="text-lg">{medals[index]}</span>
+                  ) : (
+                    <span className="text-gray-500">{index + 1}</span>
+                  )}
+                </div>
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={entry.avatarUrl} alt={entry.name} />
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {entry.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="font-medium truncate max-w-[120px]">{entry.name}</span>
+              </div>
+              <Badge variant="secondary" className="ml-auto font-bold">
+                {entry.points} pts
+              </Badge>
+            </li>
+          ))}
+        </ul>
+        
+        {showAllLink && (
+          <>
+            <Separator className="my-4" />
+            <div className="text-right">
+              <Link href="/challenges">
+                <Button variant="ghost" size="sm" className="gap-1">
+                  View all challenges
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default Leaderboard;

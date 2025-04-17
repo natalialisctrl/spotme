@@ -22,8 +22,22 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
 }
 
 export function setupChallengeRoutes(app: Express, activeConnections: Map<number, WebSocket>) {
-  // Get all challenges
-  app.get("/api/challenges", isAuthenticated, async (req, res) => {
+  // Public routes without authentication for view-only access
+  
+  // Get leaderboard data
+  app.get("/api/challenges/leaderboard", async (req, res) => {
+    try {
+      // Get all challenge participations with their progress
+      const leaderboardData = await storage.getLeaderboardData();
+      return res.status(200).json(leaderboardData);
+    } catch (error) {
+      console.error("Error fetching leaderboard data:", error);
+      return res.status(500).json({ message: "Failed to fetch leaderboard data" });
+    }
+  });
+  
+  // Get all challenges (accessible without authentication)
+  app.get("/api/challenges", async (req, res) => {
     try {
       const { mine, participating, friendsOnly } = req.query;
       const userId = req.user!.id;
