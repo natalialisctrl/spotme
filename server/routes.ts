@@ -37,6 +37,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up challenge routes
   setupChallengeRoutes(app, activeConnections);
   
+  // Set up achievement routes
+  setupAchievementRoutes(app);
+  
   // Simple demo data setup endpoint (not requiring authentication)
   // Special endpoint just to create the natalia user
   app.post('/api/natalia', async (req, res) => {
