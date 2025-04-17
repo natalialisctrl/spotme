@@ -26,14 +26,46 @@ export function useGeolocation(): GeolocationHookResult {
   const locationUpdateTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Use Austin-based fallback coordinates for development if needed
-  const useFallbackLocation = () => {
-    if (!latitude || !longitude) {
-      // Austin, TX coordinates
-      console.log("Using fallback location coordinates (Austin, TX)");
-      setLatitude(30.2267);
-      setLongitude(-97.7476);
+  const useFallbackLocation = (forceFallback = false) => {
+    if (forceFallback || !latitude || !longitude) {
+      // Austin, TX coordinates with slight randomization to distribute users
+      const randomLat = (Math.random() * 0.01) - 0.005; // +/- 0.005 degrees (~550m)
+      const randomLng = (Math.random() * 0.01) - 0.005;
+      
+      const austinLat = 30.2267 + randomLat;
+      const austinLng = -97.7476 + randomLng;
+      
+      console.log("Using fallback location coordinates (Austin, TX)", {
+        latitude: austinLat,
+        longitude: austinLng
+      });
+      
+      setLatitude(austinLat);
+      setLongitude(austinLng);
       setAccuracy(1000); // Lower accuracy for fallback
       setIsLoading(false);
+      
+      // Also update the server with fallback location if user is logged in
+      if (user) {
+        try {
+          apiRequest('PATCH', '/api/users/location', { 
+            latitude: austinLat, 
+            longitude: austinLng 
+          }).catch(err => console.error('Failed to update fallback location:', err));
+          
+          // Also send fallback location through WebSocket for real-time updates
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'user_location',
+              senderId: user.id,
+              data: { latitude: austinLat, longitude: austinLng }
+            }));
+          }
+        } catch (error) {
+          console.error('Failed to update user fallback location:', error);
+        }
+      }
+      
       return true;
     }
     return false;
@@ -112,30 +144,48 @@ export function useGeolocation(): GeolocationHookResult {
   };
 
   useEffect(() => {
-    // Set up retry if location isn't available
+    // ALWAYS use fallback location initially to ensure we have something right away
+    // This provides instant location data while waiting for real GPS
+    useFallbackLocation(true);
+    
+    // Set up retry if more accurate location isn't available after a while
     locationUpdateTimeout.current = setTimeout(() => {
       if (!latitude || !longitude) {
         console.log("Location not received in time, using fallback");
-        useFallbackLocation();
+        useFallbackLocation(true);
       }
-    }, 5000); // If no location after 5 seconds, use fallback
+    }, 3000); // Reduced to 3 seconds for faster fallback
 
     // Check if geolocation is available
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by your browser");
       setIsLoading(false);
-      useFallbackLocation();
+      // Fallback already set above, but make sure it's applied
+      useFallbackLocation(true);
       return;
     }
 
-    // Get initial position
+    // Now try to get more accurate position
     try {
+      // Try with higher accuracy first, but shorter timeout
       navigator.geolocation.getCurrentPosition(
         updateUserLocation,
-        handleError,
+        (err) => {
+          console.warn("High accuracy position failed, trying with low accuracy", err);
+          // Try again with lower accuracy
+          navigator.geolocation.getCurrentPosition(
+            updateUserLocation,
+            handleError, 
+            {
+              enableHighAccuracy: false,
+              timeout: 5000,
+              maximumAge: 60000 // Allow cached positions up to 1 minute old
+            }
+          );
+        },
         {
           enableHighAccuracy: true,
-          timeout: 8000,
+          timeout: 5000,
           maximumAge: 0
         }
       );
@@ -147,12 +197,13 @@ export function useGeolocation(): GeolocationHookResult {
         {
           enableHighAccuracy: true,
           timeout: 8000,
-          maximumAge: 0
+          maximumAge: 60000 // Allow cached positions up to 1 minute old
         }
       );
     } catch (e) {
       console.error("Error setting up geolocation:", e);
-      useFallbackLocation();
+      // Fallback already set above, but make sure it's applied
+      useFallbackLocation(true);
     }
 
     // Cleanup
