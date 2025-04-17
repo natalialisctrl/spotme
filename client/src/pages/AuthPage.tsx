@@ -92,12 +92,12 @@ const AuthPage: FC = () => {
   // Login form submission
   const onLoginSubmit = (values: LoginFormValues) => {
     loginMutation.mutate(values, {
-      onSuccess: (response) => {
-        // Check if MFA is required
-        if (response.requiresMfa) {
+      onSuccess: (response: any) => {
+        // Check if MFA is required - only if the response has the MFA property
+        if (response && response.requiresMfa) {
           setMfaRequired(true);
-          setMfaUserId(response.userId);
-          setMfaUsername(response.username);
+          setMfaUserId(response.userId || null);
+          setMfaUsername(response.username || "");
         }
       }
     });
@@ -124,6 +124,38 @@ const AuthPage: FC = () => {
     setMfaRequired(false);
     setMfaUserId(null);
     setMfaUsername("");
+  };
+  
+  // Auto login with demo user
+  const handleAutoLogin = async () => {
+    setIsAutoLoginLoading(true);
+    try {
+      const response = await apiRequest('POST', '/api/demo/auto-login');
+      const data = await response.json();
+      
+      if (data.success && data.user) {
+        // Refresh the user data by forcing a refetch
+        // This triggers the useEffect hook above which will navigate to home
+        window.location.href = '/';
+        
+        toast({
+          title: "Auto-login successful",
+          description: "You are now logged in as a demo user",
+          variant: "default",
+        });
+      } else {
+        throw new Error(data.error || "Failed to auto-login");
+      }
+    } catch (error) {
+      console.error("Auto-login error:", error);
+      toast({
+        title: "Auto-login failed",
+        description: error instanceof Error ? error.message : "Could not auto-login",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAutoLoginLoading(false);
+    }
   };
   
   // If MFA is required, show MFA verification component
@@ -345,13 +377,40 @@ const AuthPage: FC = () => {
               </TabsContent>
             </Tabs>
           </CardContent>
-          <CardFooter className="flex justify-center">
-            <div className="text-sm text-gray-500">
+          <CardFooter className="flex flex-col space-y-3">
+            <div className="text-sm text-gray-500 text-center">
               {activeTab === "login" ? (
                 <p>Don't have an account? <Button variant="link" className="p-0" onClick={() => setActiveTab("register")}>Sign up</Button></p>
               ) : (
                 <p>Already have an account? <Button variant="link" className="p-0" onClick={() => setActiveTab("login")}>Sign in</Button></p>
               )}
+            </div>
+            
+            <div className="flex justify-center">
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAutoLogin}
+                  disabled={isAutoLoginLoading}
+                  className="text-xs"
+                >
+                  {isAutoLoginLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Auto-logging in...
+                    </>
+                  ) : (
+                    <>Quick Demo Login</>
+                  )}
+                </Button>
+                
+                <div className="absolute -top-2 -right-2">
+                  <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    ⚡
+                  </span>
+                </div>
+              </div>
             </div>
           </CardFooter>
         </Card>

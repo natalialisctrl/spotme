@@ -16,12 +16,14 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface MfaVerificationProps {
   userId: number;
+  username?: string; // Make username optional
   onComplete: (userData: any) => void;
   onCancel: () => void;
 }
 
 export default function MfaVerification({ 
   userId, 
+  username,
   onComplete, 
   onCancel 
 }: MfaVerificationProps) {
