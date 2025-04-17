@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, real, time, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, real, time, date, varchar, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -183,6 +183,62 @@ export const challengeComments = pgTable("challenge_comments", {
   createdAt: timestamp("created_at").notNull(),
 });
 
+// Achievement badges definition
+export const achievementBadges = pgTable("achievement_badges", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  description: text("description").notNull(),
+  category: varchar("category", { length: 50 }).notNull(), // workout, social, challenge, streak
+  requirement: text("requirement").notNull(),
+  icon: text("icon").notNull(), // SVG or icon name
+  level: integer("level").notNull().default(1), // Difficulty/prestige level
+  points: integer("points").notNull().default(10), // Points awarded for earning this badge
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// User achievement tracking
+export const userAchievements = pgTable("user_achievements", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  badgeId: integer("badge_id").notNull().references(() => achievementBadges.id),
+  progress: integer("progress").notNull().default(0), // Progress toward completion
+  completed: boolean("completed").notNull().default(false),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Workout check-ins for streak tracking
+export const workoutCheckins = pgTable("workout_checkins", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  date: date("date").notNull(),
+  workoutType: text("workout_type").notNull(),
+  duration: integer("duration").notNull(), // in minutes
+  partnerId: integer("partner_id").references(() => users.id),
+  meetupId: integer("meetup_id").references(() => scheduledMeetups.id),
+  notes: text("notes"),
+  proofImageUrl: text("proof_image_url"),
+  verified: boolean("verified").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// User streak tracking
+export const userStreaks = pgTable("user_streaks", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  currentStreak: integer("current_streak").notNull().default(0),
+  longestStreak: integer("longest_streak").notNull().default(0),
+  lastCheckInDate: date("last_checkin_date"),
+  streakUpdatedAt: timestamp("streak_updated_at"),
+  weeklyWorkouts: integer("weekly_workouts").notNull().default(0),
+  monthlyWorkouts: integer("monthly_workouts").notNull().default(0),
+  totalWorkouts: integer("total_workouts").notNull().default(0),
+  totalPoints: integer("total_points").notNull().default(0),
+  level: integer("level").notNull().default(1),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertWorkoutFocusSchema = createInsertSchema(workoutFocus).omit({ id: true });
@@ -199,6 +255,12 @@ export const insertChallengeSchema = createInsertSchema(challenges).omit({ id: t
 export const insertChallengeParticipantSchema = createInsertSchema(challengeParticipants).omit({ id: true });
 export const insertProgressEntrySchema = createInsertSchema(progressEntries).omit({ id: true });
 export const insertChallengeCommentSchema = createInsertSchema(challengeComments).omit({ id: true });
+
+// Achievement and streak insert schemas
+export const insertAchievementBadgeSchema = createInsertSchema(achievementBadges).omit({ id: true });
+export const insertUserAchievementSchema = createInsertSchema(userAchievements).omit({ id: true });
+export const insertWorkoutCheckinSchema = createInsertSchema(workoutCheckins).omit({ id: true });
+export const insertUserStreakSchema = createInsertSchema(userStreaks).omit({ id: true });
 
 // Custom schemas for specific operations
 export const loginSchema = z.object({
@@ -343,6 +405,33 @@ export const challengeCommentSchema = z.object({
   content: z.string().min(1, "Comment cannot be empty"),
 });
 
+// Achievement badge categories
+export const badgeCategories = ["workout", "social", "challenge", "streak", "milestone"] as const;
+
+// Achievement badge validation
+export const achievementBadgeSchema = z.object({
+  name: z.string().min(3, "Badge name must be at least 3 characters"),
+  description: z.string().min(10, "Description should be at least 10 characters"),
+  category: z.enum(badgeCategories),
+  requirement: z.string().min(5, "Requirement description is required"),
+  icon: z.string().min(1, "Icon path or name is required"),
+  level: z.number().int().min(1).max(5),
+  points: z.number().int().min(1, "Points must be at least 1"),
+});
+
+// Workout check-in validation
+export const workoutCheckinSchema = z.object({
+  userId: z.number().int().positive(),
+  date: z.string().or(z.date()).transform(val => new Date(val)),
+  workoutType: z.enum(workoutTypes),
+  duration: z.number().int().min(1, "Duration must be at least 1 minute"),
+  partnerId: z.number().int().positive().optional(),
+  meetupId: z.number().int().positive().optional(),
+  notes: z.string().optional(),
+  proofImageUrl: z.string().optional(),
+  verified: z.boolean().default(false),
+});
+
 // Types for the schemas
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertWorkoutFocus = z.infer<typeof insertWorkoutFocusSchema>;
@@ -367,6 +456,10 @@ export type Challenge = typeof challenges.$inferSelect;
 export type ChallengeParticipant = typeof challengeParticipants.$inferSelect;
 export type ProgressEntry = typeof progressEntries.$inferSelect;
 export type ChallengeComment = typeof challengeComments.$inferSelect;
+export type AchievementBadge = typeof achievementBadges.$inferSelect;
+export type UserAchievement = typeof userAchievements.$inferSelect;
+export type WorkoutCheckin = typeof workoutCheckins.$inferSelect;
+export type UserStreak = typeof userStreaks.$inferSelect;
 
 export type Login = z.infer<typeof loginSchema>;
 export type ChangePassword = z.infer<typeof changePasswordSchema>;
@@ -387,6 +480,10 @@ export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
 export type InsertChallengeParticipant = z.infer<typeof insertChallengeParticipantSchema>;
 export type InsertProgressEntry = z.infer<typeof insertProgressEntrySchema>;
 export type InsertChallengeComment = z.infer<typeof insertChallengeCommentSchema>;
+export type InsertAchievementBadge = z.infer<typeof insertAchievementBadgeSchema>;
+export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
+export type InsertWorkoutCheckin = z.infer<typeof insertWorkoutCheckinSchema>;
+export type InsertUserStreak = z.infer<typeof insertUserStreakSchema>;
 
 // Type for WebSocket messages
 export type WebSocketMessage = {
@@ -394,7 +491,9 @@ export type WebSocketMessage = {
         'meetup_invitation' | 'meetup_updated' | 'meetup_cancelled' | 'meetup_joined' | 
         'meetup_participant_left' | 'workout_shared' |
         'challenge_created' | 'challenge_joined' | 'challenge_progress_updated' |
-        'challenge_completed' | 'challenge_comment' | 'challenge_leaderboard_changed';
+        'challenge_completed' | 'challenge_comment' | 'challenge_leaderboard_changed' |
+        'achievement_earned' | 'badge_unlocked' | 'streak_milestone' | 'level_up' | 
+        'workout_checkin' | 'partner_workout_completed';
   senderId: number;
   receiverId?: number;
   data: any;
