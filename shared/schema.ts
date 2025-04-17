@@ -267,8 +267,8 @@ export const nearbyUsersSchema = z.object({
   workoutType: z.enum(workoutTypes).optional(),
   gender: z.string().optional(),
   experienceLevel: z.string().optional(),
-  maxDistance: z.number().default(5), // in miles
-  sameGymOnly: z.boolean().default(false),
+  maxDistance: z.coerce.number().default(5), // in miles - coerce string to number
+  sameGymOnly: z.boolean().or(z.string().transform(val => val === 'true')).default(false),
 });
 
 // Define an exercise schema for workout routines
