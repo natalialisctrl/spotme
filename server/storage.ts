@@ -1344,14 +1344,31 @@ export class MemStorage implements IStorage {
   }
   
   // Demo data generation
+  // Keep track of demo users so they don't get removed
+  private demoUserIds: number[] = [];
+  
   async createDemoUsers(count: number = 5): Promise<User[]> {
     const demoUsers: User[] = [];
     
+    // Define a set of reasonable values for demo users
     const experienceLevels = ['beginner', 'intermediate', 'advanced'];
     const genders = ['male', 'female', 'non-binary'];
     
+    // Set Austin-based coordinates for demo users
+    const baseLatitude = 30.2267;
+    const baseLongitude = -97.7476;
+    
+    // Store demo user IDs for later use
+    console.log("Creating demo users, clearing previous demoUserIds:", this.demoUserIds);
+    this.demoUserIds = [];
+    
     for (let i = 0; i < count; i++) {
       const username = `demouser${this.currentUserId}`;
+      
+      // Create random location near base coordinates (within ~2 miles)
+      const latOffset = (Math.random() - 0.5) * 0.04;  // ~±0.02 degrees = ~1.2 miles
+      const lngOffset = (Math.random() - 0.5) * 0.04;  // ~±0.02 degrees = ~1.2 miles
+      
       const user = await this.createUser({
         username,
         password: 'Password123!',
@@ -1361,6 +1378,8 @@ export class MemStorage implements IStorage {
         experienceLevel: experienceLevels[Math.floor(Math.random() * experienceLevels.length)],
         experienceYears: Math.floor(Math.random() * 5) + 1,
         bio: `I'm a demo user with ID ${this.currentUserId}`,
+        latitude: baseLatitude + latOffset,  // Add location data
+        longitude: baseLongitude + lngOffset,
         aiGeneratedInsights: JSON.stringify({
           workoutStyle: "Regular",
           motivationTips: ["Stay consistent", "Focus on form"],
@@ -1370,8 +1389,10 @@ export class MemStorage implements IStorage {
       });
       
       demoUsers.push(user);
+      this.demoUserIds.push(user.id);
     }
     
+    console.log(`Created ${demoUsers.length} demo users with IDs: ${this.demoUserIds.join(', ')}`);
     return demoUsers;
   }
   
