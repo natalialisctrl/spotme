@@ -4,7 +4,7 @@ import { User } from "@shared/schema";
 import { Filter, MapPin, UserRound, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import FilterModal from "@/components/filters/FilterModal";
-import mapboxgl, { createMarkerElement, createMarkerPopup } from "@/lib/mapboxClient";
+import mapboxgl, { createMarkerElement, createMarkerPopup, calculateDistance } from "@/lib/mapboxClient";
 
 interface MapViewProps {
   nearbyUsers?: User[];
@@ -24,14 +24,24 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
 
-  // Group users into distance categories
+  // Calculate and group users into distance categories
   const getNearbyUsersWithDistances = () => {
     return nearbyUsers.map(user => {
       // TypeScript workaround for the added "distance" property
       const userWithDistance = user as (User & { distance?: number });
+      
+      // Calculate real distance if both user and current user have coordinates
+      if (latitude && longitude && user.latitude && user.longitude) {
+        userWithDistance.distance = calculateDistance(
+          latitude, 
+          longitude, 
+          user.latitude, 
+          user.longitude
+        );
+      }
+      
       return {
         ...userWithDistance,
-        // If distance isn't available, generate a random one between 0.1-3 miles
         distanceCategory: userWithDistance.distance 
           ? userWithDistance.distance < 1 
             ? 'Very Close' 
