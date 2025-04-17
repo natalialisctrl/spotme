@@ -641,27 +641,54 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
     res.setHeader('Content-Type', 'application/json');
     try {
       console.log("Creating full demo data set...");
-      // First create demo users
-      const count = req.body.count || 5;
-      const demoUsers = await storage.createDemoUsers(count);
       
-      if (demoUsers.length === 0) {
-        return res.status(500).json({ success: false, error: 'Failed to create demo users' });
+      // Check if we have existing demo users before creating new ones
+      // This helps prevent duplicate demo data being generated
+      const existingUsers = await storage.getAllUsers();
+      const demoUserCount = existingUsers.filter(u => u.username.startsWith('demouser')).length;
+      
+      let demoUsers;
+      // Only create new demo users if we don't have enough
+      if (demoUserCount < 5) {
+        const count = req.body.count || 5;
+        demoUsers = await storage.createDemoUsers(count);
+        
+        if (demoUsers.length === 0) {
+          return res.status(500).json({ success: false, error: 'Failed to create demo users' });
+        }
+      } else {
+        // Use existing demo users instead of creating new ones
+        demoUsers = existingUsers.filter(u => u.username.startsWith('demouser')).slice(0, 5);
+        console.log(`Using ${demoUsers.length} existing demo users instead of creating new ones.`);
       }
       
       // Set up the first user as the "main user"
       const mainUser = demoUsers[0];
       const friendIds: number[] = [];
       
-      // Create connections between main user and others
+      // Clear existing connections first to avoid duplicates
+      const existingConnections = await storage.getConnectionsByUserId(mainUser.id);
+      
+      // Create connections between main user and others if they don't exist already
       console.log("Creating connections for demo users...");
+      
       for (let i = 1; i < demoUsers.length; i++) {
         const otherUser = demoUsers[i];
-        await storage.createConnection({
-          user1Id: mainUser.id,
-          user2Id: otherUser.id,
-          createdAt: new Date()
-        });
+        
+        // Check if connection already exists
+        const existingConnection = await storage.getConnectionBetweenUsers(
+          mainUser.id, 
+          otherUser.id
+        );
+        
+        if (!existingConnection) {
+          await storage.createConnection({
+            user1Id: mainUser.id,
+            user2Id: otherUser.id,
+            createdAt: new Date()
+          });
+        }
+        
         friendIds.push(otherUser.id);
       }
       
@@ -674,22 +701,37 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
       console.log("Setting up challenge participants...");
       for (const challenge of challenges) {
         // Main user joins and makes progress
-        const mainParticipant = await storage.joinChallenge(mainUser.id, challenge.id);
-        await storage.updateChallengeProgress(mainParticipant.id, challenge.goalValue * 0.75);
+        const existingParticipation = await storage.getChallengeParticipation(mainUser.id, challenge.id);
+        
+        // Only add the user if they're not already participating
+        let mainParticipant;
+        if (!existingParticipation) {
+          mainParticipant = await storage.joinChallenge(mainUser.id, challenge.id);
+          await storage.updateChallengeProgress(mainParticipant.id, challenge.goalValue * 0.75);
+        } else {
+          mainParticipant = existingParticipation;
+        }
         
         // Some friends join and make progress too
         for (let i = 0; i < friendIds.length; i++) {
           const friendId = friendIds[i];
-          const participant = await storage.joinChallenge(friendId, challenge.id);
           
-          // Randomize progress for each friend
-          const progressPercentage = Math.random();
-          const progress = Math.floor(challenge.goalValue * progressPercentage);
-          await storage.updateChallengeProgress(participant.id, progress);
+          // Check if friend is already participating
+          const existingFriendParticipation = await storage.getChallengeParticipation(friendId, challenge.id);
           
-          // Mark some as completed
-          if (progressPercentage > 0.9) {
-            await storage.completeChallenge(participant.id);
+          let participant;
+          if (!existingFriendParticipation) {
+            participant = await storage.joinChallenge(friendId, challenge.id);
+            
+            // Randomize progress for each friend
+            const progressPercentage = Math.random();
+            const progress = Math.floor(challenge.goalValue * progressPercentage);
+            await storage.updateChallengeProgress(participant.id, progress);
+            
+            // Mark some as completed
+            if (progressPercentage > 0.9) {
+              await storage.completeChallenge(participant.id);
+            }
           }
         }
       }
@@ -702,13 +744,13 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
           challenges: challenges.length,
           loginCredentials: {
             username: mainUser.username,
-            password: 'liscr12'
+            password: 'Password123!'
           }
         }
       });
     } catch (error) {
       console.error('Error creating complete demo data set:', error);
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 }

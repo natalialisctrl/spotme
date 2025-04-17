@@ -703,6 +703,14 @@ export class MemStorage implements IStorage {
       // Skip if user doesn't have location
       if (!user.latitude || !user.longitude) return false;
       
+      // Important: Always include demo users regardless of filters
+      // Check if user is in our demoUserIds array
+      const isDemoUser = MemStorage.persistentDemoUserIds.includes(user.id);
+      if (isDemoUser) {
+        console.log(`Including demo user ${user.id} (${user.name}) in nearby users`);
+        return true;
+      }
+      
       // Calculate distance
       const distance = this.calculateDistance(
         latitude, longitude,
@@ -1345,10 +1353,23 @@ export class MemStorage implements IStorage {
   
   // Demo data generation
   // Keep track of demo users so they don't get removed
-  private demoUserIds: number[] = [];
+  // Using a static array to persist across multiple instances
+  private static persistentDemoUserIds: number[] = [];
   
   async createDemoUsers(count: number = 5): Promise<User[]> {
     const demoUsers: User[] = [];
+    
+    // Check if we already have demo users in the database
+    const existingDemoUsers = Array.from(this.users.values()).filter(u => 
+      u.username.startsWith('demouser')
+    );
+    
+    // If we already have enough demo users, return them
+    if (existingDemoUsers.length >= count) {
+      console.log(`Using ${existingDemoUsers.length} existing demo users instead of creating new ones`);
+      MemStorage.persistentDemoUserIds = existingDemoUsers.map(u => u.id);
+      return existingDemoUsers.slice(0, count);
+    }
     
     // Define a set of reasonable values for demo users
     const experienceLevels = ['beginner', 'intermediate', 'advanced'];
@@ -1358,9 +1379,11 @@ export class MemStorage implements IStorage {
     const baseLatitude = 30.2267;
     const baseLongitude = -97.7476;
     
-    // Store demo user IDs for later use
-    console.log("Creating demo users, clearing previous demoUserIds:", this.demoUserIds);
-    this.demoUserIds = [];
+    // Log what we're doing
+    console.log("Creating new demo users, previous demo IDs:", MemStorage.persistentDemoUserIds);
+    
+    // Clear tracking array for new demo users
+    MemStorage.persistentDemoUserIds = [];
     
     for (let i = 0; i < count; i++) {
       const username = `demouser${this.currentUserId}`;
@@ -1389,10 +1412,10 @@ export class MemStorage implements IStorage {
       });
       
       demoUsers.push(user);
-      this.demoUserIds.push(user.id);
+      MemStorage.persistentDemoUserIds.push(user.id);
     }
     
-    console.log(`Created ${demoUsers.length} demo users with IDs: ${this.demoUserIds.join(', ')}`);
+    console.log(`Created ${demoUsers.length} demo users with IDs: ${MemStorage.persistentDemoUserIds.join(', ')}`);
     return demoUsers;
   }
   
