@@ -77,34 +77,34 @@ export function useGeolocation(): GeolocationHookResult {
     }
   };
 
-  const handleError = (err: GeolocationPositionError) => {
+  const handleError = (err: GeolocationPositionError | any) => {
     console.error('Geolocation error:', err);
     
+    // Always use fallback location on any kind of error
+    if (useFallbackLocation()) {
+      // Set a non-blocking message
+      setError("Using approximate location instead of precise GPS location.");
+      return;
+    }
+    
+    // Only if fallback failed (which shouldn't happen), set a blocking error
     let errorMessage: string;
-    switch(err.code) {
-      case 1: // PERMISSION_DENIED
-        errorMessage = "Please allow location access to find gym partners near you.";
-        break;
-      case 2: // POSITION_UNAVAILABLE
-        errorMessage = "Location information is unavailable. Using approximated location.";
-        // Try using a fallback location
-        if (useFallbackLocation()) {
-          return; // Don't set error if we can use fallback
-        }
-        break;
-      case 3: // TIMEOUT
-        errorMessage = "Location request timed out. Using approximated location.";
-        // Try using a fallback location
-        if (useFallbackLocation()) {
-          return; // Don't set error if we can use fallback
-        }
-        break;
-      default:
-        errorMessage = "Unable to determine your location. Using approximated location.";
-        // Try using a fallback location
-        if (useFallbackLocation()) {
-          return; // Don't set error if we can use fallback
-        }
+    if (err && typeof err.code === 'number') {
+      switch(err.code) {
+        case 1: // PERMISSION_DENIED
+          errorMessage = "Please allow location access to find gym partners near you.";
+          break;
+        case 2: // POSITION_UNAVAILABLE
+          errorMessage = "Location information is unavailable.";
+          break;
+        case 3: // TIMEOUT
+          errorMessage = "Location request timed out.";
+          break;
+        default:
+          errorMessage = "Unable to determine your location.";
+      }
+    } else {
+      errorMessage = "Location error occurred. Using fallback location.";
     }
     
     setError(errorMessage);
