@@ -190,6 +190,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Auto-login demo endpoint for testing
+  app.post('/api/demo/auto-login', async (req, res) => {
+    try {
+      console.log("Auto-login demo user requested");
+      
+      // Find a demo user
+      const allUsers = await storage.getAllUsers();
+      const demoUsers = allUsers.filter(u => u.username.startsWith('demouser'));
+      
+      if (demoUsers.length === 0) {
+        console.log("No demo users found, creating demo data first...");
+        // Create demo data if no demo users exist
+        const demoUsers = await storage.createDemoUsers(5);
+        
+        if (demoUsers.length === 0) {
+          return res.status(500).json({ 
+            success: false, 
+            error: "Failed to create demo user for auto-login" 
+          });
+        }
+        
+        const demoUser = demoUsers[0];
+        
+        // Log the user in by setting session data
+        req.session.userId = demoUser.id;
+        
+        // Don't return sensitive fields
+        const { password, ...userWithoutPassword } = demoUser;
+        
+        return res.json({
+          success: true,
+          message: "Auto-logged in with newly created demo user",
+          user: userWithoutPassword
+        });
+      }
+      
+      // Use the first demo user
+      const demoUser = demoUsers[0];
+      
+      // Log the user in by setting session data
+      req.session.userId = demoUser.id;
+      
+      // Don't return sensitive fields
+      const { password, ...userWithoutPassword } = demoUser;
+      
+      return res.json({
+        success: true,
+        message: "Auto-logged in with existing demo user",
+        user: userWithoutPassword
+      });
+    } catch (error) {
+      console.error("Error with auto-login:", error);
+      return res.status(500).json({ 
+        success: false, 
+        error: "Failed to auto-login" 
+      });
+    }
+  });
+  
   // Create WebSocket server
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 

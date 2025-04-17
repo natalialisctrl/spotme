@@ -26,6 +26,8 @@ import { Loader2 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MfaVerification from '@/components/security/MfaVerification';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 // Login form schema
 const loginSchema = z.object({
@@ -54,6 +56,8 @@ const AuthPage: FC = () => {
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaUserId, setMfaUserId] = useState<number | null>(null);
   const [mfaUsername, setMfaUsername] = useState<string>("");
+  const [isAutoLoginLoading, setIsAutoLoginLoading] = useState(false);
+  const { toast } = useToast();
   
   useEffect(() => {
     // Redirect to home if already logged in
