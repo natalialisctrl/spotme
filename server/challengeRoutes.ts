@@ -662,6 +662,39 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
         console.log(`Using ${demoUsers.length} existing demo users instead of creating new ones.`);
       }
       
+      // Create workout focuses for the demo users
+      console.log("Creating workout focuses for demo users...");
+      const workoutTypes = ["chest", "arms", "legs", "back", "shoulders", "core", "cardio", "full_body"];
+      
+      // Check which users already have a workout focus for today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      for (const user of demoUsers) {
+        // Check if user already has a workout focus for today
+        const existingFocus = await storage.getWorkoutFocus(user.id);
+        const existingFocusIsToday = existingFocus && 
+          new Date(existingFocus.date).toDateString() === today.toDateString();
+        
+        if (!existingFocus || !existingFocusIsToday) {
+          // Assign a random workout type from the list
+          const randomWorkoutType = workoutTypes[Math.floor(Math.random() * workoutTypes.length)];
+          
+          try {
+            await storage.setWorkoutFocus({
+              userId: user.id,
+              workoutType: randomWorkoutType,
+              date: today
+            });
+            console.log(`Set ${randomWorkoutType} workout focus for demo user ${user.id}`);
+          } catch (error) {
+            console.error(`Failed to set workout focus for user ${user.id}:`, error);
+          }
+        } else {
+          console.log(`Demo user ${user.id} already has a workout focus for today: ${existingFocus.workoutType}`);
+        }
+      }
+      
       // Set up the first user as the "main user"
       const mainUser = demoUsers[0];
       const friendIds: number[] = [];
@@ -751,6 +784,73 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
     } catch (error) {
       console.error('Error creating complete demo data set:', error);
       res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+  
+  // Create demo workout focuses for existing users - public endpoint
+  app.post("/api/demo/workout-focuses", async (req, res) => {
+    try {
+      console.log("Creating demo workout focuses...");
+      const workoutTypes = ["chest", "arms", "legs", "back", "shoulders", "core", "cardio", "full_body"];
+      
+      // Get all demo users
+      const allUsers = await storage.getAllUsers();
+      const demoUsers = allUsers.filter(u => u.username.startsWith('demouser'));
+      
+      if (demoUsers.length === 0) {
+        return res.status(404).json({ 
+          message: "No demo users found. Please create demo users first." 
+        });
+      }
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Set random workout focuses for all demo users
+      const results = [];
+      for (const user of demoUsers) {
+        // Assign a random workout type
+        const randomWorkoutType = workoutTypes[Math.floor(Math.random() * workoutTypes.length)];
+        
+        try {
+          const focus = await storage.setWorkoutFocus({
+            userId: user.id,
+            workoutType: randomWorkoutType,
+            date: today
+          });
+          
+          results.push({
+            userId: user.id,
+            username: user.username,
+            workoutType: randomWorkoutType,
+            success: true
+          });
+          
+          console.log(`Set ${randomWorkoutType} workout focus for demo user ${user.id}`);
+        } catch (error) {
+          results.push({
+            userId: user.id,
+            username: user.username,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+          
+          console.error(`Failed to set workout focus for user ${user.id}:`, error);
+        }
+      }
+      
+      return res.status(200).json({
+        success: true,
+        message: `Set workout focuses for ${results.filter(r => r.success).length} demo users`,
+        data: results
+      });
+    } catch (error) {
+      console.error('Error setting demo workout focuses:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to set workout focuses",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 }
