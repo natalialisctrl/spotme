@@ -1328,7 +1328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (participantWs && participantWs.readyState === WebSocket.OPEN) {
             const wsMessage: WebSocketMessage = {
               type: 'meetup_updated',
-              senderId: req.session!.userId,
+              senderId: req.session!.userId || 0,
               receiverId: participant.userId,
               data: {
                 meetup: updatedMeetup
@@ -1386,7 +1386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (participantWs && participantWs.readyState === WebSocket.OPEN) {
             const wsMessage: WebSocketMessage = {
               type: 'meetup_cancelled',
-              senderId: req.session!.userId,
+              senderId: req.session!.userId || 0,
               receiverId: participant.userId,
               data: {
                 meetup: updatedMeetup
