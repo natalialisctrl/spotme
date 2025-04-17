@@ -137,23 +137,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add participants and progress
       let participantsCount = 0;
       for (const challenge of challenges) {
-        // Main user joins
+        // Main user joins and completes challenges to ensure leaderboard data
         const mainParticipant = await storage.joinChallenge(mainUser.id, challenge.id);
-        await storage.updateChallengeProgress(mainParticipant.id, Math.floor(challenge.goalValue * 0.7));
+        // Complete the challenge for leaderboard data
+        const fullProgress = challenge.goalValue + Math.floor(Math.random() * 5); // Add a bit extra for good measure
+        await storage.updateChallengeProgress(mainParticipant.id, fullProgress);
+        await storage.completeChallenge(mainParticipant.id);
         participantsCount++;
         
-        // Add friends with various progress
+        // Add friends with various progress - some completed, some in progress
         for (const friendId of friendIds) {
           const participant = await storage.joinChallenge(friendId, challenge.id);
           participantsCount++;
           
-          // Random progress
-          const progress = Math.floor(Math.random() * challenge.goalValue);
-          await storage.updateChallengeProgress(participant.id, progress);
+          // Determine if this friend will complete the challenge (higher probability now)
+          const willComplete = Math.random() > 0.4; // 60% chance to complete
           
-          // Complete some challenges
-          if (Math.random() > 0.7) {
+          if (willComplete) {
+            // Complete the challenge with some random extra points
+            const friendProgress = challenge.goalValue + Math.floor(Math.random() * 10);
+            await storage.updateChallengeProgress(participant.id, friendProgress);
             await storage.completeChallenge(participant.id);
+          } else {
+            // Random partial progress
+            const progress = Math.floor(Math.random() * (challenge.goalValue * 0.8));
+            await storage.updateChallengeProgress(participant.id, progress);
           }
         }
       }
