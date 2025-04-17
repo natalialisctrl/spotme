@@ -1285,6 +1285,64 @@ export class MemStorage implements IStorage {
       });
   }
   
+  async getLeaderboardData(): Promise<{id: number, userId: number, username: string, name: string, avatarUrl?: string | null, points: number, rank: number}[]> {
+    // Get all challenge participants
+    const allParticipants = Array.from(this.challengeParticipants.values());
+    
+    // Calculate points for each user based on participation and completion
+    const userPoints = new Map<number, number>();
+    
+    for (const participant of allParticipants) {
+      // Add points for participation (10 points for each challenge joined)
+      const userId = participant.userId;
+      const currentPoints = userPoints.get(userId) || 0;
+      
+      // Base points for participation
+      let pointsToAdd = 10;
+      
+      // Additional points for progress (1 point per progress unit)
+      pointsToAdd += participant.currentProgress || 0;
+      
+      // Bonus points for completion (50 points)
+      if (participant.completed) {
+        pointsToAdd += 50;
+      }
+      
+      userPoints.set(userId, currentPoints + pointsToAdd);
+    }
+    
+    // Convert to array of objects with user details
+    const leaderboardEntries = await Promise.all(
+      Array.from(userPoints.entries()).map(async ([userId, points], index) => {
+        const user = await this.getUser(userId);
+        if (!user) return null;
+        
+        return {
+          id: index + 1, // Use index as ID for the leaderboard entry
+          userId,
+          username: user.username,
+          name: user.name,
+          avatarUrl: user.profilePictureUrl,
+          points,
+          rank: 0 // Will be calculated after sorting
+        };
+      })
+    );
+    
+    // Remove null entries (if any)
+    const filteredEntries = leaderboardEntries.filter(entry => entry !== null);
+    
+    // Sort by points (highest first)
+    const sortedEntries = filteredEntries.sort((a, b) => b.points - a.points);
+    
+    // Assign ranks
+    sortedEntries.forEach((entry, index) => {
+      entry.rank = index + 1;
+    });
+    
+    return sortedEntries;
+  }
+  
   // Demo data generation
   async createDemoUsers(count: number = 5): Promise<User[]> {
     const demoUsers: User[] = [];

@@ -38,10 +38,11 @@ const Leaderboard: FC<LeaderboardProps> = ({
 }) => {
   // Fetch leaderboard data
   const { data: leaderboardData, isLoading, error } = useQuery({
-    queryKey: ['/api/challenges/leaderboard'],
+    queryKey: ['/api/leaderboard', maxEntries],
     queryFn: async () => {
       try {
-        const response = await fetch('/api/challenges/leaderboard');
+        // Use the maxEntries parameter to limit data returned from the server
+        const response = await fetch(`/api/leaderboard?limit=${maxEntries}`);
         if (!response.ok) {
           throw new Error('Failed to fetch leaderboard data');
         }

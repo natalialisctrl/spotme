@@ -24,14 +24,34 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
 export function setupChallengeRoutes(app: Express, activeConnections: Map<number, WebSocket>) {
   // Public routes without authentication for view-only access
   
-  // Get leaderboard data
+  // Get global leaderboard data
+  app.get("/api/leaderboard", async (req, res) => {
+    try {
+      // Get optional limit parameter
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      
+      const leaderboardData = await storage.getLeaderboardData();
+      
+      // If limit is provided and valid, return only that many entries
+      if (limit && !isNaN(limit) && limit > 0) {
+        return res.status(200).json(leaderboardData.slice(0, limit));
+      }
+      
+      res.status(200).json(leaderboardData);
+    } catch (error) {
+      console.error("Error fetching global leaderboard data:", error);
+      return res.status(500).json({ message: "Failed to fetch leaderboard data" });
+    }
+  });
+  
+  // Get challenge-specific leaderboard data
   app.get("/api/challenges/leaderboard", async (req, res) => {
     try {
       // Get all challenge participations with their progress
       const leaderboardData = await storage.getLeaderboardData();
       return res.status(200).json(leaderboardData);
     } catch (error) {
-      console.error("Error fetching leaderboard data:", error);
+      console.error("Error fetching challenge leaderboard data:", error);
       return res.status(500).json({ message: "Failed to fetch leaderboard data" });
     }
   });
@@ -40,27 +60,34 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
   app.get("/api/challenges", async (req, res) => {
     try {
       const { mine, participating, friendsOnly } = req.query;
-      const userId = req.user!.id;
       
-      // If friendsOnly is set, get only challenges created by friends
-      if (friendsOnly === "true") {
-        const friendIds = await storage.getFriendIds(userId);
-        const challenges = await storage.getChallengesByCreatorIds(friendIds);
-        return res.status(200).json(challenges);
-      }
-      
-      // If mine is set, get only challenges created by the user
-      if (mine === "true") {
-        const challenges = await storage.getChallengesByCreatorId(userId);
-        return res.status(200).json(challenges);
-      }
-      
-      // If participating is set, get only challenges the user is participating in
-      if (participating === "true") {
-        const participations = await storage.getChallengeParticipationsByUserId(userId);
-        const challengeIds = participations.map(p => p.challengeId);
-        const challenges = await storage.getChallengesByIds(challengeIds);
-        return res.status(200).json(challenges);
+      // If user is authenticated, handle filtered views
+      if (req.isAuthenticated() && req.user) {
+        const userId = req.user.id;
+        
+        // If friendsOnly is set, get only challenges created by friends
+        if (friendsOnly === "true") {
+          const friendIds = await storage.getFriendIds(userId);
+          const challenges = await storage.getChallengesByCreatorIds(friendIds);
+          return res.status(200).json(challenges);
+        }
+        
+        // If mine is set, get only challenges created by the user
+        if (mine === "true") {
+          const challenges = await storage.getChallengesByCreatorId(userId);
+          return res.status(200).json(challenges);
+        }
+        
+        // If participating is set, get only challenges the user is participating in
+        if (participating === "true") {
+          const participations = await storage.getChallengeParticipationsByUserId(userId);
+          const challengeIds = participations.map(p => p.challengeId);
+          const challenges = await storage.getChallengesByIds(challengeIds);
+          return res.status(200).json(challenges);
+        }
+      } else if (mine === "true" || participating === "true" || friendsOnly === "true") {
+        // If not authenticated but trying to access filtered views, return empty array
+        return res.status(200).json([]);
       }
       
       // Otherwise, get all challenges
@@ -285,9 +312,14 @@ export function setupChallengeRoutes(app: Express, activeConnections: Map<number
   });
   
   // Get all participations for a user
-  app.get("/api/challenges/my-participations", isAuthenticated, async (req, res) => {
+  app.get("/api/challenges/my-participations", async (req, res) => {
     try {
-      const userId = req.user!.id;
+      // If user is not authenticated, return empty array
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(200).json([]);
+      }
+
+      const userId = req.user.id;
       const participations = await storage.getChallengeParticipationsByUserId(userId);
       
       res.status(200).json(participations);
