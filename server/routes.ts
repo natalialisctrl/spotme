@@ -476,6 +476,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'User not found' });
       }
       
+      // Make sure we have demo users for testing 
+      const existingUsers = await storage.getAllUsers();
+      const demoUserCount = existingUsers.filter(u => u.username.startsWith('demouser')).length;
+      
+      // Create demo users if we don't have any yet
+      if (demoUserCount < 5) {
+        console.log("Creating demo users for testing...");
+        await storage.createDemoUsers(5);
+        
+        // Assign workout focuses to demo users
+        const demoUsers = (await storage.getAllUsers()).filter(u => u.username.startsWith('demouser'));
+        const workoutTypes = ["chest", "arms", "legs", "back", "shoulders", "core", "cardio", "full_body"];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        for (const demoUser of demoUsers) {
+          // Check if user already has a workout focus for today
+          const existingFocus = await storage.getWorkoutFocus(demoUser.id);
+          const existingFocusIsToday = existingFocus && 
+            new Date(existingFocus.date).toDateString() === today.toDateString();
+          
+          if (!existingFocus || !existingFocusIsToday) {
+            // Assign a random workout type from the list
+            const randomWorkoutType = workoutTypes[Math.floor(Math.random() * workoutTypes.length)];
+            
+            try {
+              await storage.setWorkoutFocus({
+                userId: demoUser.id,
+                workoutType: randomWorkoutType,
+                date: today
+              });
+              console.log(`Set ${randomWorkoutType} workout focus for demo user ${demoUser.id}`);
+            } catch (error) {
+              console.error(`Failed to set workout focus for user ${demoUser.id}:`, error);
+            }
+          }
+        }
+      }
+      
       // For testing purposes, we'll generate demo data even if location isn't available
       let nearbyUsers;
       
