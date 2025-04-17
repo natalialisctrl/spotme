@@ -4,6 +4,7 @@ import { User } from "@shared/schema";
 import { Filter, MapPin, UserRound, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import FilterModal from "@/components/filters/FilterModal";
+import mapboxgl, { createMarkerElement, createMarkerPopup } from "@/lib/mapboxClient";
 
 interface MapViewProps {
   nearbyUsers?: User[];
@@ -12,11 +13,16 @@ interface MapViewProps {
   onUpdateFilters: (filters: any) => void;
 }
 
-// Define the main component with no dependency on MapBox
+// Define the main component with MapBox integration
 const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams, onUpdateFilters }) => {
   const { latitude, longitude, error: locationError, accuracy } = useGeolocation();
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  
+  // MapBox refs and state
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
 
   // Group users into distance categories
   const getNearbyUsersWithDistances = () => {
@@ -38,6 +44,95 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
   };
 
   const formattedUsers = getNearbyUsersWithDistances();
+  
+  // Initialize and update the MapBox map
+  useEffect(() => {
+    // Only initialize if we have coordinates and the container
+    if (!mapContainerRef.current || !latitude || !longitude) return;
+    
+    // If map already exists, don't create a new one
+    if (mapRef.current) return;
+    
+    try {
+      console.log("Initializing MapBox map with token:", mapboxgl.accessToken ? "Available" : "Not available");
+      
+      // Initialize the map
+      const map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [longitude, latitude],
+        zoom: 13,
+        attributionControl: false
+      });
+      
+      // Save the map reference
+      mapRef.current = map;
+      
+      // Add navigation controls
+      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+      
+      // Add current user marker
+      if (currentUser) {
+        const currentUserMarker = new mapboxgl.Marker(
+          createMarkerElement(currentUser, true)
+        )
+          .setLngLat([longitude, latitude])
+          .addTo(map);
+        markersRef.current.push(currentUserMarker);
+      }
+      
+      // When map is loaded, add user markers
+      map.on('load', () => {
+        console.log("MapBox map loaded, adding user markers");
+        // Call the update function directly
+        updateMapMarkers();
+      });
+    } catch (error) {
+      console.error("Error initializing MapBox map:", error);
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markersRef.current = [];
+      }
+    };
+  }, [latitude, longitude, currentUser]);
+  
+  // Function to update map markers
+  const updateMapMarkers = () => {
+    if (!mapRef.current || !latitude || !longitude) return;
+    
+    // Remove existing markers (except current user marker which is always first)
+    const currentUserMarker = markersRef.current[0];
+    markersRef.current.slice(1).forEach(marker => marker.remove());
+    markersRef.current = currentUserMarker ? [currentUserMarker] : [];
+    
+    // Add markers for nearby users
+    nearbyUsers.forEach(user => {
+      if (user.latitude && user.longitude) {
+        try {
+          const marker = new mapboxgl.Marker(createMarkerElement(user))
+            .setLngLat([user.longitude, user.latitude])
+            .setPopup(createMarkerPopup(user))
+            .addTo(mapRef.current!);
+          
+          markersRef.current.push(marker);
+        } catch (error) {
+          console.error("Error adding marker for user", user.id, error);
+        }
+      }
+    });
+  };
+  
+  // Update map markers when nearby users change
+  useEffect(() => {
+    if (mapRef.current) {
+      updateMapMarkers();
+    }
+  }, [nearbyUsers]);
 
   return (
     <section className="mb-8 px-4">
@@ -90,8 +185,15 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
               </div>
             </div>
             
-            {/* Interactive partner map replacement */}
-            <div className="space-y-4">
+            {/* Interactive Map */}
+            <div className="space-y-6">
+              {/* MapBox Map Container */}
+              <div 
+                ref={mapContainerRef}
+                className="w-full h-[300px] md:h-[400px] rounded-lg overflow-hidden border border-gray-200"
+              />
+            
+              {/* User Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {formattedUsers.map((user, index) => (
                   <div 
