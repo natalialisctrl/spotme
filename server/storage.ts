@@ -121,6 +121,7 @@ export interface IStorage {
   
   // Leaderboard operations
   getChallengeLeaderboard(challengeId: number, currentUserId?: number): Promise<{userId: number, username: string, name: string, progress: number, completed: boolean, profilePictureUrl?: string | null, isFriend?: boolean}[]>;
+  getLeaderboardData(): Promise<{id: number, userId: number, username: string, name: string, avatarUrl?: string | null, points: number, rank: number}[]>;
   
   // Demo data generation
   createDemoUsers(count?: number): Promise<User[]>;
