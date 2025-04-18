@@ -21,6 +21,7 @@ const activeConnections = new Map<number, WebSocket>();
 import { setupAuth } from "./auth";
 import { setupChallengeRoutes } from "./challengeRoutes";
 import { setupAchievementRoutes } from "./routes/achievementRoutes";
+import { setupExportRoutes } from "./routes/exportRoutes";
 
 import express from 'express';
 
@@ -39,6 +40,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Set up achievement routes
   await setupAchievementRoutes(app);
+  
+  // Set up workout export routes
+  setupExportRoutes(app);
   
   // Make sure natalia user exists in the database
   try {
