@@ -67,6 +67,10 @@ const Sidebar: FC = () => {
                 <Award className="h-5 w-5 mr-3 text-gray-500" />
                 Achievements
             </Link>
+            <Link href="/workout-battles" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/workout-battles' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+                <Zap className="h-5 w-5 mr-3 text-gray-500" />
+                Workout Battles
+            </Link>
             <Link href="/workout-exports" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/workout-exports' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <ExternalLink className="h-5 w-5 mr-3 text-gray-500" />
                 Workout Exports
