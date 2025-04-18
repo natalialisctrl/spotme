@@ -12,7 +12,8 @@ import {
   Dumbbell, 
   Clipboard, 
   CalendarDays,
-  Trophy
+  Trophy,
+  Award
 } from "lucide-react";
 import { 
   Popover,
@@ -42,7 +43,7 @@ const MobileNav: FC = () => {
             <span className="text-xs mt-1">Connections</span>
         </Link>
         <Popover>
-          <PopoverTrigger className={`flex flex-col items-center justify-center py-3 w-1/4 ${(location === '/profile' || location === '/security-settings' || location === '/workout-focus' || location === '/workout-routines' || location === '/scheduled-meetups') ? 'text-primary border-t-2 border-primary' : 'text-gray-500'}`}>
+          <PopoverTrigger className={`flex flex-col items-center justify-center py-3 w-1/4 ${(location === '/profile' || location === '/security-settings' || location === '/workout-focus' || location === '/workout-routines' || location === '/scheduled-meetups' || location === '/challenges' || location === '/achievements') ? 'text-primary border-t-2 border-primary' : 'text-gray-500'}`}>
             <User className="h-6 w-6" />
             <span className="text-xs mt-1">Menu</span>
           </PopoverTrigger>
@@ -82,6 +83,10 @@ const MobileNav: FC = () => {
               <Link href="/challenges" className="flex items-center p-3 hover:bg-gray-100">
                 <Trophy className="h-4 w-4 mr-2" />
                 <span className="text-sm">Challenges</span>
+              </Link>
+              <Link href="/achievements" className="flex items-center p-3 hover:bg-gray-100">
+                <Award className="h-4 w-4 mr-2" />
+                <span className="text-sm">Achievements</span>
               </Link>
               <Separator />
               <button 

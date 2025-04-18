@@ -11,7 +11,8 @@ import {
   Dumbbell, 
   Clipboard, 
   CalendarDays,
-  Trophy
+  Trophy,
+  Award
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,10 @@ const Sidebar: FC = () => {
             <Link href="/challenges" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/challenges' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <Trophy className="h-5 w-5 mr-3 text-gray-500" />
                 Challenges
+            </Link>
+            <Link href="/achievements" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/achievements' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+                <Award className="h-5 w-5 mr-3 text-gray-500" />
+                Achievements
             </Link>
             <Link href="/profile" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/profile' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <User className="h-5 w-5 mr-3 text-gray-500" />
