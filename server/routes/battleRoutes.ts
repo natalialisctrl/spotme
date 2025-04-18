@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction, Express } from "express";
-import { battleService } from "../services/battleService";
+import { battleService } from "../services/memBattleService";
 import { workoutBattleSchema, battlePerformanceSchema } from "@shared/schema";
 import { z } from "zod";
 import WebSocket from "ws";

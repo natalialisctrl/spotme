@@ -4,19 +4,35 @@ import {
   InsertBattlePerformance, 
   WorkoutBattle, 
   BattlePerformance,
-  WebSocketMessage,
-  User
+  WebSocketMessage
 } from "@shared/schema";
 import { getActiveConnections } from "../routes";
+import WebSocket from "ws";
 
-// Service for battle operations
-export class BattleService {
+// Service for battle operations using in-memory storage
+export class MemBattleService {
+  private battles: Map<number, WorkoutBattle> = new Map();
+  private performances: Map<number, BattlePerformance> = new Map();
+  private nextBattleId: number = 1;
+  private nextPerformanceId: number = 1;
+
   // Create a new workout battle
   async createBattle(battleData: InsertWorkoutBattle): Promise<WorkoutBattle> {
-    const [battle] = await db
-      .insert(workoutBattles)
-      .values(battleData)
-      .returning();
+    const now = new Date();
+    const id = this.nextBattleId++;
+    
+    const battle: WorkoutBattle = {
+      ...battleData,
+      id,
+      createdAt: now,
+      status: battleData.status || "pending",
+      startedAt: null,
+      completedAt: null,
+      winnerId: null,
+      isQuickChallenge: battleData.isQuickChallenge || false
+    };
+    
+    this.battles.set(id, battle);
 
     // If opponent is specified, send a battle invitation via WebSocket
     if (battleData.opponentId) {
@@ -30,15 +46,9 @@ export class BattleService {
   async sendBattleInvitation(battle: WorkoutBattle) {
     const connections = getActiveConnections();
 
-    // Get creator and opponent details for the message
-    const [creator] = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        profilePicture: users.profilePicture,
-      })
-      .from(users)
-      .where(eq(users.id, battle.creatorId));
+    // Get creator details for the message
+    const creator = await storage.getUser(battle.creatorId);
+    if (!creator) return;
 
     // Send battle invitation to opponent
     if (battle.opponentId && connections.has(battle.opponentId)) {
@@ -66,26 +76,21 @@ export class BattleService {
 
   // Accept a battle invitation
   async acceptBattle(battleId: number, userId: number): Promise<WorkoutBattle | null> {
+    const battle = this.battles.get(battleId);
+    
     // Make sure the user is actually the opponent for this battle
-    const [battle] = await db
-      .select()
-      .from(workoutBattles)
-      .where(and(
-        eq(workoutBattles.id, battleId),
-        eq(workoutBattles.opponentId, userId),
-        eq(workoutBattles.status, "pending")
-      ));
-
-    if (!battle) {
+    if (!battle || battle.opponentId !== userId || battle.status !== "pending") {
       return null;
     }
 
     // Update the battle status
-    const [updatedBattle] = await db
-      .update(workoutBattles)
-      .set({ status: "in_progress", startedAt: new Date() })
-      .where(eq(workoutBattles.id, battleId))
-      .returning();
+    const updatedBattle: WorkoutBattle = {
+      ...battle,
+      status: "in_progress",
+      startedAt: new Date()
+    };
+    
+    this.battles.set(battleId, updatedBattle);
 
     // Send notification to both participants
     this.sendBattleStatusUpdate(updatedBattle, "battle_accepted");
@@ -95,26 +100,20 @@ export class BattleService {
 
   // Decline a battle invitation
   async declineBattle(battleId: number, userId: number): Promise<WorkoutBattle | null> {
+    const battle = this.battles.get(battleId);
+    
     // Make sure the user is actually the opponent for this battle
-    const [battle] = await db
-      .select()
-      .from(workoutBattles)
-      .where(and(
-        eq(workoutBattles.id, battleId),
-        eq(workoutBattles.opponentId, userId),
-        eq(workoutBattles.status, "pending")
-      ));
-
-    if (!battle) {
+    if (!battle || battle.opponentId !== userId || battle.status !== "pending") {
       return null;
     }
 
     // Update the battle status
-    const [updatedBattle] = await db
-      .update(workoutBattles)
-      .set({ status: "cancelled" })
-      .where(eq(workoutBattles.id, battleId))
-      .returning();
+    const updatedBattle: WorkoutBattle = {
+      ...battle,
+      status: "cancelled"
+    };
+    
+    this.battles.set(battleId, updatedBattle);
 
     // Send notification to both participants
     this.sendBattleStatusUpdate(updatedBattle, "battle_declined");
@@ -124,15 +123,9 @@ export class BattleService {
 
   // Start a workout battle (countdown, etc.)
   async startBattle(battleId: number): Promise<WorkoutBattle | null> {
-    const [battle] = await db
-      .select()
-      .from(workoutBattles)
-      .where(and(
-        eq(workoutBattles.id, battleId),
-        eq(workoutBattles.status, "in_progress")
-      ));
-
-    if (!battle) {
+    const battle = this.battles.get(battleId);
+    
+    if (!battle || battle.status !== "in_progress") {
       return null;
     }
 
@@ -256,16 +249,10 @@ export class BattleService {
 
   // Update battle reps during active battle
   async updateBattleReps(battleId: number, userId: number, reps: number): Promise<BattlePerformance | null> {
+    const battle = this.battles.get(battleId);
+    
     // Check if battle exists and is in progress
-    const [battle] = await db
-      .select()
-      .from(workoutBattles)
-      .where(and(
-        eq(workoutBattles.id, battleId),
-        eq(workoutBattles.status, "in_progress")
-      ));
-
-    if (!battle) {
+    if (!battle || battle.status !== "in_progress") {
       return null;
     }
 
@@ -274,42 +261,39 @@ export class BattleService {
       return null;
     }
 
-    // Check if performance record exists
-    const [existing] = await db
-      .select()
-      .from(battlePerformance)
-      .where(and(
-        eq(battlePerformance.battleId, battleId),
-        eq(battlePerformance.userId, userId)
-      ));
+    // Find existing performance record
+    let existingPerformance: BattlePerformance | undefined;
+    for (const [_, perf] of this.performances.entries()) {
+      if (perf.battleId === battleId && perf.userId === userId) {
+        existingPerformance = perf;
+        break;
+      }
+    }
 
     let performance: BattlePerformance;
 
-    if (existing) {
+    if (existingPerformance) {
       // Update existing record
-      const [updated] = await db
-        .update(battlePerformance)
-        .set({ reps })
-        .where(and(
-          eq(battlePerformance.battleId, battleId),
-          eq(battlePerformance.userId, userId)
-        ))
-        .returning();
-      
-      performance = updated;
+      performance = {
+        ...existingPerformance,
+        reps
+      };
+      this.performances.set(existingPerformance.id, performance);
     } else {
       // Create new record
-      const [created] = await db
-        .insert(battlePerformance)
-        .values({
-          battleId,
-          userId,
-          reps,
-          submittedAt: new Date()
-        })
-        .returning();
-      
-      performance = created;
+      const id = this.nextPerformanceId++;
+      performance = {
+        id,
+        battleId,
+        userId,
+        reps,
+        verified: false,
+        submittedAt: new Date(),
+        formQuality: null,
+        notes: null,
+        videoUrl: null
+      };
+      this.performances.set(id, performance);
     }
 
     // Broadcast the rep update to all participants
@@ -328,13 +312,8 @@ export class BattleService {
     }
 
     // Get user info for the rep update
-    const [user] = await db
-      .select({
-        id: users.id,
-        name: users.name,
-      })
-      .from(users)
-      .where(eq(users.id, performance.userId));
+    const user = await storage.getUser(performance.userId);
+    if (!user) return;
 
     // Send update to all participants
     for (const participantId of participants) {
@@ -363,25 +342,23 @@ export class BattleService {
 
   // Complete a battle and determine winner
   async completeBattle(battleId: number): Promise<WorkoutBattle | null> {
+    const battle = this.battles.get(battleId);
+    
     // Check if battle exists and is in progress
-    const [battle] = await db
-      .select()
-      .from(workoutBattles)
-      .where(and(
-        eq(workoutBattles.id, battleId),
-        eq(workoutBattles.status, "in_progress")
-      ));
-
-    if (!battle) {
+    if (!battle || battle.status !== "in_progress") {
       return null;
     }
 
     // Get all performances for this battle
-    const performances = await db
-      .select()
-      .from(battlePerformance)
-      .where(eq(battlePerformance.battleId, battleId))
-      .orderBy(desc(battlePerformance.reps));
+    const performances: BattlePerformance[] = [];
+    for (const [_, perf] of this.performances.entries()) {
+      if (perf.battleId === battleId) {
+        performances.push(perf);
+      }
+    }
+
+    // Sort performances by reps in descending order
+    performances.sort((a, b) => b.reps - a.reps);
 
     // Determine winner based on reps
     let winnerId: number | null = null;
@@ -392,15 +369,14 @@ export class BattleService {
     }
 
     // Update battle status
-    const [updatedBattle] = await db
-      .update(workoutBattles)
-      .set({ 
-        status: "completed", 
-        completedAt: new Date(),
-        winnerId
-      })
-      .where(eq(workoutBattles.id, battleId))
-      .returning();
+    const updatedBattle: WorkoutBattle = {
+      ...battle,
+      status: "completed",
+      completedAt: new Date(),
+      winnerId
+    };
+    
+    this.battles.set(battleId, updatedBattle);
 
     // Send notification to all participants
     this.sendBattleCompletionUpdate(updatedBattle, performances);
@@ -418,24 +394,20 @@ export class BattleService {
     }
 
     // Get user details for all participants
-    const userIds = performances.map(p => p.userId);
-    const userDetails = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        profilePicture: users.profilePicture,
-      })
-      .from(users)
-      .where(sql`${users.id} IN (${userIds.join(',')})`);
-
-    // Create a map of user details
-    const userMap = new Map(userDetails.map(u => [u.id, u]));
-
-    // Enhance performance data with user details
-    const performanceResults = performances.map(p => ({
-      ...p,
-      user: userMap.get(p.userId)
-    }));
+    const performanceResults = [];
+    for (const performance of performances) {
+      const user = await storage.getUser(performance.userId);
+      if (user) {
+        performanceResults.push({
+          ...performance,
+          user: {
+            id: user.id,
+            name: user.name,
+            profilePicture: user.profilePicture
+          }
+        });
+      }
+    }
 
     // Send completion message to all participants
     for (const participantId of participants) {
@@ -491,30 +463,23 @@ export class BattleService {
 
   // Cancel a battle
   async cancelBattle(battleId: number, userId: number): Promise<WorkoutBattle | null> {
+    const battle = this.battles.get(battleId);
+    
     // Check if battle exists and user is a participant
-    const [battle] = await db
-      .select()
-      .from(workoutBattles)
-      .where(and(
-        eq(workoutBattles.id, battleId),
-        or(
-          eq(workoutBattles.creatorId, userId),
-          eq(workoutBattles.opponentId, userId)
-        ),
-        ne(workoutBattles.status, "completed"),
-        ne(workoutBattles.status, "cancelled")
-      ));
-
-    if (!battle) {
+    if (!battle || 
+        (battle.creatorId !== userId && battle.opponentId !== userId) ||
+        battle.status === "completed" ||
+        battle.status === "cancelled") {
       return null;
     }
 
     // Update battle status
-    const [updatedBattle] = await db
-      .update(workoutBattles)
-      .set({ status: "cancelled" })
-      .where(eq(workoutBattles.id, battleId))
-      .returning();
+    const updatedBattle: WorkoutBattle = {
+      ...battle,
+      status: "cancelled"
+    };
+    
+    this.battles.set(battleId, updatedBattle);
 
     // Send notification to all participants
     this.sendBattleStatusUpdate(updatedBattle, "battle_cancelled");
@@ -524,40 +489,40 @@ export class BattleService {
 
   // Get battles for a user
   async getUserBattles(userId: number, status?: string): Promise<WorkoutBattle[]> {
-    let query = db
-      .select()
-      .from(workoutBattles)
-      .where(or(
-        eq(workoutBattles.creatorId, userId),
-        eq(workoutBattles.opponentId, userId)
-      ));
-
-    if (status) {
-      query = query.where(eq(workoutBattles.status, status));
-    }
-
-    query = query.orderBy(desc(workoutBattles.createdAt));
+    const userBattles: WorkoutBattle[] = [];
     
-    return await query;
+    for (const [_, battle] of this.battles.entries()) {
+      if (battle.creatorId === userId || battle.opponentId === userId) {
+        if (!status || battle.status === status) {
+          userBattles.push(battle);
+        }
+      }
+    }
+    
+    // Sort by created date (descending)
+    return userBattles.sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
   }
 
   // Get a specific battle by ID
   async getBattleById(battleId: number): Promise<WorkoutBattle | null> {
-    const [battle] = await db
-      .select()
-      .from(workoutBattles)
-      .where(eq(workoutBattles.id, battleId));
-
+    const battle = this.battles.get(battleId);
     return battle || null;
   }
 
   // Get battle performances for a specific battle
   async getBattlePerformances(battleId: number): Promise<BattlePerformance[]> {
-    return await db
-      .select()
-      .from(battlePerformance)
-      .where(eq(battlePerformance.battleId, battleId))
-      .orderBy(desc(battlePerformance.reps));
+    const battlePerformances: BattlePerformance[] = [];
+    
+    for (const [_, perf] of this.performances.entries()) {
+      if (perf.battleId === battleId) {
+        battlePerformances.push(perf);
+      }
+    }
+    
+    // Sort by reps (descending)
+    return battlePerformances.sort((a, b) => b.reps - a.reps);
   }
 
   // Create a quick challenge for nearby users
@@ -570,10 +535,7 @@ export class BattleService {
       status: "pending"
     };
 
-    const [battle] = await db
-      .insert(workoutBattles)
-      .values(battleData)
-      .returning();
+    const battle = await this.createBattle(battleData);
 
     // Send quick challenge notification to nearby users
     this.broadcastQuickChallenge(battle);
@@ -586,18 +548,8 @@ export class BattleService {
     const connections = getActiveConnections();
     
     // Get creator details
-    const [creator] = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        profilePicture: users.profilePicture,
-        latitude: users.latitude,
-        longitude: users.longitude
-      })
-      .from(users)
-      .where(eq(users.id, battle.creatorId));
-
-    if (!creator.latitude || !creator.longitude) {
+    const creator = await storage.getUser(battle.creatorId);
+    if (!creator || !creator.latitude || !creator.longitude) {
       return; // Can't determine location
     }
 
@@ -612,16 +564,8 @@ export class BattleService {
       }
 
       // Get user's location
-      const [user] = await db
-        .select({
-          id: users.id,
-          latitude: users.latitude,
-          longitude: users.longitude
-        })
-        .from(users)
-        .where(eq(users.id, userId));
-
-      if (!user.latitude || !user.longitude) {
+      const user = await storage.getUser(userId);
+      if (!user || !user.latitude || !user.longitude) {
         continue; // Skip users without location
       }
 
@@ -674,4 +618,4 @@ export class BattleService {
   }
 }
 
-export const battleService = new BattleService();
+export const battleService = new MemBattleService();
