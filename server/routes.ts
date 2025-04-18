@@ -40,6 +40,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up achievement routes
   await setupAchievementRoutes(app);
   
+  // Make sure natalia user exists in the database
+  try {
+    // Check if natalia user exists
+    const existingUser = await storage.getUserByUsername("natalia");
+    
+    if (!existingUser) {
+      console.log("Creating natalia user in database...");
+      // Create natalia user
+      const nataliaUser = {
+        username: "natalia",
+        password: "liscr12",
+        email: "natalia@spotme.com",
+        name: "Natalia Liscio",
+        gender: "female",
+        experienceLevel: "intermediate",
+        experienceYears: 5,
+        bio: "Certified personal trainer who loves connecting with fitness enthusiasts",
+        gymName: "FitZone Gym",
+        latitude: 30.2267,  // Austin-based location
+        longitude: -97.7476,
+        aiGeneratedInsights: JSON.stringify({
+          workoutStyle: "balanced",
+          motivationTips: [
+            "Track your progress with a fitness journal",
+            "Set specific, achievable weekly goals",
+            "Join group classes to stay motivated"
+          ],
+          recommendedGoals: [
+            "Increase strength by 15% in three months",
+            "Improve cardiovascular endurance",
+            "Maintain consistent workout schedule"
+          ],
+          partnerPreferences: "Looking for dedicated partners who want to improve their form and technique"
+        })
+      };
+      
+      await storage.createUser(nataliaUser);
+      console.log("Natalia user created successfully!");
+      
+      // Also create some demo users for testing
+      console.log("Creating demo users in database...");
+      const demoUsers = await storage.createDemoUsers(5);
+      console.log(`Created ${demoUsers.length} demo users in database`);
+    } else {
+      console.log("Natalia user already exists in database");
+    }
+  } catch (error) {
+    console.error("Error setting up initial users:", error);
+  }
+  
   // Simple demo data setup endpoint (not requiring authentication)
   // Special endpoint just to create the natalia user
   app.post('/api/natalia', async (req, res) => {
