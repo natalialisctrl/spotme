@@ -18,6 +18,11 @@ import * as crypto from 'crypto';
 // Map to store active WebSocket connections by user ID
 const activeConnections = new Map<number, WebSocket>();
 
+// Export active connections for use in other modules
+export function getActiveConnections() {
+  return activeConnections;
+}
+
 import { setupAuth } from "./auth";
 import { setupChallengeRoutes } from "./challengeRoutes";
 import { setupAchievementRoutes } from "./routes/achievementRoutes";
@@ -44,6 +49,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Set up workout export routes
   setupExportRoutes(app);
+  
+  // Set up battle routes
+  setupBattleRoutes(app, activeConnections);
   
   // Make sure natalia user exists in the database
   try {
