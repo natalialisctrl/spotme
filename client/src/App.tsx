@@ -18,6 +18,7 @@ import ScheduledMeetups from "@/pages/ScheduledMeetups"; // Import scheduled mee
 import Challenges from "@/pages/Challenges"; // Import challenges page
 import Achievements from "@/pages/Achievements"; // Import achievements page
 import WorkoutExports from "@/pages/WorkoutExports"; // Import workout exports page
+import WorkoutBattles from "@/pages/WorkoutBattles"; // Import workout battles page
 import { ChallengeDetail } from "@/components/challenges/ChallengeDetail"; // Import challenge detail component
 import AuthPage from "@/pages/AuthPage";
 import { Loader2 } from "lucide-react";
@@ -69,6 +70,10 @@ function AchievementsPage() {
 
 function WorkoutExportsPage() {
   return <WorkoutExports />;
+}
+
+function WorkoutBattlesPage() {
+  return <WorkoutBattles />;
 }
 
 function ChallengeDetailPage({ params }: { params: { id: string } }) {
@@ -132,6 +137,7 @@ function Router() {
         <Route path="/challenges/:id" component={ChallengeDetailPage} />
         <Route path="/achievements" component={AchievementsPage} />
         <Route path="/workout-exports" component={WorkoutExportsPage} />
+        <Route path="/workout-battles" component={WorkoutBattlesPage} />
         <Route component={NotFound} />
       </Switch>
     </AppShell>
