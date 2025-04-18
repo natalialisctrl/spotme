@@ -447,6 +447,46 @@ export const fitnessIntegrations = pgTable("fitness_integrations", {
   };
 });
 
+// Workout battle exercise types
+export const battleExerciseTypes = [
+  "pushups", "squats", "lunges", "burpees", "jumping_jacks", 
+  "situps", "plank", "mountain_climbers", "bicep_curls", "shoulder_press"
+] as const;
+
+// Battle durations in seconds
+export const battleDurations = [30, 60, 120, 180, 300] as const; // 30s, 1min, 2min, 3min, 5min
+
+// Workout battle table - for real-time competitions
+export const workoutBattles = pgTable("workout_battles", {
+  id: serial("id").primaryKey(),
+  creatorId: integer("creator_id").notNull().references(() => users.id),
+  opponentId: integer("opponent_id").references(() => users.id),
+  exerciseType: text("exercise_type").notNull(), // Type of exercise for the battle
+  repTarget: integer("rep_target"), // Optional target number of reps
+  duration: integer("duration").notNull(), // Battle duration in seconds
+  status: text("status").notNull().default("pending"), // pending, in_progress, completed, cancelled
+  winnerId: integer("winner_id").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  isQuickChallenge: boolean("is_quick_challenge").notNull().default(false), // For quick 2-minute challenges
+});
+
+// Workout battle performance
+export const battlePerformance = pgTable("battle_performance", {
+  id: serial("id").primaryKey(),
+  battleId: integer("battle_id").notNull().references(() => workoutBattles.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  reps: integer("reps").notNull().default(0), // Number of reps completed
+  verified: boolean("verified").notNull().default(false), // Whether the performance was verified by video
+  submittedAt: timestamp("submitted_at"),
+  formQuality: integer("form_quality"), // 1-10 rating of exercise form
+  notes: text("notes"),
+  videoUrl: text("video_url"), // URL to recorded video snippet
+  heartRate: integer("heart_rate"), // Optional heart rate during exercise
+  caloriesBurned: integer("calories_burned"), // Estimated calories burned
+});
+
 // Achievement badge validation
 export const achievementBadgeSchema = z.object({
   name: z.string().min(3, "Badge name must be at least 3 characters"),
@@ -469,6 +509,31 @@ export const workoutCheckinSchema = z.object({
   notes: z.string().optional(),
   proofImageUrl: z.string().optional(),
   verified: z.boolean().default(false),
+});
+
+// Workout battle validation
+export const workoutBattleSchema = z.object({
+  creatorId: z.number().int().positive(),
+  opponentId: z.number().int().positive().optional(),
+  exerciseType: z.enum(battleExerciseTypes),
+  repTarget: z.number().int().min(1).optional(),
+  duration: z.number().int().refine(value => battleDurations.includes(value as any), {
+    message: `Duration must be one of: ${battleDurations.join(', ')} seconds`,
+  }),
+  isQuickChallenge: z.boolean().default(false),
+});
+
+// Battle performance validation
+export const battlePerformanceSchema = z.object({
+  battleId: z.number().int().positive(),
+  userId: z.number().int().positive(),
+  reps: z.number().int().min(0),
+  verified: z.boolean().default(false),
+  formQuality: z.number().int().min(1).max(10).optional(),
+  notes: z.string().optional(),
+  videoUrl: z.string().optional(),
+  heartRate: z.number().int().min(40).max(220).optional(),
+  caloriesBurned: z.number().int().min(0).optional(),
 });
 
 // Types for the schemas
@@ -499,6 +564,8 @@ export type AchievementBadge = typeof achievementBadges.$inferSelect;
 export type UserAchievement = typeof userAchievements.$inferSelect;
 export type WorkoutCheckin = typeof workoutCheckins.$inferSelect;
 export type UserStreak = typeof userStreaks.$inferSelect;
+export type WorkoutBattle = typeof workoutBattles.$inferSelect;
+export type BattlePerformance = typeof battlePerformance.$inferSelect;
 
 export type Login = z.infer<typeof loginSchema>;
 export type ChangePassword = z.infer<typeof changePasswordSchema>;
@@ -515,6 +582,8 @@ export type ScheduledMeetupData = z.infer<typeof scheduledMeetupSchema>;
 export type ChallengeData = z.infer<typeof challengeSchema>;
 export type ProgressEntryData = z.infer<typeof progressEntrySchema>;
 export type ChallengeCommentData = z.infer<typeof challengeCommentSchema>;
+export type WorkoutBattleData = z.infer<typeof workoutBattleSchema>;
+export type BattlePerformanceData = z.infer<typeof battlePerformanceSchema>;
 export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
 export type InsertChallengeParticipant = z.infer<typeof insertChallengeParticipantSchema>;
 export type InsertProgressEntry = z.infer<typeof insertProgressEntrySchema>;
@@ -532,7 +601,10 @@ export type WebSocketMessage = {
         'challenge_created' | 'challenge_joined' | 'challenge_progress_updated' |
         'challenge_completed' | 'challenge_comment' | 'challenge_leaderboard_changed' |
         'achievement_earned' | 'badge_unlocked' | 'streak_milestone' | 'level_up' | 
-        'workout_checkin' | 'partner_workout_completed';
+        'workout_checkin' | 'partner_workout_completed' |
+        'battle_invitation' | 'battle_accepted' | 'battle_declined' | 'battle_started' | 
+        'battle_countdown' | 'battle_rep_update' | 'battle_completed' | 'battle_cancelled' |
+        'quick_challenge_nearby';
   senderId: number;
   receiverId?: number;
   data: any;
