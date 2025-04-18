@@ -262,6 +262,8 @@ export const insertUserAchievementSchema = createInsertSchema(userAchievements).
 export const insertWorkoutCheckinSchema = createInsertSchema(workoutCheckins).omit({ id: true });
 export const insertUserStreakSchema = createInsertSchema(userStreaks).omit({ id: true });
 
+// We'll add these later after table definitions
+
 // Custom schemas for specific operations
 export const loginSchema = z.object({
   username: z.string().min(3),
@@ -511,31 +513,6 @@ export const workoutCheckinSchema = z.object({
   verified: z.boolean().default(false),
 });
 
-// Workout battle validation
-export const workoutBattleSchema = z.object({
-  creatorId: z.number().int().positive(),
-  opponentId: z.number().int().positive().optional(),
-  exerciseType: z.enum(battleExerciseTypes),
-  repTarget: z.number().int().min(1).optional(),
-  duration: z.number().int().refine(value => battleDurations.includes(value as any), {
-    message: `Duration must be one of: ${battleDurations.join(', ')} seconds`,
-  }),
-  isQuickChallenge: z.boolean().default(false),
-});
-
-// Battle performance validation
-export const battlePerformanceSchema = z.object({
-  battleId: z.number().int().positive(),
-  userId: z.number().int().positive(),
-  reps: z.number().int().min(0),
-  verified: z.boolean().default(false),
-  formQuality: z.number().int().min(1).max(10).optional(),
-  notes: z.string().optional(),
-  videoUrl: z.string().optional(),
-  heartRate: z.number().int().min(40).max(220).optional(),
-  caloriesBurned: z.number().int().min(0).optional(),
-});
-
 // Types for the schemas
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertWorkoutFocus = z.infer<typeof insertWorkoutFocusSchema>;
@@ -582,6 +559,31 @@ export type ScheduledMeetupData = z.infer<typeof scheduledMeetupSchema>;
 export type ChallengeData = z.infer<typeof challengeSchema>;
 export type ProgressEntryData = z.infer<typeof progressEntrySchema>;
 export type ChallengeCommentData = z.infer<typeof challengeCommentSchema>;
+// Workout battle validation - added after table definitions
+export const workoutBattleSchema = z.object({
+  creatorId: z.number().int().positive(),
+  opponentId: z.number().int().positive().optional(),
+  exerciseType: z.enum(battleExerciseTypes),
+  repTarget: z.number().int().min(1).optional(),
+  duration: z.number().int().refine(value => battleDurations.includes(value as any), {
+    message: `Duration must be one of: ${battleDurations.join(', ')} seconds`,
+  }),
+  isQuickChallenge: z.boolean().default(false),
+});
+
+// Battle performance validation
+export const battlePerformanceSchema = z.object({
+  battleId: z.number().int().positive(),
+  userId: z.number().int().positive(),
+  reps: z.number().int().min(0),
+  verified: z.boolean().default(false),
+  formQuality: z.number().int().min(1).max(10).optional(),
+  notes: z.string().optional(),
+  videoUrl: z.string().optional(),
+  heartRate: z.number().int().min(40).max(220).optional(),
+  caloriesBurned: z.number().int().min(0).optional(),
+});
+
 export type WorkoutBattleData = z.infer<typeof workoutBattleSchema>;
 export type BattlePerformanceData = z.infer<typeof battlePerformanceSchema>;
 export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
@@ -592,6 +594,8 @@ export type InsertAchievementBadge = z.infer<typeof insertAchievementBadgeSchema
 export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
 export type InsertWorkoutCheckin = z.infer<typeof insertWorkoutCheckinSchema>;
 export type InsertUserStreak = z.infer<typeof insertUserStreakSchema>;
+export type InsertWorkoutBattle = z.infer<typeof insertWorkoutBattleSchema>;
+export type InsertBattlePerformance = z.infer<typeof insertBattlePerformanceSchema>;
 
 // Type for WebSocket messages
 export type WebSocketMessage = {
