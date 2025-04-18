@@ -6,7 +6,15 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 
-export function setupAchievementRoutes(app: Express): void {
+export async function setupAchievementRoutes(app: Express): Promise<void> {
+  // Initialize default badges when setting up routes
+  try {
+    const badges = await achievementService.seedDefaultBadges();
+    console.log(`Achievement system initialized with ${badges.length} badges`);
+  } catch (error) {
+    console.error("Error initializing achievement badges:", error);
+  }
+
   // Middleware to check if user is authenticated
   function isAuthenticated(req: Request, res: Response, next: NextFunction) {
     if (req.isAuthenticated()) {

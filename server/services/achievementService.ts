@@ -25,9 +25,85 @@ const STREAKS = {
   LEGENDARY: { days: 100, points: 1000 },
 };
 
+// Default achievement badges for seeding
+const DEFAULT_BADGES = [
+  {
+    name: "First Workout",
+    description: "Complete your first workout",
+    category: "workout",
+    requirement: "Complete 1 workout",
+    icon: "award",
+    level: 1,
+    points: 10,
+    createdAt: new Date()
+  },
+  {
+    name: "Streak Starter",
+    description: "Maintain a 3-day workout streak",
+    category: "streak",
+    requirement: "3-day streak",
+    icon: "flame",
+    level: 1,
+    points: 20,
+    createdAt: new Date()
+  },
+  {
+    name: "Weekly Warrior",
+    description: "Maintain a 7-day workout streak",
+    category: "streak",
+    requirement: "7-day streak",
+    icon: "flame",
+    level: 2,
+    points: 50,
+    createdAt: new Date()
+  },
+  {
+    name: "Social Butterfly",
+    description: "Work out with 3 different gym partners",
+    category: "social",
+    requirement: "3 different partners",
+    icon: "users",
+    level: 1,
+    points: 30,
+    createdAt: new Date()
+  },
+  {
+    name: "Challenge Champion",
+    description: "Complete 3 workout challenges",
+    category: "challenge",
+    requirement: "3 challenges",
+    icon: "trophy",
+    level: 2,
+    points: 40,
+    createdAt: new Date()
+  }
+];
+
+// Seed default badges if none exist
+export async function seedDefaultBadges(): Promise<AchievementBadge[]> {
+  const existingBadges = await db.select().from(achievementBadges);
+  
+  if (existingBadges.length === 0) {
+    console.log("Seeding default achievement badges...");
+    const badges = await db.insert(achievementBadges)
+      .values(DEFAULT_BADGES)
+      .returning();
+    return badges;
+  }
+  
+  return existingBadges;
+}
+
 // Get all achievement badges
 export async function getAllAchievementBadges(): Promise<AchievementBadge[]> {
-  return await db.select().from(achievementBadges);
+  const badges = await db.select().from(achievementBadges);
+  
+  // If no badges exist, seed default ones
+  if (badges.length === 0) {
+    return await seedDefaultBadges();
+  }
+  
+  return badges;
 }
 
 // Create a new achievement badge
@@ -184,6 +260,9 @@ export async function recordWorkoutCheckin(checkin: InsertWorkoutCheckin): Promi
 
 // Get a user's streak information
 export async function getUserStreak(userId: number): Promise<UserStreak | null> {
+  // Initialize streak record if it doesn't exist
+  await initializeUserStreak(userId);
+  
   const streak = await db.select()
     .from(userStreaks)
     .where(eq(userStreaks.userId, userId));

@@ -38,7 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupChallengeRoutes(app, activeConnections);
   
   // Set up achievement routes
-  setupAchievementRoutes(app);
+  await setupAchievementRoutes(app);
   
   // Simple demo data setup endpoint (not requiring authentication)
   // Special endpoint just to create the natalia user
