@@ -22,6 +22,7 @@ import { setupAuth } from "./auth";
 import { setupChallengeRoutes } from "./challengeRoutes";
 import { setupAchievementRoutes } from "./routes/achievementRoutes";
 import { setupExportRoutes } from "./routes/exportRoutes";
+import { setupBattleRoutes } from "./routes/battleRoutes";
 
 import express from 'express';
 

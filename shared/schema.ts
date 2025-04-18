@@ -264,7 +264,7 @@ export const userStreaks = pgTable("user_streaks", {
   userId: integer("user_id").notNull().references(() => users.id).unique(),
   currentStreak: integer("current_streak").notNull().default(0),
   longestStreak: integer("longest_streak").notNull().default(0),
-  lastCheckInDate: date("last_check_in_date"),
+  lastCheckInDate: date("last_checkin_date"),
   totalWorkouts: integer("total_workouts").notNull().default(0),
   level: integer("level").notNull().default(1),
   totalPoints: integer("total_points").notNull().default(0),
