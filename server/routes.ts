@@ -280,8 +280,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const demoUser = demoUsers[0];
         
-        // Log the user in by setting session data
+        // Log the user in using both session.userId and Passport login
         req.session.userId = demoUser.id;
+        // Use Passport's login method to set up req.isAuthenticated() properly
+        await new Promise<void>((resolve, reject) => {
+          req.login(demoUser, (err) => {
+            if (err) {
+              console.error("Passport login error:", err);
+              reject(err);
+            }
+            resolve();
+          });
+        });
         
         // Don't return sensitive fields
         const { password, ...userWithoutPassword } = demoUser;
@@ -296,8 +306,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use the first demo user
       const demoUser = demoUsers[0];
       
-      // Log the user in by setting session data
+      // Log the user in using both session.userId and Passport login
       req.session.userId = demoUser.id;
+      // Use Passport's login method to set up req.isAuthenticated() properly
+      await new Promise<void>((resolve, reject) => {
+        req.login(demoUser, (err) => {
+          if (err) {
+            console.error("Passport login error:", err);
+            reject(err);
+          }
+          resolve();
+        });
+      });
       
       // Don't return sensitive fields
       const { password, ...userWithoutPassword } = demoUser;
