@@ -408,6 +408,45 @@ export const challengeCommentSchema = z.object({
 // Achievement badge categories
 export const badgeCategories = ["workout", "social", "challenge", "streak", "milestone"] as const;
 
+// Supported fitness platforms for export
+export const fitnessPlatforms = ["strava", "fitbit", "garmin", "apple_health", "google_fit", "generic"] as const;
+
+// Export file format types
+export const exportFileFormats = ["tcx", "gpx", "csv", "json", "fit"] as const;
+
+// Workout export table
+export const workoutExports = pgTable("workout_exports", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  workoutIds: text("workout_ids").notNull(), // Comma-separated workout IDs
+  platform: text("platform").notNull(), // FitnessPlatform type
+  format: text("format").notNull(), // ExportFileFormat type
+  status: text("status").notNull().default("pending"), // pending, processing, completed, failed
+  exportUrl: text("export_url"), // URL to download the exported file
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+// Integration tokens for fitness platforms
+export const fitnessIntegrations = pgTable("fitness_integrations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  platform: text("platform").notNull(), // FitnessPlatform type
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  tokenExpiry: timestamp("token_expiry"),
+  scope: text("scope"),
+  connected: boolean("connected").notNull().default(false),
+  lastSyncDate: timestamp("last_sync_date"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+  return {
+    userPlatformUnique: primaryKey({ columns: [table.userId, table.platform] })
+  };
+});
+
 // Achievement badge validation
 export const achievementBadgeSchema = z.object({
   name: z.string().min(3, "Badge name must be at least 3 characters"),
