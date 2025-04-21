@@ -54,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Sleep 500ms to ensure unlock takes effect
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Now try to login
-        const demoCredentials = { username: "natalia", password: "password123" };
+        // Now try to login - using the correct demo password from server/routes.ts
+        const demoCredentials = { username: "natalia", password: "liscr12" };
         await loginMutation.mutateAsync(demoCredentials);
         return true;
       } catch (error) {
