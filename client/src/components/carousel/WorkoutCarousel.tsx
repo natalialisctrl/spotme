@@ -1,4 +1,5 @@
 import { FC, useCallback, useEffect, useState } from 'react';
+// Using default import syntax from the embla-carousel-react package
 import useEmblaCarousel from 'embla-carousel-react';
 import { useQuery } from '@tanstack/react-query';
 import { 
