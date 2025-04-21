@@ -168,6 +168,51 @@ export class MemStorage implements IStorage {
 
   sessionStore: any; // Using 'any' to avoid TypeScript errors
 
+  // File path for persisting user state
+  private readonly userStatePath = './data/user_state.json';
+
+  // Method to save user state to file
+  saveUserState(): void {
+    try {
+      // Ensure the directory exists
+      const dir = path.dirname(this.userStatePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      
+      // Save the main natalia user to file
+      fs.writeFileSync(
+        this.userStatePath, 
+        JSON.stringify(this.nataliaUser, null, 2)
+      );
+      console.log("User state saved to file successfully");
+    } catch (error) {
+      console.error("Error saving user state to file:", error);
+    }
+  }
+
+  // Method to load user state from file
+  loadUserState(): User | null {
+    try {
+      if (fs.existsSync(this.userStatePath)) {
+        const userData = fs.readFileSync(this.userStatePath, 'utf8');
+        const parsedUser = JSON.parse(userData);
+        
+        // Convert string dates back to Date objects
+        if (parsedUser.lastActive) parsedUser.lastActive = new Date(parsedUser.lastActive);
+        if (parsedUser.createdAt) parsedUser.createdAt = new Date(parsedUser.createdAt);
+        if (parsedUser.updatedAt) parsedUser.updatedAt = new Date(parsedUser.updatedAt);
+        if (parsedUser.resetPasswordExpires) parsedUser.resetPasswordExpires = new Date(parsedUser.resetPasswordExpires);
+        
+        console.log("User state loaded from file successfully");
+        return parsedUser;
+      }
+    } catch (error) {
+      console.error("Error loading user state from file:", error);
+    }
+    return null;
+  }
+
   constructor() {
     this.users = new Map();
     this.workoutFocuses = new Map();
@@ -203,48 +248,61 @@ export class MemStorage implements IStorage {
       checkPeriod: 86400000 // prune expired entries every 24h
     });
     
-    // Add natalia user directly for testing
-    const nataliaUser: User = {
-      id: this.currentUserId++,
-      username: "natalia",
-      password: "liscr12",
-      email: "natalia@spotme.com",
-      name: "Natalia Liscio",
-      gender: "female",
-      experienceLevel: "intermediate",
-      experienceYears: 5,
-      bio: "Certified personal trainer who loves connecting with fitness enthusiasts",
-      gymName: "FitZone Gym",
-      latitude: 30.2267,  // Austin-based location
-      longitude: -97.7476,
-      profilePictureUrl: null,
-      firebaseUid: null,
-      aiGeneratedInsights: JSON.stringify({
-        workoutStyle: "balanced",
-        motivationTips: [
-          "Track your progress with a fitness journal",
-          "Set specific, achievable weekly goals",
-          "Join group classes to stay motivated"
-        ],
-        recommendedGoals: [
-          "Increase strength by 15% in three months",
-          "Improve cardiovascular endurance",
-          "Maintain consistent workout schedule"
-        ],
-        partnerPreferences: "Looking for dedicated partners who want to improve their form and technique"
-      }),
-      mfaEnabled: false,
-      mfaVerified: false,
-      mfaSecret: null,
-      lastActive: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      passwordResetToken: null,
-      resetPasswordExpires: null
-    };
-    // Initialize the nataliaUser property to ensure persistence across restarts
-    this.nataliaUser = { ...nataliaUser };
-    this.users.set(nataliaUser.id, nataliaUser);
+    // Try to load previously saved user state
+    const savedUserState = this.loadUserState();
+    
+    if (savedUserState) {
+      // Use the loaded user state if available
+      this.nataliaUser = savedUserState;
+      this.users.set(savedUserState.id, savedUserState);
+      console.log("Loaded saved user state for", savedUserState.name);
+    } else {
+      // Add natalia user directly for testing if no saved state exists
+      const nataliaUser: User = {
+        id: this.currentUserId++,
+        username: "natalia",
+        password: "liscr12",
+        email: "natalia@spotme.com",
+        name: "Natalia Liscio",
+        gender: "female",
+        experienceLevel: "intermediate",
+        experienceYears: 5,
+        bio: "Certified personal trainer who loves connecting with fitness enthusiasts",
+        gymName: "FitZone Gym",
+        latitude: 30.2267,  // Austin-based location
+        longitude: -97.7476,
+        profilePictureUrl: null,
+        firebaseUid: null,
+        aiGeneratedInsights: JSON.stringify({
+          workoutStyle: "balanced",
+          motivationTips: [
+            "Track your progress with a fitness journal",
+            "Set specific, achievable weekly goals",
+            "Join group classes to stay motivated"
+          ],
+          recommendedGoals: [
+            "Increase strength by 15% in three months",
+            "Improve cardiovascular endurance",
+            "Maintain consistent workout schedule"
+          ],
+          partnerPreferences: "Looking for dedicated partners who want to improve their form and technique"
+        }),
+        mfaEnabled: false,
+        mfaVerified: false,
+        mfaSecret: null,
+        lastActive: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        passwordResetToken: null,
+        resetPasswordExpires: null
+      };
+      // Initialize the nataliaUser property to ensure persistence across restarts
+      this.nataliaUser = { ...nataliaUser };
+      this.users.set(nataliaUser.id, nataliaUser);
+      
+      // Save the initial state
+      this.saveUserState();
+    }
     // Removed call to initializeDemoData - this will be done through API endpoint
   }
 
