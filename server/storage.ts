@@ -703,13 +703,17 @@ export class MemStorage implements IStorage {
       // Skip if user doesn't have location
       if (!user.latitude || !user.longitude) return false;
       
-      // Important: Always include demo users regardless of filters
-      // Check if user is in our demoUserIds array
+      // Check if user is a demo user (for logging purposes)
       const isDemoUser = MemStorage.persistentDemoUserIds.includes(user.id);
-      if (isDemoUser) {
-        console.log(`Including demo user ${user.id} (${user.name}) in nearby users`);
+      
+      // Log demo users that pass the filter checks at the end
+      const hasAllRequiredFilters = (): boolean => {
+        // If user passes all filter checks, log it
+        if (isDemoUser) {
+          console.log(`Including demo user ${user.id} (${user.name}) in nearby users`);
+        }
         return true;
-      }
+      };
       
       // Calculate distance
       const distance = this.calculateDistance(
@@ -728,7 +732,7 @@ export class MemStorage implements IStorage {
         if (!currentUser || user.gymName !== currentUser.gymName) return false;
       }
       
-      // Filter by gender if specified
+      // Filter by gender if specified (apply to ALL users including demo users)
       if (gender && user.gender !== gender) return false;
       
       // Filter by experience level if specified
@@ -745,7 +749,8 @@ export class MemStorage implements IStorage {
         if (!userWorkoutFocus || userWorkoutFocus.workoutType !== workoutType) return false;
       }
       
-      return true;
+      // User passed all filters - log for demo users and return true
+      return hasAllRequiredFilters();
     });
     
     // Sort results by distance
