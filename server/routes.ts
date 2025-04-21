@@ -744,18 +744,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Make sure we have demo users for testing
-      // Clear existing demo users to ensure a fresh start
+      // Check if we already have enough demo users
       const existingUsers = await storage.getAllUsers();
       const demoUsers = existingUsers.filter(u => u.username.startsWith('demouser'));
       
-      // Delete existing demo users
-      for (const demoUser of demoUsers) {
-        await storage.deleteUser(demoUser.id);
+      // Only create new demo users if we don't have enough or we're resetting
+      if (demoUsers.length < 10 || req.query.reset === 'true') {
+        console.log("Creating fresh demo users for testing...");
+        // Create new demo users - specifically within 5 miles
+        await storage.createDemoUsers(10, 5, user.gymName); // Create 10 users within 5 miles, some with matching gym
+        console.log(`Created demo users with gym name: ${user.gymName || 'None'}`);
+      } else {
+        console.log(`Using existing ${demoUsers.length} demo users`);
       }
-      
-      console.log("Creating fresh demo users for testing...");
-      // Create new demo users - specifically within 5 miles
-      await storage.createDemoUsers(10, 5, user.gymName); // Create 10 users within 5 miles, some with matching gym
       
       // Assign workout focuses to demo users
       const newDemoUsers = (await storage.getAllUsers()).filter(u => u.username.startsWith('demouser'));
@@ -1866,6 +1867,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error leaving meetup:', error);
       return res.status(500).json({ message: 'Failed to leave meetup' });
+    }
+  });
+
+  // Define a reset endpoint for testing purposes
+  app.post('/api/reset-demo-users', async (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    try {
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      console.log("Resetting demo users on user request...");
+      await storage.createDemoUsers(10, 5, user.gymName);
+      console.log(`Created demo users with gym name: ${user.gymName || 'None'}`);
+      
+      return res.json({ 
+        message: 'Demo users reset successfully',
+        gymName: user.gymName
+      });
+    } catch (error) {
+      console.error("Failed to reset demo users:", error);
+      return res.status(500).json({ message: 'Failed to reset demo users' });
     }
   });
 
