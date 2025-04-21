@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { workoutTypes } from "@shared/schema";
 import IdentityVerification from "@/components/profile/IdentityVerification";
 import ProfilePictureUpload from "@/components/profile/ProfilePictureUpload";
+import { GymVerification } from "@/components/profile/GymVerification";
 
 const Profile: FC = () => {
   const { user, refreshUserData } = useAuth();
@@ -420,6 +421,15 @@ const Profile: FC = () => {
       </Card>
 
       <IdentityVerification user={user} onVerificationComplete={refreshUserData} />
+
+      <GymVerification 
+        userId={user.id}
+        currentGymName={user.gymName}
+        currentGymChain={user.gymChain}
+        currentGymAddress={user.gymAddress}
+        currentGymVerified={user.gymVerified || false}
+        onSuccess={refreshUserData}
+      />
 
       <Card>
         <CardHeader>
