@@ -16,6 +16,7 @@ type AuthContextType = {
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, any>;
   refreshUserData: () => Promise<void>;
+  attemptAutoLogin: () => Promise<boolean>;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -26,10 +27,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data: user,
     error,
     isLoading,
+    refetch,
   } = useQuery<SelectUser | undefined, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
+  
+  // Implement automatic login for demo purposes
+  const attemptAutoLogin = async () => {
+    if (!user) {
+      try {
+        console.log("Attempting automatic login for testing...");
+        const demoCredentials = { username: "natalia", password: "password123" };
+        await loginMutation.mutateAsync(demoCredentials);
+        return true;
+      } catch (error) {
+        console.error("Auto-login failed:", error);
+        return false;
+      }
+    }
+    return !!user;
+  };
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: Login) => {
@@ -188,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logoutMutation,
         registerMutation,
         refreshUserData,
+        attemptAutoLogin,
       }}
     >
       {children}

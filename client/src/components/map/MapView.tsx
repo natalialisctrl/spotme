@@ -123,36 +123,8 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
     });
     markersRef.current = [];
     
-    // Always add current user marker first
-    try {
-      console.log("Adding YOU marker at:", [longitude, latitude]);
-      
-      // Create custom marker element for current user with fixed size 
-      const youMarkerElement = document.createElement('div');
-      youMarkerElement.className = 'relative';
-      youMarkerElement.style.zIndex = '1000'; // Ensure it's on top of other markers
-      
-      // Add CSS to prevent the marker from changing size when zooming
-      const markerInner = document.createElement('div');
-      markerInner.className = 'w-14 h-14 bg-accent rounded-full flex items-center justify-center text-white border-2 border-white shadow-lg transform-none';
-      markerInner.style.transform = 'none'; // Prevent transformations from affecting marker
-      markerInner.innerHTML = '<span class="font-medium text-sm">You</span>';
-      youMarkerElement.appendChild(markerInner);
-      
-      // Create and add the current user marker with center anchor
-      const youMarker = new mapboxgl.Marker({
-        element: youMarkerElement,
-        anchor: 'center', // Use center instead of bottom for better positioning
-        offset: [0, 0], // No offset
-        scale: 1.0 // Fixed scale regardless of zoom
-      })
-        .setLngLat([longitude, latitude])
-        .addTo(mapRef.current);
-      
-      markersRef.current.push(youMarker);
-    } catch (err) {
-      console.error("Error adding YOU marker:", err);
-    }
+    // Removing the "You" marker as requested
+    console.log("No longer adding 'You' marker to avoid inaccuracy");
     
     // Then add markers for nearby users with valid coordinates
     nearbyUsers.forEach(user => {

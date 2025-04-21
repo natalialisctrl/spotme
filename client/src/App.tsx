@@ -1,3 +1,4 @@
+import React from "react";
 import { Switch, Route } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/use-auth";
@@ -86,12 +87,26 @@ function ChallengeDetailPage({ params }: { params: { id: string } }) {
 }
 
 function Router() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, attemptAutoLogin } = useAuth();
+  const [autoLoginAttempted, setAutoLoginAttempted] = React.useState(false);
 
-  if (isLoading) {
+  // On first render, try to automatically log in (for easier testing)
+  React.useEffect(() => {
+    if (!user && !autoLoginAttempted && !isLoading) {
+      const tryAutoLogin = async () => {
+        console.log("Attempting automatic login...");
+        setAutoLoginAttempted(true);
+        await attemptAutoLogin();
+      };
+      tryAutoLogin();
+    }
+  }, [user, autoLoginAttempted, isLoading, attemptAutoLogin]);
+
+  if (isLoading || (!user && !autoLoginAttempted)) {
     return (
-      <div className="h-screen w-full flex items-center justify-center">
-        <Loader2 className="h-8 w-8 text-primary animate-spin" />
+      <div className="h-screen w-full flex flex-col items-center justify-center">
+        <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
+        <p className="text-sm text-gray-500">{!autoLoginAttempted ? "Trying automatic login..." : "Loading your profile..."}</p>
       </div>
     );
   }
