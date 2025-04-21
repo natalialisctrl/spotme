@@ -15,11 +15,12 @@ router.get('/recommendations', (req: Request, res: Response) => {
     const workouts = generateWorkoutRecommendations(req.user, count);
     
     res.json({ workouts });
-  } catch (error) {
-    console.error('Error generating workout recommendations:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error generating workout recommendations:', errorMessage);
     res.status(500).json({ 
       message: 'Failed to generate workout recommendations',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined 
+      error: process.env.NODE_ENV === 'development' ? errorMessage : undefined 
     });
   }
 });
@@ -42,11 +43,12 @@ router.post('/targeted', (req: Request, res: Response) => {
     );
     
     res.json({ workout });
-  } catch (error) {
-    console.error('Error generating targeted workout:', error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error generating targeted workout:', errorMessage);
     res.status(500).json({ 
       message: 'Failed to generate targeted workout',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined 
+      error: process.env.NODE_ENV === 'development' ? errorMessage : undefined 
     });
   }
 });

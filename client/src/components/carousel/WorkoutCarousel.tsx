@@ -1,176 +1,302 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
-import { ChevronLeft, ChevronRight, Dumbbell, Flame } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Dumbbell, 
+  Clock, 
+  Flame, 
+  ArrowRight,
+} from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
-export interface WorkoutRecommendation {
+// Type definitions based on the API response
+interface Exercise {
+  name: string;
+  sets: number;
+  reps: number | string;
+  restSeconds: number;
+  description?: string;
+  muscleGroup: string;
+  intensity: 'light' | 'moderate' | 'intense';
+}
+
+interface WorkoutRecommendation {
   id: string;
   title: string;
   description: string;
-  intensity: 'low' | 'medium' | 'high';
-  duration: number; // in minutes
-  calories: number;
-  muscleGroups: string[];
+  durationMinutes: number;
+  intensity: 'beginner' | 'intermediate' | 'advanced';
+  targetMuscleGroups: string[];
+  exercises: Exercise[];
   imageUrl?: string;
+  calories?: number;
   tags: string[];
+  equipment: string[];
 }
 
 interface WorkoutCarouselProps {
-  workouts: WorkoutRecommendation[];
-  onWorkoutSelect?: (workout: WorkoutRecommendation) => void;
+  limit?: number;
+  className?: string;
 }
 
-export function WorkoutCarousel({ workouts, onWorkoutSelect }: WorkoutCarouselProps) {
+const WorkoutCarousel: FC<WorkoutCarouselProps> = ({ limit = 8, className = '' }) => {
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
-    loop: false,
+    loop: false, 
     align: 'start',
     skipSnaps: false,
     dragFree: true
   });
-  
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
-  const [prevBtnEnabled, setPrevBtnEnabled] = useState(false);
-  const [nextBtnEnabled, setNextBtnEnabled] = useState(false);
-  
-  const scrollPrev = useCallback(() => emblaApi && emblaApi.scrollPrev(), [emblaApi]);
-  const scrollNext = useCallback(() => emblaApi && emblaApi.scrollNext(), [emblaApi]);
-  
-  const onSelect = useCallback(() => {
-    if (!emblaApi) return;
-    setSelectedIndex(emblaApi.selectedScrollSnap());
-    setPrevBtnEnabled(emblaApi.canScrollPrev());
-    setNextBtnEnabled(emblaApi.canScrollNext());
+
+  // Fetch workout recommendations from the API
+  const { data, isLoading, error } = useQuery<{ workouts: WorkoutRecommendation[] }>({
+    queryKey: ['/api/workouts/recommendations'],
+    queryFn: async () => {
+      const res = await fetch(`/api/workouts/recommendations?count=${limit}`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch workout recommendations');
+      }
+      return res.json();
+    }
+  });
+
+  // Scroll to previous slide
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
   }, [emblaApi]);
 
+  // Scroll to next slide
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
+
+  // Update selected index when carousel slides
   useEffect(() => {
     if (!emblaApi) return;
-    
-    onSelect();
-    setScrollSnaps(emblaApi.scrollSnapList());
+
+    const onSelect = () => {
+      setSelectedIndex(emblaApi.selectedScrollSnap());
+    };
+
     emblaApi.on('select', onSelect);
-    emblaApi.on('reInit', onSelect);
-    
+    onSelect(); // Initialize with the current snap
+
     return () => {
       emblaApi.off('select', onSelect);
-      emblaApi.off('reInit', onSelect);
     };
-  }, [emblaApi, onSelect]);
+  }, [emblaApi]);
 
-  // Function to render intensity indicator
-  const renderIntensity = (intensity: string) => {
-    const flames = intensity === 'low' ? 1 : intensity === 'medium' ? 2 : 3;
-    
+  // Get intensity color based on level
+  const getIntensityColor = (intensity: string) => {
+    switch (intensity) {
+      case 'beginner':
+        return 'bg-green-100 text-green-800';
+      case 'intermediate':
+        return 'bg-blue-100 text-blue-800';
+      case 'advanced':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Render loading state
+  if (isLoading) {
     return (
-      <div className="flex items-center gap-0.5 text-orange-500">
-        {Array(flames).fill(0).map((_, i) => (
-          <Flame key={i} className="h-4 w-4" />
-        ))}
+      <div className={`w-full p-4 ${className}`}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold">Workout Recommendations</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="pb-2">
+                <div className="h-7 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </CardHeader>
+              <CardContent className="pb-2">
+                <div className="h-24 bg-gray-200 rounded mb-4"></div>
+                <div className="flex gap-2 mb-2">
+                  <div className="h-6 bg-gray-200 rounded w-16"></div>
+                  <div className="h-6 bg-gray-200 rounded w-16"></div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <div className="h-9 bg-gray-200 rounded w-full"></div>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
       </div>
     );
-  };
-  
+  }
+
+  // Render error state
+  if (error) {
+    return (
+      <div className={`w-full p-4 ${className}`}>
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader>
+            <CardTitle className="text-red-700">Failed to load workout recommendations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-red-600">
+              We couldn't load workout recommendations right now. Please try again later.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
+  // No workouts available
+  if (!data || !data.workouts || data.workouts.length === 0) {
+    return (
+      <div className={`w-full p-4 ${className}`}>
+        <Card>
+          <CardHeader>
+            <CardTitle>No Workout Recommendations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600">
+              We don't have any workout recommendations for you at the moment.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const workouts = data.workouts;
+  const canScrollPrev = emblaApi?.canScrollPrev() || false;
+  const canScrollNext = emblaApi?.canScrollNext() || false;
+
   return (
-    <div className="relative">
+    <div className={`w-full ${className}`}>
+      <div className="flex items-center justify-between mb-4 px-4">
+        <h2 className="text-2xl font-bold">Workout Recommendations</h2>
+        
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={scrollPrev}
+            disabled={!canScrollPrev}
+            className="rounded-full w-8 h-8 p-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="sr-only">Previous slide</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={scrollNext}
+            disabled={!canScrollNext}
+            className="rounded-full w-8 h-8 p-0"
+          >
+            <ChevronRight className="h-4 w-4" />
+            <span className="sr-only">Next slide</span>
+          </Button>
+        </div>
+      </div>
+
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex">
-          {workouts.map((workout, index) => (
-            <div 
-              key={workout.id} 
-              className="flex-[0_0_90%] sm:flex-[0_0_60%] md:flex-[0_0_45%] lg:flex-[0_0_30%] min-w-0 pl-4 first:pl-0"
-            >
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }} 
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                className={cn(
-                  "h-full rounded-xl overflow-hidden border bg-background p-4 shadow-sm transition-all duration-200",
-                  selectedIndex === index ? "ring-2 ring-primary scale-[1.02]" : ""
-                )}
-                onClick={() => onWorkoutSelect && onWorkoutSelect(workout)}
-              >
-                <div className="relative h-36 rounded-lg bg-gradient-to-br from-primary-100 to-primary-50 mb-3 overflow-hidden">
-                  {workout.imageUrl ? (
-                    <img 
-                      src={workout.imageUrl} 
-                      alt={workout.title} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center opacity-30">
-                      <Dumbbell className="h-16 w-16 text-primary" />
-                    </div>
-                  )}
-                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="px-2 py-1 bg-white/80 text-primary text-xs font-medium rounded-full">
-                        {workout.duration} min
-                      </div>
-                      <div className="px-2 py-1 bg-white/80 text-orange-500 text-xs font-medium rounded-full flex items-center gap-1">
+          {workouts.map((workout) => (
+            <div key={workout.id} className="flex-[0_0_90%] min-w-0 pl-4 md:flex-[0_0_45%] lg:flex-[0_0_30%]">
+              <Card className="h-full flex flex-col">
+                <CardHeader className="pb-2">
+                  <CardTitle>{workout.title}</CardTitle>
+                  <CardDescription>
+                    {workout.description}
+                  </CardDescription>
+                </CardHeader>
+                
+                <CardContent className="pb-2 flex-1">
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <Badge 
+                      variant="secondary" 
+                      className={getIntensityColor(workout.intensity)}
+                    >
+                      {workout.intensity}
+                    </Badge>
+                    
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {workout.durationMinutes} min
+                    </Badge>
+                    
+                    {workout.calories && (
+                      <Badge variant="outline" className="flex items-center gap-1">
                         <Flame className="h-3 w-3" />
                         {workout.calories} cal
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <h3 className="font-semibold text-md mb-1 line-clamp-1">{workout.title}</h3>
-                <p className="text-muted-foreground text-sm mb-2 line-clamp-2">{workout.description}</p>
-                <div className="flex items-center justify-between">
-                  {renderIntensity(workout.intensity)}
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {workout.tags.slice(0, 2).map((tag, i) => (
-                      <span key={i} className="inline-block px-2 py-1 text-xs bg-muted rounded-full">
-                        {tag}
-                      </span>
-                    ))}
-                    {workout.tags.length > 2 && (
-                      <span className="inline-block px-2 py-1 text-xs bg-muted rounded-full">
-                        +{workout.tags.length - 2}
-                      </span>
+                      </Badge>
                     )}
                   </div>
-                </div>
-              </motion.div>
+                  
+                  <div className="mb-3">
+                    <h4 className="text-sm font-medium mb-1">Target Muscle Groups</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {workout.targetMuscleGroups.map((group) => (
+                        <Badge key={group} variant="outline" className="capitalize">
+                          {group}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium mb-1">Equipment Needed</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {workout.equipment.map((item) => (
+                        <Badge key={item} variant="outline" className="flex items-center gap-1">
+                          <Dumbbell className="h-3 w-3" />
+                          <span className="capitalize">{item}</span>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+                
+                <CardFooter className="pt-2 mt-auto">
+                  <Button className="w-full">
+                    View Workout
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardFooter>
+              </Card>
             </div>
           ))}
         </div>
       </div>
-      
-      <div className="mt-4 flex items-center justify-between">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={scrollPrev}
-          disabled={!prevBtnEnabled}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        
-        <div className="flex gap-1">
-          {scrollSnaps.map((_, index) => (
-            <div
+
+      {/* Pagination dots */}
+      {workouts.length > 1 && (
+        <div className="flex justify-center gap-1 mt-4">
+          {workouts.map((_, index) => (
+            <button
               key={index}
-              className={cn(
-                "h-2 w-2 rounded-full transition-all",
-                selectedIndex === index 
-                  ? "bg-primary w-3" 
-                  : "bg-muted"
-              )}
+              className={`w-2 h-2 rounded-full ${
+                index === selectedIndex ? 'bg-primary' : 'bg-gray-300'
+              }`}
+              onClick={() => emblaApi?.scrollTo(index)}
+              aria-label={`Go to slide ${index + 1}`}
             />
           ))}
         </div>
-        
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={scrollNext}
-          disabled={!nextBtnEnabled}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
+      )}
     </div>
   );
-}
+};
+
+export default WorkoutCarousel;
