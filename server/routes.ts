@@ -383,10 +383,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Clear the tracking array for demo users to force recreation
+      // Store the tracking array for demo users - DON'T clear it
       const MemStorage = storage.constructor;
-      if (typeof MemStorage.persistentDemoUserIds !== 'undefined') {
+      // We'll keep the IDs of demo users in the persistentDemoUserIds array
+      // because we want to track them for proper gender filtering
+      if (typeof MemStorage.persistentDemoUserIds === 'undefined') {
         MemStorage.persistentDemoUserIds = [];
+      }
+      
+      // Make sure all demo user IDs are in the tracking array
+      for (const demoUser of demoUsers) {
+        if (!MemStorage.persistentDemoUserIds.includes(demoUser.id)) {
+          MemStorage.persistentDemoUserIds.push(demoUser.id);
+        }
       }
       
       // Delete existing demo users from storage

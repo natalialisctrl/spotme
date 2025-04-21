@@ -1450,8 +1450,10 @@ export class MemStorage implements IStorage {
     // Log what we're doing
     console.log("Creating new demo users, previous demo IDs:", MemStorage.persistentDemoUserIds);
     
-    // Clear tracking array for new demo users
-    MemStorage.persistentDemoUserIds = [];
+    // Initialize tracking array for demo users if needed, but don't clear it
+    if (!MemStorage.persistentDemoUserIds) {
+      MemStorage.persistentDemoUserIds = [];
+    }
     
     // Create demo users with an even distribution of distances within the radius
     const distributionRanges = [
