@@ -9,6 +9,7 @@ interface GeolocationHookResult {
   error: string | null;
   isLoading: boolean;
   accuracy: number | null;
+  updateManualLocation: (lat: number, lng: number) => void;
 }
 
 export function useGeolocation(): GeolocationHookResult {
@@ -256,5 +257,40 @@ export function useGeolocation(): GeolocationHookResult {
     };
   }, [useFallbackLocation, updateUserLocation, handleError, latitude, longitude]);
 
-  return { latitude, longitude, error, isLoading, accuracy };
+  // Function to manually update location (for use with custom location input)
+  const updateManualLocation = useCallback((lat: number, lng: number) => {
+    console.log("Setting manual location:", { lat, lng });
+    
+    // Stop watching for automatic updates
+    if (watchId.current !== null) {
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+    }
+    
+    // Update local state
+    setLatitude(lat);
+    setLongitude(lng);
+    setAccuracy(10); // High accuracy since it's manually set
+    setIsLoading(false);
+    setError(null);
+    
+    // Update server with new location if authenticated
+    if (user) {
+      apiRequest('PATCH', '/api/users/location', { latitude: lat, longitude: lng })
+        .then(() => {
+          if (isConnected && user) {
+            sendMessage({
+              type: 'user_location',
+              senderId: user.id,
+              data: { latitude: lat, longitude: lng }
+            });
+          }
+        })
+        .catch(error => {
+          console.debug('Manual location update not sent - user may not be authenticated');
+        });
+    }
+  }, [user, isConnected, sendMessage]);
+  
+  return { latitude, longitude, error, isLoading, accuracy, updateManualLocation };
 }

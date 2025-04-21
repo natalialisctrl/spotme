@@ -1,9 +1,11 @@
 import { FC, useState, useRef, useEffect, useCallback } from "react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { User } from "@shared/schema";
-import { Filter, MapPin, Compass, AlertCircle } from "lucide-react";
+import { Filter, MapPin, Compass, AlertCircle, MapIcon, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import FilterModal from "@/components/filters/FilterModal";
 import mapboxgl, { 
   createMarkerElement, 
@@ -21,15 +23,48 @@ interface MapViewProps {
 
 // Define the main component with MapBox integration
 const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams, onUpdateFilters }) => {
-  const { latitude, longitude, error: locationError, accuracy } = useGeolocation();
+  const { latitude: geoLatitude, longitude: geoLongitude, error: locationError, accuracy, updateManualLocation } = useGeolocation();
+  
+  // State for manual location input
+  const [manualLatitude, setManualLatitude] = useState<string>("");
+  const [manualLongitude, setManualLongitude] = useState<string>("");
+  const [isManualLocation, setIsManualLocation] = useState<boolean>(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
+  
+  // Use either manual coordinates or geolocation coordinates
+  const latitude = isManualLocation && manualLatitude ? parseFloat(manualLatitude) : geoLatitude;
+  const longitude = isManualLocation && manualLongitude ? parseFloat(manualLongitude) : geoLongitude;
   
   // MapBox refs and state
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  
+  // Handle manual location submission
+  const handleManualLocationSubmit = () => {
+    if (manualLatitude && manualLongitude) {
+      const lat = parseFloat(manualLatitude);
+      const lng = parseFloat(manualLongitude);
+      
+      if (!isNaN(lat) && !isNaN(lng)) {
+        setIsManualLocation(true);
+        
+        // Also update the location in the geolocation hook and server
+        updateManualLocation(lat, lng);
+        
+        // If map exists, fly to the new location
+        if (mapRef.current) {
+          mapRef.current.flyTo({
+            center: [lng, lat],
+            zoom: 14,
+            essential: true
+          });
+        }
+      }
+    }
+  };
 
   // Check if Mapbox is initialized
   const mapboxReady = isMapboxInitialized();
@@ -274,24 +309,99 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
               </Alert>
             )}
             
-            {/* Your location indicator */}
-            <div className="flex items-center mb-4 bg-accent/10 p-3 rounded-lg">
-              <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white mr-3">
-                <Compass className="h-5 w-5" />
+            {/* Your location indicator with manual input option */}
+            <div className="flex flex-col space-y-3">
+              <div className="flex items-center bg-accent/10 p-3 rounded-lg">
+                <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white mr-3">
+                  <Compass className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm font-medium">Your Location</p>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => setIsManualLocation(!isManualLocation)}
+                    >
+                      <MapIcon className="h-3 w-3 mr-1" />
+                      {isManualLocation ? 'Hide Manual Controls' : 'Set Manually'}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {isManualLocation ? 
+                      'Manual location active' : 
+                      accuracy ? 
+                        (accuracy < 500 ? 
+                          'High accuracy location detected' : 
+                          accuracy < 1000 ? 
+                            'Moderate accuracy location' : 
+                            'Approximate location')
+                        : 'Location found'}
+                  </p>
+                  <p className="text-xs text-gray-500">Showing partners within 5 miles</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium">Your Location</p>
-                <p className="text-xs text-gray-500">
-                  {accuracy ? 
-                    (accuracy < 500 ? 
-                      'High accuracy location detected' : 
-                      accuracy < 1000 ? 
-                        'Moderate accuracy location' : 
-                        'Approximate location')
-                    : 'Location found'}
-                </p>
-                <p className="text-xs text-gray-500">Showing partners within 5 miles</p>
-              </div>
+              
+              {/* Manual Location Input */}
+              {isManualLocation && (
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                  <div className="text-sm font-medium mb-2">Enter Coordinates</div>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                      <Label htmlFor="latitude" className="text-xs mb-1">Latitude</Label>
+                      <Input
+                        id="latitude"
+                        type="number"
+                        step="0.0001"
+                        placeholder={latitude?.toString() || "Enter latitude"}
+                        value={manualLatitude}
+                        onChange={(e) => setManualLatitude(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="longitude" className="text-xs mb-1">Longitude</Label>
+                      <Input
+                        id="longitude"
+                        type="number"
+                        step="0.0001"
+                        placeholder={longitude?.toString() || "Enter longitude"}
+                        value={manualLongitude}
+                        onChange={(e) => setManualLongitude(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      className="h-8 text-xs w-full"
+                      onClick={handleManualLocationSubmit}
+                      disabled={!manualLatitude || !manualLongitude}
+                    >
+                      Update Location
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => {
+                        if (latitude && longitude) {
+                          setManualLatitude(latitude.toString());
+                          setManualLongitude(longitude.toString());
+                        }
+                      }}
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Tip: You can use websites like Google Maps to find your actual coordinates.
+                  </p>
+                </div>
+              )}
             </div>
             
             {/* Interactive Map */}
