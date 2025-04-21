@@ -128,10 +128,34 @@ export function isAccountLocked(user: any): boolean {
   if (!user.accountLocked) return false;
   
   const now = new Date();
+  
+  // If accountLockedUntil is not set or invalid, treat as not locked
+  if (!user.accountLockedUntil) {
+    // Auto-fix: reset the lock if no expiry is set
+    (async () => {
+      try {
+        await resetFailedAttempts(user.id);
+      } catch (e) {
+        console.error("Error auto-fixing account lock:", e);
+      }
+    })();
+    return false;
+  }
+  
   const lockTime = new Date(user.accountLockedUntil);
   
   // If lock time has passed, account is no longer locked
-  if (now > lockTime) return false;
+  // Auto-fix: automatically unlock if the lock time has expired
+  if (now > lockTime) {
+    (async () => {
+      try {
+        await resetFailedAttempts(user.id);
+      } catch (e) {
+        console.error("Error auto-unlocking account:", e);
+      }
+    })();
+    return false;
+  }
   
   return true;
 }

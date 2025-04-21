@@ -33,16 +33,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
   
-  // Implement automatic login for demo purposes
+  // Implement automatic login for demo purposes with retry mechanism
   const attemptAutoLogin = async () => {
     if (!user) {
       try {
         console.log("Attempting automatic login for testing...");
+        
+        // First, try to reset the account if it's locked - make a call to unlock
+        try {
+          await fetch('/api/auth/unlock-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: "natalia" })
+          });
+          console.log("Sent account unlock request");
+        } catch (e) {
+          console.warn("Couldn't send unlock request:", e);
+        }
+        
+        // Sleep 500ms to ensure unlock takes effect
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Now try to login
         const demoCredentials = { username: "natalia", password: "password123" };
         await loginMutation.mutateAsync(demoCredentials);
         return true;
       } catch (error) {
         console.error("Auto-login failed:", error);
+        
+        // Show error but don't prevent the app from continuing
+        toast({
+          title: "Auto login failed",
+          description: "You can still login manually at /auth",
+          variant: "default",
+        });
+        
         return false;
       }
     }

@@ -42,6 +42,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
   
+  // Add special account unlock endpoint for testing purposes
+  app.post('/api/auth/unlock-account', async (req, res) => {
+    const { username } = req.body;
+    
+    if (!username) {
+      return res.status(400).json({ message: "Username is required" });
+    }
+    
+    try {
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Reset failed attempts and unlock account
+      await storage.updateUser(user.id, {
+        failedLoginAttempts: 0,
+        accountLocked: false,
+        accountLockedUntil: null
+      });
+      
+      console.log(`Account unlocked for user: ${username}`);
+      return res.status(200).json({ message: "Account unlocked successfully" });
+    } catch (error) {
+      console.error("Error unlocking account:", error);
+      return res.status(500).json({ message: "Server error unlocking account" });
+    }
+  });
+  
   // Set up challenge routes
   setupChallengeRoutes(app, activeConnections);
   
