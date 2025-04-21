@@ -185,12 +185,10 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
     // Only initialize if we have the container
     if (!mapContainerRef.current) return;
     
-    // If map already exists, just update the center
+    // If map already exists, don't recenter it - keep user's view position
     if (mapRef.current) {
       try {
-        mapRef.current.setCenter([longitude, latitude]);
-        
-        // Update the current user marker position if it exists
+        // Only update the current user marker position if it exists, don't recenter the map
         if (markersRef.current.length > 0 && markersRef.current[0]) {
           markersRef.current[0].setLngLat([longitude, latitude]);
         }
