@@ -147,6 +147,9 @@ export class MemStorage implements IStorage {
   private progressEntries: Map<number, ProgressEntry>;
   private challengeComments: Map<number, ChallengeComment>;
   
+  // Store a reference to the main user to ensure persistence across restarts
+  private nataliaUser: User;
+  
   private currentUserId: number;
   private currentWorkoutFocusId: number;
   private currentConnectionRequestId: number;
@@ -548,6 +551,13 @@ export class MemStorage implements IStorage {
     
     const updatedUser = { ...user, ...userData };
     this.users.set(id, updatedUser);
+    
+    // Handle permanent updates for the main user account (Natalia)
+    if (id === 1) {
+      // Update the initial user data to ensure it persists across restarts
+      this.nataliaUser = { ...this.nataliaUser, ...userData };
+      console.log("Updated permanent user data");
+    }
     
     // Verify the update was successful
     const verifyUser = this.users.get(id);
