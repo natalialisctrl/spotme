@@ -281,7 +281,7 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
   return (
     <section className="mb-8 px-4">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold font-poppins text-dark">Nearby Workout Partners</h2>
+        <h2 className="text-xl font-bold font-poppins text-dark">Users within 5 miles</h2>
         <Button
           variant="outline"
           size="sm"
