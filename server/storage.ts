@@ -1527,7 +1527,7 @@ export class MemStorage implements IStorage {
     return { latitude: lat, longitude: lng };
   }
 
-  async createDemoUsers(count: number = 5, maxDistanceMiles: number = 5): Promise<User[]> {
+  async createDemoUsers(count: number = 5, maxDistanceMiles: number = 5, userGymName: string | null = null): Promise<User[]> {
     const demoUsers: User[] = [];
     
     // Check if we already have demo users in the database
@@ -1613,7 +1613,14 @@ export class MemStorage implements IStorage {
       
       // Pick a gym name - 50% chance to have same gym as user if available
       let gymName = gymNames[Math.floor(Math.random() * gymNames.length)];
-      if (userWithLocation?.gymName && Math.random() > 0.5) {
+      
+      // If userGymName is provided, assign it to about 50% of users for better testing
+      if (userGymName && Math.random() > 0.5) {
+        gymName = userGymName;
+        console.log(`Assigning user's gym (${userGymName}) to demo user for testing`);
+      } 
+      // Otherwise fall back to using the location user's gym name if available
+      else if (userWithLocation?.gymName && Math.random() > 0.5) {
         gymName = userWithLocation.gymName;
       }
       

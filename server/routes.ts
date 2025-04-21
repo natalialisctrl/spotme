@@ -743,26 +743,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'User not found' });
       }
       
-      // Make sure we have demo users for testing 
+      // Make sure we have demo users for testing
+      // Clear existing demo users to ensure a fresh start
       const existingUsers = await storage.getAllUsers();
-      const demoUserCount = existingUsers.filter(u => u.username.startsWith('demouser')).length;
+      const demoUsers = existingUsers.filter(u => u.username.startsWith('demouser'));
       
-      // Create demo users if we don't have any yet - specifically within 5 miles
-      if (demoUserCount < 5) {
-        console.log("Creating demo users for testing...");
-        await storage.createDemoUsers(5, 5); // Create 5 users within 5 miles
+      // Delete existing demo users
+      for (const demoUser of demoUsers) {
+        await storage.deleteUser(demoUser.id);
+      }
+      
+      console.log("Creating fresh demo users for testing...");
+      // Create new demo users - specifically within 5 miles
+      await storage.createDemoUsers(10, 5, user.gymName); // Create 10 users within 5 miles, some with matching gym
+      
+      // Assign workout focuses to demo users
+      const newDemoUsers = (await storage.getAllUsers()).filter(u => u.username.startsWith('demouser'));
+      const workoutTypes = ["chest", "arms", "legs", "back", "shoulders", "core", "cardio", "full_body"];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
         
-        // Assign workout focuses to demo users
-        const demoUsers = (await storage.getAllUsers()).filter(u => u.username.startsWith('demouser'));
-        const workoutTypes = ["chest", "arms", "legs", "back", "shoulders", "core", "cardio", "full_body"];
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        for (const demoUser of demoUsers) {
-          // Check if user already has a workout focus for today
-          const existingFocus = await storage.getWorkoutFocus(demoUser.id);
-          const existingFocusIsToday = existingFocus && 
-            new Date(existingFocus.date).toDateString() === today.toDateString();
+      for (const demoUser of newDemoUsers) {
+        // Check if user already has a workout focus for today
+        const existingFocus = await storage.getWorkoutFocus(demoUser.id);
+        const existingFocusIsToday = existingFocus && 
+          new Date(existingFocus.date).toDateString() === today.toDateString();
           
           if (!existingFocus || !existingFocusIsToday) {
             // Assign a random workout type from the list
@@ -780,7 +785,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
         }
-      }
       
       // For testing purposes, we'll generate demo data even if location isn't available
       let nearbyUsers;
