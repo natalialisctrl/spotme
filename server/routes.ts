@@ -791,7 +791,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const params = nearbyUsersSchema.parse({
             ...req.query,
             latitude: user.latitude,
-            longitude: user.longitude
+            longitude: user.longitude,
+            currentUserId: req.session.userId // Add the current user ID for gym filtering
           });
           
           nearbyUsers = await storage.findNearbyUsers(params);
