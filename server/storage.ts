@@ -240,6 +240,8 @@ export class MemStorage implements IStorage {
       passwordResetToken: null,
       resetPasswordExpires: null
     };
+    // Initialize the nataliaUser property to ensure persistence across restarts
+    this.nataliaUser = { ...nataliaUser };
     this.users.set(nataliaUser.id, nataliaUser);
     // Removed call to initializeDemoData - this will be done through API endpoint
   }
@@ -451,6 +453,12 @@ export class MemStorage implements IStorage {
   }
   
   async getUser(id: number): Promise<User | undefined> {
+    // Special case for user with ID 1 (Natalia) - use the persisted reference if available
+    if (id === 1 && this.nataliaUser) {
+      // Always return the persisted version of the main user data
+      return this.nataliaUser;
+    }
+    
     const user = this.users.get(id);
     if (!user) {
       console.warn(`User with ID ${id} not found in memory storage`);
@@ -459,6 +467,11 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
+    // Special case for "natalia" user - use the persisted reference if available
+    if (username === "natalia" && this.nataliaUser) {
+      return this.nataliaUser;
+    }
+    
     for (const user of this.users.values()) {
       if (user.username === username) {
         return user;
@@ -468,6 +481,11 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
+    // Special case for "natalia@spotme.com" email - use the persisted reference if available
+    if (email === "natalia@spotme.com" && this.nataliaUser) {
+      return this.nataliaUser;
+    }
+    
     for (const user of this.users.values()) {
       if (user.email === email) {
         return user;
@@ -584,6 +602,19 @@ export class MemStorage implements IStorage {
       lastActive: new Date()
     };
     this.users.set(id, updatedUser);
+    
+    // Handle permanent updates for the main user account (Natalia)
+    if (id === 1) {
+      // Update the initial user data to ensure it persists across restarts
+      this.nataliaUser = { 
+        ...this.nataliaUser, 
+        latitude: location.latitude, 
+        longitude: location.longitude,
+        lastActive: new Date()
+      };
+      console.log("Updated permanent user location data");
+    }
+    
     return updatedUser;
   }
 
