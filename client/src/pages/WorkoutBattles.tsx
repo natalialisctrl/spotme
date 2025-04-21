@@ -37,6 +37,7 @@ interface User {
   id: number;
   name: string;
   profilePicture?: string;
+  distance?: number; // Distance in miles from the current user
 }
 
 interface Battle {
@@ -80,7 +81,7 @@ export default function WorkoutBattles() {
   });
   const [nearbyChallenges, setNearbyChallenges] = useState<BattleWithCreator[]>([]);
   
-  const { location } = useGeolocation();
+  const { latitude, longitude } = useGeolocation();
   const { lastMessage, sendMessage } = useWebSocket();
 
   // Form for creating a new battle
