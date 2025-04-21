@@ -152,7 +152,7 @@ const PartnersList: FC<PartnersListProps> = ({ filterParams, nearbyUsers: propNe
   return (
     <section className="mb-8 px-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-        <h2 className="text-xl font-bold font-poppins text-dark mb-2 md:mb-0">Potential Workout Partners</h2>
+        <h2 className="text-xl font-bold font-poppins text-dark mb-2 md:mb-0">Users within 5 miles</h2>
         
         {/* Sorting controls and compatibility settings */}
         {nearbyUsers && nearbyUsers.length > 0 && (
