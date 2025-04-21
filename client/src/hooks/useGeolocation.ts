@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-// Pass userId instead of using options parameter
 import { useWebSocket } from "./useWebSocket";
 
 interface GeolocationHookResult {
@@ -18,8 +17,9 @@ export function useGeolocation(): GeolocationHookResult {
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  
   const { user } = useAuth();
-  const { sendMessage } = useWebSocket();
+  const { sendMessage, isConnected } = useWebSocket();
   
   // Use refs to avoid unnecessary re-renders and effect triggers
   const lastUpdateTime = useRef<number>(0);
@@ -27,7 +27,7 @@ export function useGeolocation(): GeolocationHookResult {
   const locationUpdateTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Use Austin-based fallback coordinates for development if needed
-  const useFallbackLocation = (forceFallback = false) => {
+  const useFallbackLocation = useCallback((forceFallback = false) => {
     if (forceFallback || !latitude || !longitude) {
       // Austin, TX coordinates with slight randomization to distribute users
       const randomLat = (Math.random() * 0.01) - 0.005; // +/- 0.005 degrees (~550m)
@@ -54,12 +54,14 @@ export function useGeolocation(): GeolocationHookResult {
           longitude: austinLng 
         })
         .then(() => {
-          // Use the sendMessage method from the hook to send WebSocket updates
-          sendMessage({
-            type: 'user_location',
-            senderId: user.id,
-            data: { latitude: austinLat, longitude: austinLng }
-          });
+          // Only send WebSocket message if the user is logged in and WebSocket is connected
+          if (isConnected && user) {
+            sendMessage({
+              type: 'user_location',
+              senderId: user.id,
+              data: { latitude: austinLat, longitude: austinLng }
+            });
+          }
         })
         .catch(err => {
           // This is expected when not logged in (401), so we'll only log in development
@@ -72,11 +74,11 @@ export function useGeolocation(): GeolocationHookResult {
       return true;
     }
     return false;
-  };
+  }, [latitude, longitude, user, isConnected, sendMessage]);
 
-  const updateUserLocation = async (position: GeolocationPosition) => {
+  const updateUserLocation = useCallback((position: GeolocationPosition) => {
     const now = Date.now();
-    const { latitude, longitude, accuracy } = position.coords;
+    const { latitude: lat, longitude: lng, accuracy: acc } = position.coords;
     
     // Don't update too frequently (once per second is enough)
     if (now - lastUpdateTime.current < 1000) {
@@ -86,23 +88,25 @@ export function useGeolocation(): GeolocationHookResult {
     lastUpdateTime.current = now;
     
     // Update local state
-    setLatitude(latitude);
-    setLongitude(longitude);
-    setAccuracy(accuracy);
+    setLatitude(lat);
+    setLongitude(lng);
+    setAccuracy(acc);
     setIsLoading(false);
     setError(null); // Clear any previous errors
 
     // Update server with new location if authenticated
     if (user) {
       // Use Promise handling for better error management
-      apiRequest('PATCH', '/api/users/location', { latitude, longitude })
+      apiRequest('PATCH', '/api/users/location', { latitude: lat, longitude: lng })
         .then(() => {
-          // Send WebSocket update using the hook's sendMessage
-          sendMessage({
-            type: 'user_location',
-            senderId: user.id,
-            data: { latitude, longitude }
-          });
+          // Only send WebSocket message if the user is logged in and WebSocket is connected
+          if (isConnected && user) {
+            sendMessage({
+              type: 'user_location',
+              senderId: user.id,
+              data: { latitude: lat, longitude: lng }
+            });
+          }
         })
         .catch(error => {
           // This is expected when not logged in (401), so we'll only log in development
@@ -111,9 +115,9 @@ export function useGeolocation(): GeolocationHookResult {
           }
         });
     }
-  };
+  }, [user, isConnected, sendMessage]);
 
-  const handleError = (err: GeolocationPositionError | any) => {
+  const handleError = useCallback((err: GeolocationPositionError | any) => {
     console.error('Geolocation error:', err);
     
     // Always use fallback location on any kind of error
@@ -145,7 +149,7 @@ export function useGeolocation(): GeolocationHookResult {
     
     setError(errorMessage);
     setIsLoading(false);
-  };
+  }, [useFallbackLocation]);
 
   useEffect(() => {
     // ALWAYS use fallback location initially to ensure we have something right away
@@ -222,7 +226,7 @@ export function useGeolocation(): GeolocationHookResult {
         locationUpdateTimeout.current = null;
       }
     };
-  }, [user, sendMessage, latitude, longitude]);
+  }, [useFallbackLocation, updateUserLocation, handleError, latitude, longitude]);
 
   return { latitude, longitude, error, isLoading, accuracy };
 }
