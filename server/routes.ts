@@ -28,6 +28,7 @@ import { setupChallengeRoutes } from "./challengeRoutes";
 import { setupAchievementRoutes } from "./routes/achievementRoutes";
 import { setupExportRoutes } from "./routes/exportRoutes";
 import { setupBattleRoutes } from "./routes/battleRoutes";
+import workoutRoutes from "./routes/workoutRoutes";
 
 import express from 'express';
 
@@ -52,6 +53,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Set up battle routes
   setupBattleRoutes(app, activeConnections);
+  
+  // Set up workout recommendation routes
+  app.use('/api/workouts', workoutRoutes);
   
   // Make sure natalia user exists in the database
   try {

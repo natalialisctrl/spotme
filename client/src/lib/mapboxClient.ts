@@ -1,8 +1,16 @@
 import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+// Note: we're not importing CSS here, it's loaded in the index.css file
 
-// Set your Mapbox access token here (fallback to a default for development)
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || "pk.eyJ1IjoiZ3ltYnVkZHkiLCJhIjoiY2txMnlvdHNtMDNpZDJ1cGVwcjJyMTJvYiJ9.lN9OkTFtPkzoH6E5QfXbjA";
+// Set the Mapbox access token from environment variables
+const accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
+
+// Initialize the Mapbox token
+if (!accessToken) {
+  console.error('MapBox token is missing. Please add VITE_MAPBOX_TOKEN to your environment variables.');
+} else {
+  mapboxgl.accessToken = accessToken;
+  console.log('MapBox token set successfully:', accessToken.substring(0, 10) + '...');
+}
 
 // Calculate distance between two points using Haversine formula
 export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -18,10 +26,10 @@ export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2
   return distance;
 };
 
-// Create a Mapbox marker element
+// Create a MapBox marker element
 export const createMarkerElement = (user: any, isCurrentUser: boolean = false): HTMLElement => {
   const el = document.createElement('div');
-  el.className = 'relative';
+  el.className = 'relative marker-container';
   
   const markerEl = document.createElement('div');
   markerEl.className = `w-10 h-10 ${isCurrentUser ? 'bg-accent' : 'bg-primary'} rounded-full flex items-center justify-center text-white border-2 border-white shadow-lg`;
@@ -44,11 +52,11 @@ export const createMarkerElement = (user: any, isCurrentUser: boolean = false): 
 
 // Create a marker popup
 export const createMarkerPopup = (user: any): mapboxgl.Popup => {
-  return new mapboxgl.Popup({ offset: 25 })
+  return new mapboxgl.Popup({ offset: 25, closeButton: true })
     .setHTML(`
       <div class="p-2">
-        <h3 class="font-semibold">${user.name}</h3>
-        <p class="text-xs text-gray-600">${user.experienceLevel} (${user.experienceYears} years)</p>
+        <h3 class="font-semibold">${user.name || 'Gym Partner'}</h3>
+        <p class="text-xs text-gray-600">${user.experienceLevel || 'Unknown'} (${user.experienceYears || '0'} years)</p>
         ${user.workoutType ? `<p class="text-xs text-green-600">Working on: ${formatWorkoutType(user.workoutType)}</p>` : ''}
       </div>
     `);
@@ -62,6 +70,11 @@ export const formatWorkoutType = (type: string): string => {
 // Helper function to convert degrees to radians
 const toRadians = (degrees: number): number => {
   return degrees * Math.PI / 180;
+};
+
+// Check if MapBox is initialized properly
+export const isMapboxInitialized = (): boolean => {
+  return !!mapboxgl.accessToken;
 };
 
 export default mapboxgl;

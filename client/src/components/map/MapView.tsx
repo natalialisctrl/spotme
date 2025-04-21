@@ -1,10 +1,16 @@
-import { FC, useState, useRef, useEffect } from "react";
+import { FC, useState, useRef, useEffect, useCallback } from "react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { User } from "@shared/schema";
-import { Filter, MapPin, UserRound, Compass } from "lucide-react";
+import { Filter, MapPin, Compass, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import FilterModal from "@/components/filters/FilterModal";
-import mapboxgl, { createMarkerElement, createMarkerPopup, calculateDistance } from "@/lib/mapboxClient";
+import mapboxgl, { 
+  createMarkerElement, 
+  createMarkerPopup, 
+  calculateDistance,
+  isMapboxInitialized 
+} from "@/lib/mapboxClient";
 
 interface MapViewProps {
   nearbyUsers?: User[];
@@ -18,11 +24,15 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
   const { latitude, longitude, error: locationError, accuracy } = useGeolocation();
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
   
   // MapBox refs and state
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+
+  // Check if Mapbox is initialized
+  const mapboxReady = isMapboxInitialized();
 
   // Calculate and group users into distance categories
   const getNearbyUsersWithDistances = () => {
@@ -54,86 +64,9 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
   };
 
   const formattedUsers = getNearbyUsersWithDistances();
-  
-  // Initialize and update the MapBox map
-  useEffect(() => {
-    // Safety check - use Austin coordinates if none available
-    const currentLat = latitude || 30.2267;
-    const currentLng = longitude || -97.7476;
-    
-    // Only initialize if we have the container
-    if (!mapContainerRef.current) return;
-    
-    // If map already exists, just update the center
-    if (mapRef.current) {
-      try {
-        mapRef.current.setCenter([currentLng, currentLat]);
-        return;
-      } catch (err) {
-        console.error("Error updating map center:", err);
-        // If there was an error, the map might be corrupted, so we'll recreate it
-        mapRef.current = null;
-      }
-    }
-    
-    try {
-      console.log("Initializing MapBox map with token:", mapboxgl.accessToken ? "Available" : "Not available");
-      
-      // Initialize the map
-      const map = new mapboxgl.Map({
-        container: mapContainerRef.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: [currentLng, currentLat],
-        zoom: 13,
-        attributionControl: false,
-        // These options make the map more stable and ensure it works on more devices
-        failIfMajorPerformanceCaveat: false,
-        preserveDrawingBuffer: true,
-        antialias: false
-      });
-      
-      // Save the map reference
-      mapRef.current = map;
-      
-      // Add navigation controls
-      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
-      
-      // Add current user marker with safe coordinates
-      if (currentUser) {
-        try {
-          const currentUserMarker = new mapboxgl.Marker(
-            createMarkerElement(currentUser, true)
-          )
-            .setLngLat([currentLng, currentLat])
-            .addTo(map);
-          markersRef.current.push(currentUserMarker);
-        } catch (err) {
-          console.error("Error adding current user marker:", err);
-        }
-      }
-      
-      // When map is loaded, add user markers and log success
-      map.on('load', () => {
-        console.log("MapBox map loaded, adding user markers");
-        // Call the update function directly
-        updateMapMarkers();
-      });
-    } catch (error) {
-      console.error("Error initializing MapBox map:", error);
-    }
-    
-    // Cleanup on unmount
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-        markersRef.current = [];
-      }
-    };
-  }, [latitude, longitude, currentUser]);
-  
+
   // Function to update map markers
-  const updateMapMarkers = () => {
+  const updateMapMarkers = useCallback(() => {
     if (!mapRef.current) return;
     
     // Get fallback coordinates if needed
@@ -160,14 +93,112 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
         }
       }
     });
-  };
+  }, [latitude, longitude, nearbyUsers]);
+  
+  // Initialize and update the MapBox map
+  useEffect(() => {
+    // Don't try to initialize the map if Mapbox is not ready
+    if (!mapboxReady) {
+      setMapError("MapBox token is not properly configured. Please check your environment variables.");
+      return;
+    }
+
+    // Safety check - use Austin coordinates if none available
+    const currentLat = latitude || 30.2267;
+    const currentLng = longitude || -97.7476;
+    
+    // Only initialize if we have the container
+    if (!mapContainerRef.current) return;
+    
+    // If map already exists, just update the center
+    if (mapRef.current) {
+      try {
+        mapRef.current.setCenter([currentLng, currentLat]);
+        return;
+      } catch (err) {
+        console.error("Error updating map center:", err);
+        // If there was an error, the map might be corrupted, so we'll recreate it
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    }
+    
+    try {
+      console.log("Initializing MapBox map...");
+      setMapError(null);
+      
+      // Initialize the map
+      const map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [currentLng, currentLat],
+        zoom: 13,
+        attributionControl: false,
+        // These options make the map more stable and ensure it works on more devices
+        failIfMajorPerformanceCaveat: false,
+        preserveDrawingBuffer: true,
+        antialias: false
+      });
+      
+      // Save the map reference
+      mapRef.current = map;
+      
+      // Add navigation controls
+      map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+      
+      // When map is loaded, add markers
+      map.on('load', () => {
+        console.log("MapBox map loaded successfully");
+        
+        // Add current user marker with safe coordinates if available
+        if (currentUser) {
+          try {
+            const currentUserMarker = new mapboxgl.Marker(
+              createMarkerElement(currentUser, true)
+            )
+              .setLngLat([currentLng, currentLat])
+              .addTo(map);
+            markersRef.current = [currentUserMarker];
+          } catch (err) {
+            console.error("Error adding current user marker:", err);
+          }
+        }
+        
+        // Add user markers
+        updateMapMarkers();
+      });
+      
+      // Handle map errors
+      map.on('error', (e) => {
+        console.error("MapBox error:", e);
+        setMapError("An error occurred with the map. Please try refreshing the page.");
+      });
+      
+    } catch (error) {
+      console.error("Error initializing MapBox map:", error);
+      setMapError("Failed to initialize the map. Please check your internet connection and try again.");
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (mapRef.current) {
+        try {
+          mapRef.current.remove();
+        } catch (e) {
+          console.error("Error removing map:", e);
+        }
+        mapRef.current = null;
+        markersRef.current = [];
+      }
+    };
+  }, [latitude, longitude, currentUser, mapboxReady, updateMapMarkers]);
   
   // Update map markers when nearby users change
   useEffect(() => {
     if (mapRef.current) {
       updateMapMarkers();
     }
-  }, [nearbyUsers]);
+  }, [nearbyUsers, updateMapMarkers]);
 
   return (
     <section className="mb-8 px-4">
@@ -200,6 +231,15 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
           </div>
         ) : (
           <div className="p-4">
+            {/* MapBox Token Error */}
+            {mapError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Map Error</AlertTitle>
+                <AlertDescription>{mapError}</AlertDescription>
+              </Alert>
+            )}
+            
             {/* Your location indicator */}
             <div className="flex items-center mb-4 bg-accent/10 p-3 rounded-lg">
               <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white mr-3">
