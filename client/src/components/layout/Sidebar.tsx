@@ -47,6 +47,10 @@ const Sidebar: FC = () => {
                 <Clipboard className="h-5 w-5 mr-3 text-gray-500" />
                 Workout Routines
             </Link>
+            <Link href="/workout-recommendations" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/workout-recommendations' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+                <Dumbbell className="h-5 w-5 mr-3 text-gray-500" />
+                Workout Recommendations
+            </Link>
             <Link href="/scheduled-meetups" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/scheduled-meetups' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <CalendarDays className="h-5 w-5 mr-3 text-gray-500" />
                 Scheduled Meetups
