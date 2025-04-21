@@ -369,6 +369,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Reset demo users endpoint to generate new locations
+  app.post('/api/demo/reset-users', async (req, res) => {
+    try {
+      // Get all users to find demo users
+      const allUsers = await storage.getAllUsers();
+      const demoUsers = allUsers.filter(u => u.username.startsWith('demouser'));
+      
+      if (demoUsers.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "No demo users found to reset"
+        });
+      }
+      
+      // Clear the tracking array for demo users to force recreation
+      const MemStorage = storage.constructor;
+      if (typeof MemStorage.persistentDemoUserIds !== 'undefined') {
+        MemStorage.persistentDemoUserIds = [];
+      }
+      
+      // Delete existing demo users from storage
+      for (const demoUser of demoUsers) {
+        // We can't actually delete users from MemStorage, but we'll clear
+        // their locations which will force them to be regenerated on next fetch
+        await storage.updateUserLocation(demoUser.id, { 
+          latitude: null, 
+          longitude: null 
+        });
+      }
+      
+      // Create fresh demo users
+      const newDemoUsers = await storage.createDemoUsers(demoUsers.length);
+      
+      return res.json({
+        success: true,
+        message: `Reset ${newDemoUsers.length} demo users with new locations`,
+        users: newDemoUsers.map(u => {
+          const { password, ...userWithoutPassword } = u;
+          return {
+            ...userWithoutPassword,
+            distance: 0 // Will be calculated on client
+          };
+        })
+      });
+    } catch (error) {
+      console.error("Error resetting demo users:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error resetting demo users",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
   // Create WebSocket server
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 

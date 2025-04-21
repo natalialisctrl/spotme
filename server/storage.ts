@@ -1358,28 +1358,32 @@ export class MemStorage implements IStorage {
   
   // Helper method to generate random location within specified radius (in miles)
   private generateLocationWithinRadius(centerLat: number, centerLng: number, radiusMin: number, radiusMax: number): { latitude: number, longitude: number } {
-    // Earth's radius in miles
-    const EARTH_RADIUS = 3963.19;  // miles
+    // A simpler approach using approximations that works better for small distances
+    // Each degree of latitude is approximately 69 miles
+    // Each degree of longitude varies with latitude but is about 69 * cos(latitude) miles
     
     // Random radius between min and max (in miles)
     const radius = radiusMin + (Math.random() * (radiusMax - radiusMin));
     
-    // Random angle in radians
+    // Random angle in radians (0 to 2π)
     const angle = Math.random() * 2 * Math.PI;
     
-    // Convert radius from miles to radians
-    const radiusRadians = radius / EARTH_RADIUS;
+    // Convert angle to x,y components
+    const x = radius * Math.cos(angle);
+    const y = radius * Math.sin(angle);
     
-    // Calculate offset
-    const lat = Math.asin(
-      Math.sin(centerLat * (Math.PI / 180)) * Math.cos(radiusRadians) +
-      Math.cos(centerLat * (Math.PI / 180)) * Math.sin(radiusRadians) * Math.cos(angle)
-    ) * (180 / Math.PI);
+    // Convert to lat/lng changes
+    // At the equator, 1 degree longitude = ~69 miles
+    // 1 degree latitude = ~69 miles everywhere
+    const latMilesPerDegree = 69;
+    const lngMilesPerDegree = 69 * Math.cos(centerLat * (Math.PI / 180));
     
-    const lng = centerLng * (Math.PI / 180) + Math.atan2(
-      Math.sin(angle) * Math.sin(radiusRadians) * Math.cos(centerLat * (Math.PI / 180)),
-      Math.cos(radiusRadians) - Math.sin(centerLat * (Math.PI / 180)) * Math.sin(lat * (Math.PI / 180))
-    ) * (180 / Math.PI);
+    // Calculate new coordinates
+    const latChange = y / latMilesPerDegree;
+    const lngChange = x / lngMilesPerDegree;
+    
+    const lat = centerLat + latChange;
+    const lng = centerLng + lngChange;
     
     // Calculate actual distance to verify (in miles)
     const actualDistance = this.calculateDistance(centerLat, centerLng, lat, lng);

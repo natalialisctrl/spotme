@@ -76,6 +76,29 @@ const FindPartners: FC = () => {
       });
     }
   });
+  
+  // Reset demo users mutation
+  const resetDemoUsersMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/demo/reset-users', {});
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Demo Users Reset',
+        description: `Reset ${data.users.length} demo users with new nearby locations.`,
+      });
+      // Invalidate nearby users query to refresh map
+      queryClient.invalidateQueries({ queryKey: ['/api/users/nearby'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: `Failed to reset demo users: ${error.message}`,
+        variant: 'destructive',
+      });
+    }
+  });
 
   // Show error toast for location errors
   useEffect(() => {
@@ -192,12 +215,37 @@ const FindPartners: FC = () => {
       </div>
       
       {/* Pass the nearbyUsers to the MapView */}
-      <MapView 
-        nearbyUsers={nearbyUsers || []} 
-        currentUser={user || undefined}
-        filterParams={filterParams}
-        onUpdateFilters={handleUpdateFilters}
-      />
+      <div className="relative">
+        <MapView 
+          nearbyUsers={nearbyUsers || []} 
+          currentUser={user || undefined}
+          filterParams={filterParams}
+          onUpdateFilters={handleUpdateFilters}
+        />
+        
+        {/* Reset users button */}
+        <div className="absolute top-4 right-4">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            className="flex items-center gap-2 bg-white/70 hover:bg-white"
+            onClick={() => resetDemoUsersMutation.mutate()}
+            disabled={resetDemoUsersMutation.isPending}
+          >
+            {resetDemoUsersMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Resetting...
+              </>
+            ) : (
+              <>
+                <Loader2 className="h-4 w-4" />
+                Reset Demo Locations
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
       
       {/* Pass the nearbyUsers to PartnersList also */}
       <PartnersList 
