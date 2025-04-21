@@ -14,6 +14,7 @@ import { Loader2, Save, Sparkles, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { workoutTypes } from "@shared/schema";
 import IdentityVerification from "@/components/profile/IdentityVerification";
+import { GymVerification } from "@/components/profile/GymVerification";
 import ProfileInsights from "@/components/profile/ProfileInsights";
 
 // Create a standalone profile page component with a completely different approach
@@ -390,6 +391,16 @@ const NewProfilePage: FC = () => {
 
       {/* Identity Verification section */}
       <IdentityVerification user={userData} onVerificationComplete={handleRefresh} />
+
+      {/* Gym Verification section */}
+      <GymVerification 
+        userId={userData.id}
+        currentGymName={userData.gymName}
+        currentGymChain={userData.gymChain}
+        currentGymAddress={userData.gymAddress}
+        currentGymVerified={userData.gymVerified || false}
+        onSuccess={handleRefresh}
+      />
 
       {/* AI Profile section */}
       <Card>
