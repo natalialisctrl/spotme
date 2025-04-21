@@ -460,7 +460,13 @@ export const nearbyUsersSchema = z.object({
   gender: z.string().optional(),
   experienceLevel: z.string().optional(),
   maxDistance: z.coerce.number().default(5), // in miles - coerce string to number
-  sameGymOnly: z.boolean().or(z.string().transform(val => val === 'true')).default(false),
+  sameGymOnly: z.union([
+    z.boolean(),
+    z.string().transform(val => {
+      console.log(`Converting sameGymOnly string "${val}" to boolean, result: ${val === 'true'}`);
+      return val === 'true';
+    }),
+  ]).default(false),
   currentUserId: z.number().optional(), // Used for filtering by same gym
 });
 

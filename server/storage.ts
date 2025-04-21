@@ -838,21 +838,25 @@ export class MemStorage implements IStorage {
       if (distance > maxDistance) return false;
       
       // Filter by same gym if requested
+      // Note: We're temporarily disabling the gymVerified check since the column isn't in the database yet
       if (sameGymOnly && currentUserId) {
+        console.log(`Checking gym filter for user ${user.id} (${user.name})`, {
+          userGymName: user.gymName,
+          userHasGym: !!user.gymName,
+          sameMatcher: currentUserId
+        });
+        
         const currentUser = activeUsers.find(u => u.id === currentUserId);
-        // Only apply this filter if:
-        // 1. Current user has a verified gym
-        // 2. Both users have gym names set
-        // 3. The other user has their gym verified
-        // 4. The gym names match
+        
+        // Only filter by gym name if both users have gym names and they match
         if (currentUser && 
-            currentUser.gymVerified && 
             currentUser.gymName && 
             user.gymName && 
-            user.gymVerified && 
             user.gymName.toLowerCase() === currentUser.gymName.toLowerCase()) {
           // This is a match - keep this user
+          console.log(`User ${user.id} (${user.name}) is at the same gym as current user ${currentUserId} (${currentUser.gymName})`);
         } else {
+          console.log(`User ${user.id} (${user.name}) is NOT at the same gym as current user ${currentUserId}`);
           return false; // Filter out users not at the same verified gym
         }
       }
