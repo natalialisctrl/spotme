@@ -1381,6 +1381,10 @@ export class MemStorage implements IStorage {
       Math.cos(radiusRadians) - Math.sin(centerLat * (Math.PI / 180)) * Math.sin(lat * (Math.PI / 180))
     ) * (180 / Math.PI);
     
+    // Calculate actual distance to verify (in miles)
+    const actualDistance = this.calculateDistance(centerLat, centerLng, lat, lng);
+    console.log(`Generated point at ${actualDistance.toFixed(2)} miles from center`);
+    
     return { latitude: lat, longitude: lng };
   }
 
@@ -1395,6 +1399,26 @@ export class MemStorage implements IStorage {
     // If we already have enough demo users, return them
     if (existingDemoUsers.length >= count) {
       console.log(`Using ${existingDemoUsers.length} existing demo users instead of creating new ones`);
+      
+      // Get the current user to calculate distances
+      const users = Array.from(this.users.values());
+      const currentUser = users.find(u => !u.username.startsWith('demouser') && u.latitude && u.longitude);
+      
+      if (currentUser && currentUser.latitude && currentUser.longitude) {
+        // Log the distances for the existing users to make sure they're within range
+        existingDemoUsers.forEach(demoUser => {
+          if (demoUser.latitude && demoUser.longitude) {
+            const distance = this.calculateDistance(
+              currentUser.latitude!, 
+              currentUser.longitude!,
+              demoUser.latitude,
+              demoUser.longitude
+            );
+            console.log(`Existing demo user ${demoUser.id} (${demoUser.name}) is ${distance.toFixed(2)} miles away`);
+          }
+        });
+      }
+      
       MemStorage.persistentDemoUserIds = existingDemoUsers.map(u => u.id);
       return existingDemoUsers.slice(0, count);
     }
@@ -1412,22 +1436,39 @@ export class MemStorage implements IStorage {
     const baseLatitude = userWithLocation?.latitude || 30.2267;
     const baseLongitude = userWithLocation?.longitude || -97.7476;
     
+    console.log(`Using base coordinates for demo users: ${baseLatitude}, ${baseLongitude}`);
+    
     // Log what we're doing
     console.log("Creating new demo users, previous demo IDs:", MemStorage.persistentDemoUserIds);
     
     // Clear tracking array for new demo users
     MemStorage.persistentDemoUserIds = [];
     
+    // Create demo users with an even distribution of distances within the radius
+    const distributionRanges = [
+      { min: 0.5, max: 1.5 },   // 0.5-1.5 miles away
+      { min: 1.0, max: 2.0 },   // 1.0-2.0 miles away
+      { min: 2.0, max: 3.0 },   // 2.0-3.0 miles away
+      { min: 3.0, max: 4.0 },   // 3.0-4.0 miles away
+      { min: 4.0, max: 5.0 }    // 4.0-5.0 miles away
+    ];
+    
     for (let i = 0; i < count; i++) {
       const username = `demouser${this.currentUserId}`;
       
-      // Create location within 1-3 miles of the user
+      // Select distribution range based on index (cycle through ranges)
+      const rangeIndex = i % distributionRanges.length;
+      const { min, max } = distributionRanges[rangeIndex];
+      
+      // Create location within selected range from the user
       const { latitude, longitude } = this.generateLocationWithinRadius(
         baseLatitude, 
         baseLongitude, 
-        0.5, // Min 0.5 miles away 
-        maxDistanceMiles * 0.8 // Max 80% of requested max distance to ensure they appear in search
+        min, // Min distance in miles
+        max  // Max distance in miles
       );
+      
+      console.log(`Created demo user ${i+1}/${count} in range ${min}-${max} miles`);
       
       // Pick a gym name - 50% chance to have same gym as user if available
       let gymName = gymNames[Math.floor(Math.random() * gymNames.length)];

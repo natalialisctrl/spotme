@@ -721,6 +721,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filter out the current user
       const filteredUsers = nearbyUsers.filter(u => u.id !== req.session!.userId);
       
+      // Log the number of demo users included in results
+      const demoUsersIncluded = filteredUsers.filter(u => u.username.startsWith('demouser'));
+      
       // Don't return passwords in response
       const usersWithoutPasswords = filteredUsers.map(u => {
         const { password, ...userWithoutPassword } = u;
@@ -734,12 +737,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
         } else {
           // For demo purposes, assign random distances between 0.1 and 5 miles
-          distance = 0.1 + (Math.random() * 4.9);
+          // For demo users, ensure they stay within 5 miles
+          if (u.username.startsWith('demouser')) {
+            distance = 0.1 + (Math.random() * 4.9); // Between 0.1 and 5 miles
+            console.log(`Including demo user ${u.id} (${u.name}) in nearby users`);
+          } else {
+            distance = 0.5 + (Math.random() * 9.5); // Regular users can be up to 10 miles away
+          }
         }
         
         return {
           ...userWithoutPassword,
-          distance
+          distance: Math.round(distance * 100) / 100 // Round to 2 decimal places for cleaner display
         };
       });
       
