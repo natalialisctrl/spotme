@@ -123,26 +123,10 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
     });
     markersRef.current = [];
     
-    // Removing the "You" marker as requested
-    console.log("No longer adding 'You' marker to avoid inaccuracy");
+    // No longer displaying any user markers as requested
+    console.log("Not showing any user markers on the map as requested");
     
-    // Then add markers for nearby users with valid coordinates
-    nearbyUsers.forEach(user => {
-      if (user.latitude && user.longitude) {
-        try {
-          console.log("Adding user marker for:", user.name, [user.longitude, user.latitude]);
-          
-          const marker = new mapboxgl.Marker(createMarkerElement(user))
-            .setLngLat([user.longitude, user.latitude])
-            .setPopup(createMarkerPopup(user))
-            .addTo(mapRef.current!);
-          
-          markersRef.current.push(marker);
-        } catch (error) {
-          console.error("Error adding marker for user", user.id, error);
-        }
-      }
-    });
+    // We'll keep the map centered at the user's location but won't add any markers
   }, [latitude, longitude, nearbyUsers]);
   
   // Initialize and update the MapBox map
