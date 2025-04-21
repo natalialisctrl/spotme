@@ -12,6 +12,8 @@ import {
 // Interface for storage operations
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import fs from 'fs';
+import path from 'path';
 
 export interface IStorage {
   // User operations
@@ -574,6 +576,12 @@ export class MemStorage implements IStorage {
     if (id === 1) {
       // Update the initial user data to ensure it persists across restarts
       this.nataliaUser = { ...this.nataliaUser, ...userData };
+      
+      // Important: Update the user in the map immediately afterward to keep in sync
+      this.users.set(id, { ...this.nataliaUser });
+      
+      // Save the user state to ensure persistence even after server restarts
+      this.saveUserState();
       console.log("Updated permanent user data");
     }
     
@@ -612,6 +620,12 @@ export class MemStorage implements IStorage {
         longitude: location.longitude,
         lastActive: new Date()
       };
+      
+      // Important: Update the user in the map immediately afterward to keep in sync
+      this.users.set(id, { ...this.nataliaUser });
+      
+      // Save the user state to ensure persistence even after server restarts
+      this.saveUserState();
       console.log("Updated permanent user location data");
     }
     
