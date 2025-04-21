@@ -788,11 +788,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.latitude && user.longitude) {
         // If we have location, use the real implementation
         try {
+          // Log the request parameters for debugging
+          console.log("Nearby users request params:", {
+            ...req.query,
+            sameGymOnly: req.query.sameGymOnly,
+            sameGymOnlyType: typeof req.query.sameGymOnly,
+            parsedSameGymOnly: req.query.sameGymOnly === 'true'
+          });
+          
           const params = nearbyUsersSchema.parse({
             ...req.query,
             latitude: user.latitude,
             longitude: user.longitude,
             currentUserId: req.session.userId // Add the current user ID for gym filtering
+          });
+          
+          // Log the parsed parameters 
+          console.log("Parsed params:", {
+            sameGymOnly: params.sameGymOnly,
+            sameGymOnlyType: typeof params.sameGymOnly
           });
           
           nearbyUsers = await storage.findNearbyUsers(params);
