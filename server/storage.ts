@@ -1356,7 +1356,35 @@ export class MemStorage implements IStorage {
   // Using a static array to persist across multiple instances
   private static persistentDemoUserIds: number[] = [];
   
-  async createDemoUsers(count: number = 5): Promise<User[]> {
+  // Helper method to generate random location within specified radius (in miles)
+  private generateLocationWithinRadius(centerLat: number, centerLng: number, radiusMin: number, radiusMax: number): { latitude: number, longitude: number } {
+    // Earth's radius in miles
+    const EARTH_RADIUS = 3963.19;  // miles
+    
+    // Random radius between min and max (in miles)
+    const radius = radiusMin + (Math.random() * (radiusMax - radiusMin));
+    
+    // Random angle in radians
+    const angle = Math.random() * 2 * Math.PI;
+    
+    // Convert radius from miles to radians
+    const radiusRadians = radius / EARTH_RADIUS;
+    
+    // Calculate offset
+    const lat = Math.asin(
+      Math.sin(centerLat * (Math.PI / 180)) * Math.cos(radiusRadians) +
+      Math.cos(centerLat * (Math.PI / 180)) * Math.sin(radiusRadians) * Math.cos(angle)
+    ) * (180 / Math.PI);
+    
+    const lng = centerLng * (Math.PI / 180) + Math.atan2(
+      Math.sin(angle) * Math.sin(radiusRadians) * Math.cos(centerLat * (Math.PI / 180)),
+      Math.cos(radiusRadians) - Math.sin(centerLat * (Math.PI / 180)) * Math.sin(lat * (Math.PI / 180))
+    ) * (180 / Math.PI);
+    
+    return { latitude: lat, longitude: lng };
+  }
+
+  async createDemoUsers(count: number = 5, maxDistanceMiles: number = 5): Promise<User[]> {
     const demoUsers: User[] = [];
     
     // Check if we already have demo users in the database
@@ -1374,10 +1402,15 @@ export class MemStorage implements IStorage {
     // Define a set of reasonable values for demo users
     const experienceLevels = ['beginner', 'intermediate', 'advanced'];
     const genders = ['male', 'female', 'non-binary'];
+    const gymNames = ['FitZone Gym', 'PowerLift Center', 'CrossFit Central', 'Ultimate Fitness', '24/7 Gym'];
     
-    // Set Austin-based coordinates for demo users
-    const baseLatitude = 30.2267;
-    const baseLongitude = -97.7476;
+    // Find the current user with location to use as center point
+    const users = Array.from(this.users.values());
+    const userWithLocation = users.find(u => u.latitude && u.longitude);
+    
+    // Set base coordinates for demo users (use user's location if available, otherwise Austin)
+    const baseLatitude = userWithLocation?.latitude || 30.2267;
+    const baseLongitude = userWithLocation?.longitude || -97.7476;
     
     // Log what we're doing
     console.log("Creating new demo users, previous demo IDs:", MemStorage.persistentDemoUserIds);
@@ -1388,9 +1421,19 @@ export class MemStorage implements IStorage {
     for (let i = 0; i < count; i++) {
       const username = `demouser${this.currentUserId}`;
       
-      // Create random location near base coordinates (within ~2 miles)
-      const latOffset = (Math.random() - 0.5) * 0.04;  // ~±0.02 degrees = ~1.2 miles
-      const lngOffset = (Math.random() - 0.5) * 0.04;  // ~±0.02 degrees = ~1.2 miles
+      // Create location within 1-3 miles of the user
+      const { latitude, longitude } = this.generateLocationWithinRadius(
+        baseLatitude, 
+        baseLongitude, 
+        0.5, // Min 0.5 miles away 
+        maxDistanceMiles * 0.8 // Max 80% of requested max distance to ensure they appear in search
+      );
+      
+      // Pick a gym name - 50% chance to have same gym as user if available
+      let gymName = gymNames[Math.floor(Math.random() * gymNames.length)];
+      if (userWithLocation?.gymName && Math.random() > 0.5) {
+        gymName = userWithLocation.gymName;
+      }
       
       const user = await this.createUser({
         username,
@@ -1400,9 +1443,10 @@ export class MemStorage implements IStorage {
         gender: genders[Math.floor(Math.random() * genders.length)],
         experienceLevel: experienceLevels[Math.floor(Math.random() * experienceLevels.length)],
         experienceYears: Math.floor(Math.random() * 5) + 1,
-        bio: `I'm a demo user with ID ${this.currentUserId}`,
-        latitude: baseLatitude + latOffset,  // Add location data
-        longitude: baseLongitude + lngOffset,
+        bio: `I'm a demo user looking for workout partners nearby.`,
+        latitude: latitude,
+        longitude: longitude,
+        gymName: gymName,
         aiGeneratedInsights: JSON.stringify({
           workoutStyle: "Regular",
           motivationTips: ["Stay consistent", "Focus on form"],

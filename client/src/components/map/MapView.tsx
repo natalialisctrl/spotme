@@ -127,19 +127,24 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
     try {
       console.log("Adding YOU marker at:", [longitude, latitude]);
       
-      // Create custom marker element for current user
+      // Create custom marker element for current user with fixed size 
       const youMarkerElement = document.createElement('div');
       youMarkerElement.className = 'relative';
+      youMarkerElement.style.zIndex = '1000'; // Ensure it's on top of other markers
       
+      // Add CSS to prevent the marker from changing size when zooming
       const markerInner = document.createElement('div');
-      markerInner.className = 'w-12 h-12 bg-accent rounded-full flex items-center justify-center text-white border-2 border-white shadow-lg';
-      markerInner.innerHTML = '<span class="font-medium">You</span>';
+      markerInner.className = 'w-14 h-14 bg-accent rounded-full flex items-center justify-center text-white border-2 border-white shadow-lg transform-none';
+      markerInner.style.transform = 'none'; // Prevent transformations from affecting marker
+      markerInner.innerHTML = '<span class="font-medium text-sm">You</span>';
       youMarkerElement.appendChild(markerInner);
       
-      // Create and add the current user marker
+      // Create and add the current user marker with center anchor
       const youMarker = new mapboxgl.Marker({
         element: youMarkerElement,
-        anchor: 'bottom'
+        anchor: 'center', // Use center instead of bottom for better positioning
+        offset: [0, 0], // No offset
+        scale: 1.0 // Fixed scale regardless of zoom
       })
         .setLngLat([longitude, latitude])
         .addTo(mapRef.current);
@@ -219,7 +224,11 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
         attributionControl: false,
         // These options improve map stability
         failIfMajorPerformanceCaveat: false,
-        preserveDrawingBuffer: true
+        preserveDrawingBuffer: true,
+        // Disable map rotation to keep north at top for simpler navigation
+        dragRotate: false,
+        // Smooth scale to avoid marker flickering during zoom
+        smoothScaling: true
       });
       
       // Save the map reference
@@ -240,6 +249,23 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
       map.on('error', (e) => {
         console.error("MapBox error:", e);
         setMapError("An error occurred with the map. Please try refreshing the page.");
+      });
+      
+      // When zooming, ensure the YOU marker maintains proper size
+      map.on('zoom', () => {
+        // If we have a "You" marker, ensure it maintains the proper appearance
+        if (markersRef.current.length > 0) {
+          const youMarker = markersRef.current[0];
+          const el = youMarker.getElement();
+          
+          // Reset any transformations that might be applied during zoom
+          if (el) {
+            const inner = el.querySelector('div');
+            if (inner) {
+              inner.style.transform = 'none';
+            }
+          }
+        }
       });
       
     } catch (error) {

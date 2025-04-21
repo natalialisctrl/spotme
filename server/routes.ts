@@ -630,10 +630,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingUsers = await storage.getAllUsers();
       const demoUserCount = existingUsers.filter(u => u.username.startsWith('demouser')).length;
       
-      // Create demo users if we don't have any yet
+      // Create demo users if we don't have any yet - specifically within 5 miles
       if (demoUserCount < 5) {
         console.log("Creating demo users for testing...");
-        await storage.createDemoUsers(5);
+        await storage.createDemoUsers(5, 5); // Create 5 users within 5 miles
         
         // Assign workout focuses to demo users
         const demoUsers = (await storage.getAllUsers()).filter(u => u.username.startsWith('demouser'));
