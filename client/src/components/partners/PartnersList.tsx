@@ -53,34 +53,15 @@ type NearbyUserWithScore = NearbyUser & {
 
 type SortType = 'compatibility' | 'distance' | 'experienceLevel';
 
-const PartnersList: FC<PartnersListProps> = ({ filterParams }) => {
+const PartnersList: FC<PartnersListProps> = ({ filterParams, nearbyUsers: propNearbyUsers }) => {
   const { user: currentUser } = useAuth();
   const [sortBy, setSortBy] = useState<SortType>('compatibility');
   const [animateIn, setAnimateIn] = useState<Record<number, boolean>>({});
   const [showOneTapTip, setShowOneTapTip] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   
-  const { data: nearbyUsers, isLoading, error } = useQuery<NearbyUser[]>({
-    queryKey: ['/api/users/nearby', filterParams],
-    queryFn: async ({ queryKey }) => {
-      const [_path, filters] = queryKey as [string, FilterParams];
-      const queryParams = new URLSearchParams();
-      
-      if (filters.workoutType) queryParams.append('workoutType', filters.workoutType);
-      if (filters.gender) queryParams.append('gender', filters.gender);
-      if (filters.experienceLevel) queryParams.append('experienceLevel', filters.experienceLevel);
-      if (filters.maxDistance) queryParams.append('maxDistance', filters.maxDistance.toString());
-      if (filters.sameGymOnly) queryParams.append('sameGymOnly', filters.sameGymOnly.toString());
-      
-      const url = `/api/users/nearby?${queryParams.toString()}`;
-      const res = await fetch(url, { credentials: 'include' });
-      
-      if (!res.ok) {
-        throw new Error('Failed to fetch nearby users');
-      }
-      
-      return res.json();
-    }
-  });
+  // Using the users that are passed from the parent component instead of fetching again
+  const nearbyUsers = propNearbyUsers || [];
   
   // Customize compatibility weight factors
   const [compatibilityWeights, setCompatibilityWeights] = useState(DEFAULT_WEIGHTS);
@@ -326,10 +307,6 @@ const PartnersList: FC<PartnersListProps> = ({ filterParams }) => {
       {isLoading ? (
         <div className="flex justify-center py-10">
           <Loader2 className="h-8 w-8 text-primary animate-spin" />
-        </div>
-      ) : error ? (
-        <div className="bg-red-50 p-4 rounded-lg">
-          <p className="text-red-600">Error loading potential partners. Please try again.</p>
         </div>
       ) : sortedUsers && sortedUsers.length > 0 ? (
         <div className="space-y-4">
