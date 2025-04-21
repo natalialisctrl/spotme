@@ -1362,7 +1362,8 @@ export class MemStorage implements IStorage {
   private static persistentDemoUserIds: number[] = [];
   
   // Helper method to generate random location within specified radius (in miles)
-  private generateLocationWithinRadius(centerLat: number, centerLng: number, radiusMin: number, radiusMax: number): { latitude: number, longitude: number } {
+  // Making this public so it can be used from routes.ts
+  generateLocationWithinRadius(centerLat: number, centerLng: number, radiusMin: number, radiusMax: number): { latitude: number, longitude: number } {
     // A simpler approach using approximations that works better for small distances
     // Each degree of latitude is approximately 69 miles
     // Each degree of longitude varies with latitude but is about 69 * cos(latitude) miles

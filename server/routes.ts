@@ -398,18 +398,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Delete existing demo users from storage
+      // Update existing demo users with new locations
+      const currentUser = await storage.getUser(req.session.userId);
+      const baseLatitude = currentUser?.latitude || 30.2267;
+      const baseLongitude = currentUser?.longitude || -97.7476;
+      
+      // Update each demo user with a new location
+      const updatedDemoUsers = [];
       for (const demoUser of demoUsers) {
-        // We can't actually delete users from MemStorage, but we'll clear
-        // their locations which will force them to be regenerated on next fetch
-        await storage.updateUserLocation(demoUser.id, { 
-          latitude: null, 
-          longitude: null 
-        });
+        // Generate a new location within 0.5-5 miles
+        const minDistance = 0.5;
+        const maxDistance = 5.0;
+        const location = storage.generateLocationWithinRadius(
+          baseLatitude,
+          baseLongitude,
+          minDistance,
+          maxDistance
+        );
+        
+        // Update the user's location
+        const updatedUser = await storage.updateUserLocation(demoUser.id, location);
+        if (updatedUser) {
+          updatedDemoUsers.push(updatedUser);
+          console.log(`Updated demo user ${demoUser.id} with new location: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`);
+        }
       }
       
-      // Create fresh demo users
-      const newDemoUsers = await storage.createDemoUsers(demoUsers.length);
+      // Make sure we have enough demo users
+      let newDemoUsers = updatedDemoUsers;
+      if (updatedDemoUsers.length < demoUsers.length) {
+        // Create additional demo users if needed
+        const additionalUsers = await storage.createDemoUsers(demoUsers.length - updatedDemoUsers.length);
+        newDemoUsers = [...updatedDemoUsers, ...additionalUsers];
+      }
       
       return res.json({
         success: true,
@@ -784,8 +805,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filter out the current user
       const filteredUsers = nearbyUsers.filter(u => u.id !== req.session!.userId);
       
+      // Ensure demo users have valid locations - update any demo users with null locations
+      // This ensures they always appear in results
+      for (const u of filteredUsers) {
+        if (u.username.startsWith('demouser') && (!u.latitude || !u.longitude)) {
+          // Generate a new location within 0.5-5 miles of the user
+          const baseLatitude = user.latitude || 30.2267;
+          const baseLongitude = user.longitude || -97.7476;
+          const minDistance = 0.5;
+          const maxDistance = 5.0;
+          
+          const location = storage.generateLocationWithinRadius(
+            baseLatitude,
+            baseLongitude,
+            minDistance,
+            maxDistance
+          );
+          
+          // Update the user's location
+          await storage.updateUserLocation(u.id, location);
+          console.log(`Updated demo user ${u.id} (${u.name}) with new location: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`);
+          
+          // Update the user in our local array too
+          u.latitude = location.latitude;
+          u.longitude = location.longitude;
+        }
+      }
+      
       // Log the number of demo users included in results
       const demoUsersIncluded = filteredUsers.filter(u => u.username.startsWith('demouser'));
+      console.log(`Including ${demoUsersIncluded.length} demo users in results`);
       
       // Don't return passwords in response
       const usersWithoutPasswords = filteredUsers.map(u => {
@@ -793,17 +842,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Calculate distance if we have coordinates, otherwise use random distances
         let distance = 0;
+        const isDemoUser = u.username.startsWith('demouser');
+        
         if (user.latitude && user.longitude && u.latitude && u.longitude) {
           distance = storage.calculateDistance(
             user.latitude, user.longitude,
             u.latitude, u.longitude
           );
+          
+          if (isDemoUser) {
+            console.log(`Demo user ${u.id} (${u.name}) is ${distance.toFixed(2)} miles away with gender ${u.gender}`);
+          }
         } else {
-          // For demo purposes, assign random distances between 0.1 and 5 miles
-          // For demo users, ensure they stay within 5 miles
-          if (u.username.startsWith('demouser')) {
-            distance = 0.1 + (Math.random() * 4.9); // Between 0.1 and 5 miles
-            console.log(`Including demo user ${u.id} (${u.name}) in nearby users`);
+          // For demo purposes, assign random distances 
+          if (isDemoUser) {
+            distance = 0.5 + (Math.random() * 4.5); // Demo users should be between 0.5 and 5 miles
+            console.log(`Including demo user ${u.id} (${u.name}) in nearby users with random distance ${distance.toFixed(2)}`);
           } else {
             distance = 0.5 + (Math.random() * 9.5); // Regular users can be up to 10 miles away
           }
