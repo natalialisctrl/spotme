@@ -461,6 +461,7 @@ export const nearbyUsersSchema = z.object({
   experienceLevel: z.string().optional(),
   maxDistance: z.coerce.number().default(5), // in miles - coerce string to number
   sameGymOnly: z.boolean().or(z.string().transform(val => val === 'true')).default(false),
+  currentUserId: z.number().optional(), // Used for filtering by same gym
 });
 
 // Define an exercise schema for workout routines

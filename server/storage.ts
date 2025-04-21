@@ -808,7 +808,7 @@ export class MemStorage implements IStorage {
 
   // Find nearby users
   async findNearbyUsers(params: NearbyUsersParams): Promise<User[]> {
-    const { latitude, longitude, workoutType, gender, experienceLevel, maxDistance, sameGymOnly } = params;
+    const { latitude, longitude, workoutType, gender, experienceLevel, maxDistance, sameGymOnly, currentUserId } = params;
     const activeUsers = Array.from(this.users.values())
       .filter(user => user.latitude && user.longitude); // Only users with location data
     
