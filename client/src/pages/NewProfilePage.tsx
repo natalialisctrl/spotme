@@ -298,16 +298,41 @@ const NewProfilePage: FC = () => {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="gymName">Gym Name</Label>
+                  <Label htmlFor="gymName">
+                    Gym Name
+                    {userData.gymVerified && (
+                      <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                        <svg className="mr-1 h-3 w-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Verified
+                      </span>
+                    )}
+                  </Label>
                   {mode === "edit" ? (
-                    <Input 
-                      id="gymName" 
-                      name="gymName" 
-                      value={formData.gymName} 
-                      onChange={handleInputChange} 
-                    />
+                    userData.gymVerified ? (
+                      <div className="flex items-center">
+                        <Input 
+                          id="gymName" 
+                          name="gymName" 
+                          value={formData.gymName} 
+                          className="bg-gray-100 text-gray-800"
+                          readOnly
+                        />
+                        <span className="ml-2 text-xs text-gray-500">Verified gyms cannot be edited</span>
+                      </div>
+                    ) : (
+                      <Input 
+                        id="gymName" 
+                        name="gymName" 
+                        value={formData.gymName} 
+                        onChange={handleInputChange} 
+                      />
+                    )
                   ) : (
-                    <p className="text-gray-900">{userData.gymName || "Not specified"}</p>
+                    <p className="text-gray-900 flex items-center">
+                      {userData.gymName || "Not specified"}
+                    </p>
                   )}
                 </div>
                 <div className="space-y-2">

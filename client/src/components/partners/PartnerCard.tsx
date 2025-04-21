@@ -258,7 +258,14 @@ const PartnerCard: FC<PartnerCardProps> = ({ user, distance, currentUser }) => {
               <span className="text-sm text-gray-500">
                 {user.gymName ? `At ${user.gymName}` : 'Nearby gym'}
               </span>
-              <CheckCircle className="h-4 w-4 ml-1 text-secondary" />
+              {user.gymVerified && (
+                <span className="ml-1 inline-flex items-center rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-800">
+                  <svg className="mr-0.5 h-3 w-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Verified
+                </span>
+              )}
             </div>
             <div>
               <button
