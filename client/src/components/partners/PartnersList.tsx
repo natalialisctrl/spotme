@@ -42,6 +42,7 @@ interface FilterParams {
 
 interface PartnersListProps {
   filterParams: FilterParams;
+  nearbyUsers?: (User & { distance: number })[];
 }
 
 type NearbyUser = User & { distance: number };

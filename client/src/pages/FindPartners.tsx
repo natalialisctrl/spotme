@@ -28,6 +28,30 @@ const FindPartners: FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  // Fetch nearby users with the current filters
+  const { data: nearbyUsers, isLoading: usersLoading } = useQuery<(User & { distance: number })[]>({
+    queryKey: ['/api/users/nearby', filterParams],
+    queryFn: async ({ queryKey }) => {
+      const [_path, filters] = queryKey as [string, typeof filterParams];
+      const queryParams = new URLSearchParams();
+      
+      if (filters.workoutType) queryParams.append('workoutType', filters.workoutType);
+      if (filters.gender) queryParams.append('gender', filters.gender);
+      if (filters.experienceLevel) queryParams.append('experienceLevel', filters.experienceLevel);
+      if (filters.maxDistance) queryParams.append('maxDistance', filters.maxDistance.toString());
+      if (filters.sameGymOnly) queryParams.append('sameGymOnly', filters.sameGymOnly.toString());
+      
+      const url = `/api/users/nearby?${queryParams.toString()}`;
+      const res = await fetch(url, { credentials: 'include' });
+      
+      if (!res.ok) {
+        throw new Error('Failed to fetch nearby users');
+      }
+      
+      return res.json();
+    }
+  });
+  
   // Create demo data mutation
   const createDemoDataMutation = useMutation({
     mutationFn: async () => {
@@ -167,14 +191,19 @@ const FindPartners: FC = () => {
         </div>
       </div>
       
+      {/* Pass the nearbyUsers to the MapView */}
       <MapView 
-        nearbyUsers={[]} 
+        nearbyUsers={nearbyUsers || []} 
         currentUser={user || undefined}
         filterParams={filterParams}
         onUpdateFilters={handleUpdateFilters}
       />
       
-      <PartnersList filterParams={filterParams} />
+      {/* Pass the nearbyUsers to PartnersList also */}
+      <PartnersList 
+        filterParams={filterParams} 
+        nearbyUsers={nearbyUsers || []}
+      />
     </div>
   );
 };
