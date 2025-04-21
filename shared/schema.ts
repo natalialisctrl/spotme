@@ -13,7 +13,12 @@ export const users = pgTable("users", {
   experienceLevel: text("experience_level").notNull(),
   experienceYears: integer("experience_years").notNull(),
   bio: text("bio"),
+  // Gym information for verification
   gymName: text("gym_name"),
+  gymChain: text("gym_chain"), // e.g., "Crunch Fitness", "Planet Fitness", "Gold's Gym", etc.
+  gymAddress: text("gym_address"), // Full address of the gym
+  gymVerified: boolean("gym_verified").default(false),
+  gymMemberId: text("gym_member_id"), // Membership ID or account number for verification
   latitude: real("latitude"),
   longitude: real("longitude"),
   lastActive: timestamp("last_active"),
@@ -37,6 +42,25 @@ export const users = pgTable("users", {
   // Membership tier
   membershipTier: text("membership_tier").notNull().default("free"),
 });
+
+// Common gym chains
+export const gymChains = [
+  "24 Hour Fitness",
+  "Anytime Fitness",
+  "Crunch Fitness",
+  "Gold's Gym",
+  "LA Fitness",
+  "Life Time Fitness",
+  "Orange Theory",
+  "Planet Fitness",
+  "Snap Fitness",
+  "YMCA",
+  "Equinox",
+  "Fitness Connection",
+  "CrossFit",
+  "F45 Training",
+  "Other"
+] as const;
 
 // Workout types
 export const workoutTypes = [
