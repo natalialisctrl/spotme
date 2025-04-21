@@ -26,53 +26,78 @@ export function useGeolocation(): GeolocationHookResult {
   const watchId = useRef<number | null>(null);
   const locationUpdateTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Use Austin-based fallback coordinates for development if needed
+  // Use backup location coordinates only in extreme cases
   const useFallbackLocation = useCallback((forceFallback = false) => {
+    // Only use fallback when explicitly forced or when no coordinates are available
     if (forceFallback || !latitude || !longitude) {
-      // Austin, TX coordinates with slight randomization to distribute users
-      const randomLat = (Math.random() * 0.01) - 0.005; // +/- 0.005 degrees (~550m)
-      const randomLng = (Math.random() * 0.01) - 0.005;
-      
-      const austinLat = 30.2267 + randomLat;
-      const austinLng = -97.7476 + randomLng;
-      
-      console.log("Using fallback location coordinates (Austin, TX)", {
-        latitude: austinLat,
-        longitude: austinLng
-      });
-      
-      setLatitude(austinLat);
-      setLongitude(austinLng);
-      setAccuracy(1000); // Lower accuracy for fallback
-      setIsLoading(false);
-      
-      // Also update the server with fallback location if user is logged in
-      if (user) {
-        // Use Promise.catch instead of try/catch for better error handling with async operations
-        apiRequest('PATCH', '/api/users/location', { 
-          latitude: austinLat, 
-          longitude: austinLng 
-        })
-        .then(() => {
-          // Only send WebSocket message if the user is logged in and WebSocket is connected
-          if (isConnected && user) {
-            sendMessage({
-              type: 'user_location',
-              senderId: user.id,
-              data: { latitude: austinLat, longitude: austinLng }
-            });
-          }
-        })
-        .catch(err => {
-          // This is expected when not logged in (401), so we'll only log in development
-          if (process.env.NODE_ENV === 'development') {
-            console.debug('Location update not sent - user may not be authenticated');
-          }
+      // Custom fallback for users that have previously set coordinates
+      if (user && user.latitude && user.longitude) {
+        // Use the user's last known location with slight randomization
+        const randomOffset = 0.0001 * (Math.random() - 0.5); // Tiny random offset (~10m)
+        const userLat = user.latitude + randomOffset;
+        const userLng = user.longitude + randomOffset;
+        
+        console.log("Using user's last known location from profile", {
+          latitude: userLat,
+          longitude: userLng
         });
+        
+        setLatitude(userLat);
+        setLongitude(userLng);
+        setAccuracy(200); // Moderately good accuracy
+        setIsLoading(false);
+        
+        // Don't update server with this data since we're just using their existing data
+        
+        return true;
       }
       
-      return true;
+      // Last resort: Use generalized coordinates (but only if forced)
+      if (forceFallback) {
+        // Austin, TX coordinates with slight randomization to distribute users
+        const randomLat = (Math.random() * 0.01) - 0.005; // +/- 0.005 degrees (~550m)
+        const randomLng = (Math.random() * 0.01) - 0.005;
+        
+        const austinLat = 30.2267 + randomLat;
+        const austinLng = -97.7476 + randomLng;
+        
+        console.log("Using absolute fallback location coordinates", {
+          latitude: austinLat,
+          longitude: austinLng
+        });
+        
+        setLatitude(austinLat);
+        setLongitude(austinLng);
+        setAccuracy(3000); // Low accuracy
+        setIsLoading(false);
+        
+        // Only update server with forced fallback if we must
+        if (user) {
+          // Use Promise.catch instead of try/catch for better error handling
+          apiRequest('PATCH', '/api/users/location', { 
+            latitude: austinLat, 
+            longitude: austinLng 
+          })
+          .then(() => {
+            if (isConnected && user) {
+              sendMessage({
+                type: 'user_location',
+                senderId: user.id,
+                data: { latitude: austinLat, longitude: austinLng }
+              });
+            }
+          })
+          .catch(err => {
+            if (process.env.NODE_ENV === 'development') {
+              console.debug('Location update not sent - user may not be authenticated');
+            }
+          });
+        }
+        
+        return true;
+      }
     }
+    
     return false;
   }, [latitude, longitude, user, isConnected, sendMessage]);
 
@@ -152,30 +177,26 @@ export function useGeolocation(): GeolocationHookResult {
   }, [useFallbackLocation]);
 
   useEffect(() => {
-    // ALWAYS use fallback location initially to ensure we have something right away
-    // This provides instant location data while waiting for real GPS
-    useFallbackLocation(true);
-    
     // Set up retry if more accurate location isn't available after a while
     locationUpdateTimeout.current = setTimeout(() => {
       if (!latitude || !longitude) {
         console.log("Location not received in time, using fallback");
         useFallbackLocation(true);
       }
-    }, 3000); // Reduced to 3 seconds for faster fallback
+    }, 8000); // Increase to 8 seconds to give more time for accurate location
 
     // Check if geolocation is available
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by your browser");
       setIsLoading(false);
-      // Fallback already set above, but make sure it's applied
+      // Use fallback if geolocation is not supported
       useFallbackLocation(true);
       return;
     }
 
     // Now try to get more accurate position
     try {
-      // Try with higher accuracy first, but shorter timeout
+      // Try with higher accuracy first
       navigator.geolocation.getCurrentPosition(
         updateUserLocation,
         (err) => {
@@ -183,17 +204,20 @@ export function useGeolocation(): GeolocationHookResult {
           // Try again with lower accuracy
           navigator.geolocation.getCurrentPosition(
             updateUserLocation,
-            handleError, 
+            (lowAccErr) => {
+              console.error("Low accuracy position also failed", lowAccErr);
+              handleError(lowAccErr);
+            }, 
             {
               enableHighAccuracy: false,
-              timeout: 5000,
+              timeout: 10000,  // Increase timeout to 10 seconds
               maximumAge: 60000 // Allow cached positions up to 1 minute old
             }
           );
         },
         {
           enableHighAccuracy: true,
-          timeout: 5000,
+          timeout: 10000,  // Increase timeout to 10 seconds
           maximumAge: 0
         }
       );
@@ -201,16 +225,20 @@ export function useGeolocation(): GeolocationHookResult {
       // Watch position for changes
       watchId.current = navigator.geolocation.watchPosition(
         updateUserLocation,
-        handleError,
+        (watchErr) => {
+          console.warn("Watch position error, but continuing to try", watchErr);
+          // Don't call handleError here to avoid overriding the current coordinates
+          // with fallback just because we got a single watch error
+        },
         {
           enableHighAccuracy: true,
-          timeout: 8000,
+          timeout: 15000,  // Increase timeout to 15 seconds
           maximumAge: 60000 // Allow cached positions up to 1 minute old
         }
       );
     } catch (e) {
       console.error("Error setting up geolocation:", e);
-      // Fallback already set above, but make sure it's applied
+      // Use fallback if there's an error setting up geolocation
       useFallbackLocation(true);
     }
 
