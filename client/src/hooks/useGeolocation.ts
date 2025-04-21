@@ -53,49 +53,12 @@ export function useGeolocation(): GeolocationHookResult {
         return true;
       }
       
-      // Last resort: Use generalized coordinates (but only if forced)
+      // Don't use Austin coordinates fallback at all
       if (forceFallback) {
-        // Austin, TX coordinates with slight randomization to distribute users
-        const randomLat = (Math.random() * 0.01) - 0.005; // +/- 0.005 degrees (~550m)
-        const randomLng = (Math.random() * 0.01) - 0.005;
-        
-        const austinLat = 30.2267 + randomLat;
-        const austinLng = -97.7476 + randomLng;
-        
-        console.log("Using absolute fallback location coordinates", {
-          latitude: austinLat,
-          longitude: austinLng
-        });
-        
-        setLatitude(austinLat);
-        setLongitude(austinLng);
-        setAccuracy(3000); // Low accuracy
+        // Display an error message to the user instead of using fake data
+        setError("Unable to get your location. Please try refreshing the page or check your browser location permissions.");
         setIsLoading(false);
-        
-        // Only update server with forced fallback if we must
-        if (user) {
-          // Use Promise.catch instead of try/catch for better error handling
-          apiRequest('PATCH', '/api/users/location', { 
-            latitude: austinLat, 
-            longitude: austinLng 
-          })
-          .then(() => {
-            if (isConnected && user) {
-              sendMessage({
-                type: 'user_location',
-                senderId: user.id,
-                data: { latitude: austinLat, longitude: austinLng }
-              });
-            }
-          })
-          .catch(err => {
-            if (process.env.NODE_ENV === 'development') {
-              console.debug('Location update not sent - user may not be authenticated');
-            }
-          });
-        }
-        
-        return true;
+        return false;
       }
     }
     
@@ -181,10 +144,29 @@ export function useGeolocation(): GeolocationHookResult {
     // Set up retry if more accurate location isn't available after a while
     locationUpdateTimeout.current = setTimeout(() => {
       if (!latitude || !longitude) {
-        console.log("Location not received in time, using fallback");
-        useFallbackLocation(true);
+        console.log("Location not received in time, retrying with different options");
+        // Try a different approach with different options instead of fallback
+        try {
+          navigator.geolocation.getCurrentPosition(
+            updateUserLocation,
+            (err) => {
+              console.error("Final position attempt failed", err);
+              setError("Please allow location access to find gym partners. Check your browser settings and refresh the page.");
+              setIsLoading(false);
+            },
+            {
+              enableHighAccuracy: false,
+              timeout: 20000,  // Longer timeout
+              maximumAge: 300000 // Allow cached positions up to 5 minutes old
+            }
+          );
+        } catch (e) {
+          console.error("Error in last-resort geolocation attempt:", e);
+          setError("Unable to access your location. Please check browser permissions and refresh.");
+          setIsLoading(false);
+        }
       }
-    }, 8000); // Increase to 8 seconds to give more time for accurate location
+    }, 12000); // Increase to 12 seconds to give more time for accurate location
 
     // Check if geolocation is available
     if (!navigator.geolocation) {
@@ -257,6 +239,29 @@ export function useGeolocation(): GeolocationHookResult {
     };
   }, [useFallbackLocation, updateUserLocation, handleError, latitude, longitude]);
 
+  // Effect to check and improve accuracy if it's low
+  useEffect(() => {
+    // If we have a location but the accuracy is poor (> 1000m), try to get a better one
+    if (latitude && longitude && accuracy && accuracy > 1000) {
+      console.log("Location accuracy is poor, trying to get better accuracy:", accuracy);
+      
+      // Try to get a better position with high accuracy
+      try {
+        navigator.geolocation.getCurrentPosition(
+          updateUserLocation,
+          (err) => console.warn("Failed to get better accuracy", err),
+          { 
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
+        );
+      } catch (e) {
+        console.error("Error trying to improve accuracy:", e);
+      }
+    }
+  }, [latitude, longitude, accuracy, updateUserLocation]);
+  
   // Function to manually update location (for use with custom location input)
   const updateManualLocation = useCallback((lat: number, lng: number) => {
     console.log("Setting manual location:", { lat, lng });

@@ -25,10 +25,11 @@ interface MapViewProps {
 const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams, onUpdateFilters }) => {
   const { latitude: geoLatitude, longitude: geoLongitude, error: locationError, accuracy, updateManualLocation } = useGeolocation();
   
-  // State for manual location input
+  // State for manual location input - hidden by default, only shown in case of persistent issues
   const [manualLatitude, setManualLatitude] = useState<string>("");
   const [manualLongitude, setManualLongitude] = useState<string>("");
-  const [isManualLocation, setIsManualLocation] = useState<boolean>(false);
+  const [isManualLocation, setIsManualLocation] = useState<boolean>(false); 
+  const [showManualOption, setShowManualOption] = useState<boolean>(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -268,6 +269,18 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
       updateMapMarkers();
     }
   }, [nearbyUsers, updateMapMarkers]);
+  
+  // Show manual controls automatically if location error persists
+  useEffect(() => {
+    // If there's a location error for more than 5 seconds, show manual controls
+    if (locationError) {
+      const timer = setTimeout(() => {
+        setShowManualOption(true);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [locationError]);
 
   return (
     <section className="mb-8 px-4">
@@ -318,15 +331,17 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
                 <div className="flex-1">
                   <div className="flex justify-between items-center">
                     <p className="text-sm font-medium">Your Location</p>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => setIsManualLocation(!isManualLocation)}
-                    >
-                      <MapIcon className="h-3 w-3 mr-1" />
-                      {isManualLocation ? 'Hide Manual Controls' : 'Set Manually'}
-                    </Button>
+                    {locationError && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setShowManualOption(true)}
+                      >
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        Having Issues?
+                      </Button>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500">
                     {isManualLocation ? 
@@ -343,8 +358,8 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
                 </div>
               </div>
               
-              {/* Manual Location Input */}
-              {isManualLocation && (
+              {/* Manual Location Input - only shown if user has issues */}
+              {(showManualOption || isManualLocation) && (
                 <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                   <div className="text-sm font-medium mb-2">Enter Coordinates</div>
                   <div className="grid grid-cols-2 gap-2 mb-2">
