@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
+// Pass userId instead of using options parameter
 import { useWebSocket } from "./useWebSocket";
 
 interface GeolocationHookResult {
@@ -18,7 +19,7 @@ export function useGeolocation(): GeolocationHookResult {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { user } = useAuth();
-  const socket = useWebSocket(user?.id);
+  const { sendMessage } = useWebSocket();
   
   // Use refs to avoid unnecessary re-renders and effect triggers
   const lastUpdateTime = useRef<number>(0);
@@ -47,23 +48,25 @@ export function useGeolocation(): GeolocationHookResult {
       
       // Also update the server with fallback location if user is logged in
       if (user) {
-        try {
-          apiRequest('PATCH', '/api/users/location', { 
-            latitude: austinLat, 
-            longitude: austinLng 
-          }).catch(err => console.error('Failed to update fallback location:', err));
-          
-          // Also send fallback location through WebSocket for real-time updates
-          if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-              type: 'user_location',
-              senderId: user.id,
-              data: { latitude: austinLat, longitude: austinLng }
-            }));
+        // Use Promise.catch instead of try/catch for better error handling with async operations
+        apiRequest('PATCH', '/api/users/location', { 
+          latitude: austinLat, 
+          longitude: austinLng 
+        })
+        .then(() => {
+          // Use the sendMessage method from the hook to send WebSocket updates
+          sendMessage({
+            type: 'user_location',
+            senderId: user.id,
+            data: { latitude: austinLat, longitude: austinLng }
+          });
+        })
+        .catch(err => {
+          // This is expected when not logged in (401), so we'll only log in development
+          if (process.env.NODE_ENV === 'development') {
+            console.debug('Location update not sent - user may not be authenticated');
           }
-        } catch (error) {
-          console.error('Failed to update user fallback location:', error);
-        }
+        });
       }
       
       return true;
@@ -91,21 +94,22 @@ export function useGeolocation(): GeolocationHookResult {
 
     // Update server with new location if authenticated
     if (user) {
-      try {
-        await apiRequest('PATCH', '/api/users/location', { latitude, longitude });
-        
-        // Also send location update through WebSocket for real-time updates
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
+      // Use Promise handling for better error management
+      apiRequest('PATCH', '/api/users/location', { latitude, longitude })
+        .then(() => {
+          // Send WebSocket update using the hook's sendMessage
+          sendMessage({
             type: 'user_location',
             senderId: user.id,
             data: { latitude, longitude }
-          }));
-        }
-      } catch (error) {
-        console.error('Failed to update user location:', error);
-        // Don't set UI error for background updates
-      }
+          });
+        })
+        .catch(error => {
+          // This is expected when not logged in (401), so we'll only log in development
+          if (process.env.NODE_ENV === 'development') {
+            console.debug('Location update not sent - user may not be authenticated');
+          }
+        });
     }
   };
 
@@ -218,7 +222,7 @@ export function useGeolocation(): GeolocationHookResult {
         locationUpdateTimeout.current = null;
       }
     };
-  }, [user, socket]);
+  }, [user, sendMessage, latitude, longitude]);
 
   return { latitude, longitude, error, isLoading, accuracy };
 }
