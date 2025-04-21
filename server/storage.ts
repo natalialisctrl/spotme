@@ -838,11 +838,23 @@ export class MemStorage implements IStorage {
       if (distance > maxDistance) return false;
       
       // Filter by same gym if requested
-      if (sameGymOnly) {
-        const currentUser = activeUsers.find(u => 
-          u.latitude === latitude && u.longitude === longitude
-        );
-        if (!currentUser || user.gymName !== currentUser.gymName) return false;
+      if (sameGymOnly && currentUserId) {
+        const currentUser = activeUsers.find(u => u.id === currentUserId);
+        // Only apply this filter if:
+        // 1. Current user has a verified gym
+        // 2. Both users have gym names set
+        // 3. The other user has their gym verified
+        // 4. The gym names match
+        if (currentUser && 
+            currentUser.gymVerified && 
+            currentUser.gymName && 
+            user.gymName && 
+            user.gymVerified && 
+            user.gymName.toLowerCase() === currentUser.gymName.toLowerCase()) {
+          // This is a match - keep this user
+        } else {
+          return false; // Filter out users not at the same verified gym
+        }
       }
       
       // Filter by gender if specified (apply to ALL users including demo users)
