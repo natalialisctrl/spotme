@@ -75,32 +75,50 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
       return;
     }
     
-    // Remove existing markers (except current user marker which is always first)
-    const currentUserMarker = markersRef.current[0];
-    markersRef.current.slice(1).forEach(marker => marker.remove());
-    markersRef.current = currentUserMarker ? [currentUserMarker] : [];
+    console.log("Updating map markers with coordinates:", {lat: latitude, lng: longitude});
     
-    // Make sure current user marker is at the right position
-    if (currentUserMarker) {
-      currentUserMarker.setLngLat([longitude, latitude]);
-    } else if (currentUser) {
-      // If current user marker doesn't exist but should, create it
+    // Clear all existing markers
+    markersRef.current.forEach(marker => {
       try {
-        const newCurrentUserMarker = new mapboxgl.Marker(
-          createMarkerElement(currentUser, true)
-        )
-          .setLngLat([longitude, latitude])
-          .addTo(mapRef.current);
-        markersRef.current = [newCurrentUserMarker];
+        marker.remove();
       } catch (err) {
-        console.error("Error adding current user marker:", err);
+        console.error("Error removing marker:", err);
       }
+    });
+    markersRef.current = [];
+    
+    // Always add current user marker first
+    try {
+      console.log("Adding YOU marker at:", [longitude, latitude]);
+      
+      // Create custom marker element for current user
+      const youMarkerElement = document.createElement('div');
+      youMarkerElement.className = 'relative';
+      
+      const markerInner = document.createElement('div');
+      markerInner.className = 'w-12 h-12 bg-accent rounded-full flex items-center justify-center text-white border-2 border-white shadow-lg';
+      markerInner.innerHTML = '<span class="font-medium">You</span>';
+      youMarkerElement.appendChild(markerInner);
+      
+      // Create and add the current user marker
+      const youMarker = new mapboxgl.Marker({
+        element: youMarkerElement,
+        anchor: 'bottom'
+      })
+        .setLngLat([longitude, latitude])
+        .addTo(mapRef.current);
+      
+      markersRef.current.push(youMarker);
+    } catch (err) {
+      console.error("Error adding YOU marker:", err);
     }
     
-    // Add markers for nearby users with valid coordinates
+    // Then add markers for nearby users with valid coordinates
     nearbyUsers.forEach(user => {
       if (user.latitude && user.longitude) {
         try {
+          console.log("Adding user marker for:", user.name, [user.longitude, user.latitude]);
+          
           const marker = new mapboxgl.Marker(createMarkerElement(user))
             .setLngLat([user.longitude, user.latitude])
             .setPopup(createMarkerPopup(user))
@@ -180,21 +198,7 @@ const MapView: FC<MapViewProps> = ({ nearbyUsers = [], currentUser, filterParams
       map.on('load', () => {
         console.log("MapBox map loaded successfully");
         
-        // Add current user marker with real coordinates
-        if (currentUser) {
-          try {
-            const currentUserMarker = new mapboxgl.Marker(
-              createMarkerElement(currentUser, true)
-            )
-              .setLngLat([longitude, latitude])
-              .addTo(map);
-            markersRef.current = [currentUserMarker];
-          } catch (err) {
-            console.error("Error adding current user marker:", err);
-          }
-        }
-        
-        // Add user markers
+        // Add all markers using the updateMapMarkers function
         updateMapMarkers();
       });
       
