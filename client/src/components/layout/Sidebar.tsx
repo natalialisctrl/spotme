@@ -13,9 +13,7 @@ import {
   CalendarDays,
   Trophy,
   Award,
-  ExternalLink,
-  Zap,
-  Building
+  Zap
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -89,10 +87,7 @@ const Sidebar: FC = () => {
                 <Shield className="h-5 w-5 mr-3 text-gray-500" />
                 Security
             </Link>
-            <Link href="/gym-verification" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/gym-verification' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
-                <Building className="h-5 w-5 mr-3 text-gray-500" />
-                Gym Verification
-            </Link>
+
           </div>
         </nav>
       </div>
