@@ -76,10 +76,7 @@ const Sidebar: FC = () => {
                 <Zap className="h-5 w-5 mr-3 text-gray-500" />
                 Workout Battles
             </Link>
-            <Link href="/workout-exports" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/workout-exports' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
-                <ExternalLink className="h-5 w-5 mr-3 text-gray-500" />
-                Workout Exports
-            </Link>
+
             <Link href="/profile" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/profile' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <User className="h-5 w-5 mr-3 text-gray-500" />
                 Profile

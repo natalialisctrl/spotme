@@ -18,7 +18,7 @@ import WorkoutRoutines from "@/pages/WorkoutRoutines"; // Import workout routine
 import ScheduledMeetups from "@/pages/ScheduledMeetups"; // Import scheduled meetups page
 import Challenges from "@/pages/Challenges"; // Import challenges page
 import Achievements from "@/pages/Achievements"; // Import achievements page
-import WorkoutExports from "@/pages/WorkoutExports"; // Import workout exports page
+
 import WorkoutBattles from "@/pages/WorkoutBattles"; // Import workout battles page
 import WorkoutRecommendations from "@/pages/WorkoutRecommendations"; // Import workout recommendations page
 import GymVerificationPage from "@/pages/GymVerificationPage"; // Import gym verification page
@@ -71,9 +71,7 @@ function AchievementsPage() {
   return <Achievements />;
 }
 
-function WorkoutExportsPage() {
-  return <WorkoutExports />;
-}
+
 
 function WorkoutBattlesPage() {
   return <WorkoutBattles />;
@@ -128,7 +126,7 @@ function Router() {
   }
 
   // Check if user needs to complete profile setup (has no AI insights)
-  const needsProfileSetup = !user.aiGeneratedInsights;
+  const needsProfileSetup = !(user as any).aiGeneratedInsights;
   
   if (needsProfileSetup) {
     return (
@@ -161,7 +159,7 @@ function Router() {
         <Route path="/challenges" component={ChallengesPage} />
         <Route path="/challenges/:id" component={ChallengeDetailPage} />
         <Route path="/achievements" component={AchievementsPage} />
-        <Route path="/workout-exports" component={WorkoutExportsPage} />
+
         <Route path="/workout-battles" component={WorkoutBattlesPage} />
         <Route path="/workout-recommendations" component={WorkoutRecommendationsPage} />
         <Route path="/gym-verification" component={GymVerificationPageFunc} />
