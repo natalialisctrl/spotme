@@ -165,8 +165,11 @@ export default function GymTrafficCard({ gymName }: GymTrafficCardProps) {
               <h3 className="text-sm font-medium text-gray-700 mb-2">Current Traffic Level</h3>
               
               {isPredictionLoading || seedGymTraffic.isPending ? (
-                <div className="flex items-center justify-center h-16">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <div className="flex flex-col items-center justify-center h-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
+                  <span className="text-sm text-gray-600">
+                    {seedGymTraffic.isPending ? "Generating gym traffic data..." : "Loading traffic prediction..."}
+                  </span>
                 </div>
               ) : trafficPrediction ? (
                 <div className="bg-gray-50 p-4 rounded-lg">
@@ -180,27 +183,40 @@ export default function GymTrafficCard({ gymName }: GymTrafficCardProps) {
                   </div>
                   <TrafficLevelIndicator level={trafficPrediction.trafficLevel} />
                 </div>
-              ) : isPredictionError && hasTriedSeed ? (
-                <div className="flex flex-col items-center justify-center h-16 text-gray-500">
+              ) : isPredictionError ? (
+                <div className="flex flex-col items-center justify-center h-20 text-gray-500">
                   <div className="flex items-center gap-2 mb-1 text-amber-500">
                     <CircleOff className="h-5 w-5" />
-                    <span className="text-sm font-medium">Unable to load traffic data</span>
+                    <span className="text-sm font-medium">Unable to load traffic data for {gymName}</span>
                   </div>
+                  <p className="text-xs text-gray-500 mb-2 text-center">
+                    {hasTriedSeed ? "We tried generating data but encountered an issue." : "No traffic data is available for this gym."}
+                  </p>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="mt-2"
                     onClick={() => {
-                      setHasTriedSeed(false); // Allow another attempt
+                      setHasTriedSeed(false); // Reset so we can try again
+                      seedGymTraffic.mutate(gymName);
                     }}
                   >
-                    Try Again
+                    Generate Traffic Data
                   </Button>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-16 text-gray-500">
                   <CircleOff className="h-5 w-5 mb-1" />
-                  <span className="text-sm">No traffic data available</span>
+                  <span className="text-sm">No traffic data available for {gymName}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => {
+                      seedGymTraffic.mutate(gymName);
+                    }}
+                  >
+                    Generate Data
+                  </Button>
                 </div>
               )}
             </div>

@@ -191,10 +191,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate seed gym traffic data for testing
   app.post('/api/gym-traffic/seed', async (req, res) => {
     try {
-      const { gymName } = req.body;
+      // Extract gymName from request body, with default value if not provided
+      let { gymName } = req.body;
       
+      // Use a default if no gym name is provided (handles empty request body case)
       if (!gymName) {
-        return res.status(400).json({ message: 'Missing required parameter: gymName' });
+        gymName = "Default Gym";
+        console.log("No gym name provided, using default: 'Default Gym'");
       }
       
       // Generate traffic data for each day of the week and each hour (5am-11pm)
