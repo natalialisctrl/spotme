@@ -6,7 +6,9 @@ import {
   WorkoutRoutine, InsertWorkoutRoutine, ScheduledMeetup, 
   InsertScheduledMeetup, MeetupParticipant, InsertMeetupParticipant,
   Challenge, InsertChallenge, ChallengeParticipant, InsertChallengeParticipant,
-  ProgressEntry, InsertProgressEntry, ChallengeComment, InsertChallengeComment
+  ProgressEntry, InsertProgressEntry, ChallengeComment, InsertChallengeComment,
+  SpotifyConnection, InsertSpotifyConnection, WorkoutPlaylist, InsertWorkoutPlaylist,
+  SharedPlaylist, InsertSharedPlaylist
 } from "@shared/schema";
 
 // Interface for storage operations
@@ -125,6 +127,27 @@ export interface IStorage {
   getChallengeLeaderboard(challengeId: number, currentUserId?: number): Promise<{userId: number, username: string, name: string, progress: number, completed: boolean, profilePictureUrl?: string | null, isFriend?: boolean}[]>;
   getLeaderboardData(): Promise<{id: number, userId: number, username: string, name: string, avatarUrl?: string | null, points: number, rank: number}[]>;
   
+  // Spotify operations
+  getSpotifyConnection(userId: number): Promise<SpotifyConnection | undefined>;
+  saveSpotifyConnection(userId: number, connection: InsertSpotifyConnection): Promise<SpotifyConnection>;
+  updateSpotifyConnection(userId: number, connection: Partial<SpotifyConnection>): Promise<SpotifyConnection | undefined>;
+  deleteSpotifyConnection(userId: number): Promise<boolean>;
+  
+  // Workout playlist operations
+  createWorkoutPlaylist(playlist: InsertWorkoutPlaylist): Promise<WorkoutPlaylist>;
+  getWorkoutPlaylist(id: number): Promise<WorkoutPlaylist | undefined>;
+  getWorkoutPlaylistsByUserId(userId: number): Promise<WorkoutPlaylist[]>;
+  getWorkoutPlaylistBySpotifyId(spotifyPlaylistId: string): Promise<WorkoutPlaylist | undefined>;
+  updateWorkoutPlaylist(id: number, playlist: Partial<WorkoutPlaylist>): Promise<WorkoutPlaylist | undefined>;
+  deleteWorkoutPlaylist(id: number): Promise<boolean>;
+  
+  // Shared playlist operations
+  saveSharedPlaylist(senderId: number, receiverId: number, playlistId: string): Promise<SharedPlaylist>;
+  getSharedPlaylist(id: number): Promise<SharedPlaylist | undefined>;
+  getSharedPlaylistsBySenderId(senderId: number): Promise<SharedPlaylist[]>;
+  getSharedPlaylistsByReceiverId(receiverId: number): Promise<SharedPlaylist[]>;
+  updateSharedPlaylistStatus(id: number, status: string): Promise<SharedPlaylist | undefined>;
+  
   // Demo data generation
   createDemoUsers(count?: number): Promise<User[]>;
   createDemoChallenges(count?: number, creatorId?: number, friendIds?: number[]): Promise<Challenge[]>;
@@ -148,6 +171,9 @@ export class MemStorage implements IStorage {
   private challengeParticipants: Map<number, ChallengeParticipant>;
   private progressEntries: Map<number, ProgressEntry>;
   private challengeComments: Map<number, ChallengeComment>;
+  private spotifyConnections: Map<number, SpotifyConnection>;
+  private workoutPlaylists: Map<number, WorkoutPlaylist>;
+  private sharedPlaylists: Map<number, SharedPlaylist>;
   
   // Store a reference to the main user to ensure persistence across restarts
   private nataliaUser: User;
@@ -165,6 +191,9 @@ export class MemStorage implements IStorage {
   private currentChallengeParticipantId: number;
   private currentProgressEntryId: number;
   private currentChallengeCommentId: number;
+  private currentSpotifyConnectionId: number;
+  private currentWorkoutPlaylistId: number;
+  private currentSharedPlaylistId: number;
 
   sessionStore: any; // Using 'any' to avoid TypeScript errors
 
@@ -227,6 +256,9 @@ export class MemStorage implements IStorage {
     this.challengeParticipants = new Map();
     this.progressEntries = new Map();
     this.challengeComments = new Map();
+    this.spotifyConnections = new Map();
+    this.workoutPlaylists = new Map();
+    this.sharedPlaylists = new Map();
     
     this.currentUserId = 1;
     this.currentWorkoutFocusId = 1;
@@ -241,6 +273,9 @@ export class MemStorage implements IStorage {
     this.currentChallengeParticipantId = 1;
     this.currentProgressEntryId = 1;
     this.currentChallengeCommentId = 1;
+    this.currentSpotifyConnectionId = 1;
+    this.currentWorkoutPlaylistId = 1;
+    this.currentSharedPlaylistId = 1;
     
     // Create a memory session store
     const MemoryStore = createMemoryStore(session);

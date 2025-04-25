@@ -1,6 +1,7 @@
 import { pgTable, text, serial, integer, boolean, timestamp, jsonb, real, time, date, varchar, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 // User table with profile information
 export const users = pgTable("users", {
@@ -600,6 +601,61 @@ export const battlePerformanceSchema = z.object({
   caloriesBurned: z.number().int().min(0).optional(),
 });
 
+// Spotify connections
+export const spotifyConnections = pgTable("spotify_connections", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id).unique(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Spotify playlists for workouts
+export const workoutPlaylists = pgTable("workout_playlists", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  spotifyPlaylistId: text("spotify_playlist_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  workoutType: text("workout_type").notNull(), // cardio, strength, yoga, etc.
+  energyLevel: text("energy_level").notNull().default("medium"), // low, medium, high
+  isPublic: boolean("is_public").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Shared playlists between users
+export const sharedPlaylists = pgTable("shared_playlists", {
+  id: serial("id").primaryKey(),
+  senderId: integer("sender_id").notNull().references(() => users.id),
+  receiverId: integer("receiver_id").notNull().references(() => users.id),
+  playlistId: text("playlist_id").notNull(),
+  status: text("status").notNull().default("shared"), // shared, accepted, rejected
+  sharedAt: timestamp("shared_at").notNull().defaultNow(),
+  respondedAt: timestamp("responded_at"),
+});
+
+// Create Zod schemas for Spotify-related tables
+export const insertSpotifyConnectionSchema = createInsertSchema(spotifyConnections).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
+
+export const insertWorkoutPlaylistSchema = createInsertSchema(workoutPlaylists).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
+
+export const insertSharedPlaylistSchema = createInsertSchema(sharedPlaylists).omit({ 
+  id: true, 
+  sharedAt: true, 
+  respondedAt: true 
+});
+
 // Types for the schemas
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertWorkoutFocus = z.infer<typeof insertWorkoutFocusSchema>;
@@ -610,6 +666,9 @@ export type InsertCompatibilityResponse = z.infer<typeof insertCompatibilityResp
 export type InsertWorkoutRoutine = z.infer<typeof insertWorkoutRoutineSchema>;
 export type InsertScheduledMeetup = z.infer<typeof insertScheduledMeetupSchema>;
 export type InsertMeetupParticipant = z.infer<typeof insertMeetupParticipantSchema>;
+export type InsertSpotifyConnection = z.infer<typeof insertSpotifyConnectionSchema>;
+export type InsertWorkoutPlaylist = z.infer<typeof insertWorkoutPlaylistSchema>;
+export type InsertSharedPlaylist = z.infer<typeof insertSharedPlaylistSchema>;
 
 export type User = typeof users.$inferSelect;
 export type WorkoutFocus = typeof workoutFocus.$inferSelect;
@@ -630,6 +689,9 @@ export type WorkoutCheckin = typeof workoutCheckins.$inferSelect;
 export type UserStreak = typeof userStreaks.$inferSelect;
 export type WorkoutBattle = typeof workoutBattles.$inferSelect;
 export type BattlePerformance = typeof battlePerformance.$inferSelect;
+export type SpotifyConnection = typeof spotifyConnections.$inferSelect;
+export type WorkoutPlaylist = typeof workoutPlaylists.$inferSelect;
+export type SharedPlaylist = typeof sharedPlaylists.$inferSelect;
 
 export type Login = z.infer<typeof loginSchema>;
 export type ChangePassword = z.infer<typeof changePasswordSchema>;
