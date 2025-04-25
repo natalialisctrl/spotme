@@ -5,9 +5,8 @@ import { NextFunction, Request, Response } from 'express';
 // Spotify API constants
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
-const REDIRECT_URI = process.env.NODE_ENV === 'production' 
-  ? 'https://spotme.replit.app/spotify-callback'
-  : 'http://localhost:5000/spotify-callback';
+// Use a consistent redirect URI that matches what's in Spotify Developer Dashboard
+const REDIRECT_URI = 'https://spotme.replit.app/spotify-callback';
 
 // Helper function to exchange authorization code for token
 async function getSpotifyToken(code: string): Promise<any> {
