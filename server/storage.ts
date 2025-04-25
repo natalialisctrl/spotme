@@ -1879,6 +1879,108 @@ export class MemStorage implements IStorage {
       }));
   }
   
+  /**
+   * Check if traffic data exists for a specific gym
+   */
+  async hasGymTrafficData(gymName: string): Promise<boolean> {
+    for (const traffic of this.gymTraffic.values()) {
+      if (traffic.gymName === gymName) {
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  /**
+   * Generate and seed traffic data for a specific gym
+   * This method creates realistic traffic patterns for weekdays and weekends
+   */
+  async seedGymTrafficData(gymName: string): Promise<number> {
+    console.log(`Seeding gym traffic data for ${gymName}`);
+    
+    // Generate traffic data for each day of the week and each hour (5am-11pm)
+    const daysOfWeek = [0, 1, 2, 3, 4, 5, 6]; // Sunday to Saturday
+    const hours = Array.from({ length: 19 }, (_, i) => i + 5); // 5am to 11pm
+    
+    const trafficPatterns = [
+      // Weekend pattern (higher traffic, peaks in morning and evening)
+      {
+        days: [0, 6], // Sunday, Saturday
+        pattern: {
+          morning: { hours: [8, 9, 10, 11], level: [7, 9, 10, 8] },
+          afternoon: { hours: [12, 13, 14, 15, 16], level: [6, 5, 4, 5, 6] },
+          evening: { hours: [17, 18, 19, 20, 21], level: [7, 8, 9, 7, 5] }
+        }
+      },
+      // Weekday pattern (peaks in early morning and after work)
+      {
+        days: [1, 2, 3, 4, 5], // Monday to Friday
+        pattern: {
+          morning: { hours: [5, 6, 7, 8], level: [6, 9, 10, 8] },
+          afternoon: { hours: [9, 10, 11, 12, 13, 14, 15, 16], level: [5, 4, 3, 5, 6, 4, 3, 5] },
+          evening: { hours: [17, 18, 19, 20, 21, 22, 23], level: [8, 10, 9, 7, 5, 3, 2] }
+        }
+      }
+    ];
+    
+    const gymTrafficData = [];
+    
+    for (const dayOfWeek of daysOfWeek) {
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const pattern = isWeekend ? trafficPatterns[0] : trafficPatterns[1];
+      
+      for (const hour of hours) {
+        let trafficLevel = 5; // Default medium traffic
+        
+        // Morning hours
+        if (hour >= 5 && hour <= 11) {
+          const morningPattern = pattern.pattern.morning;
+          const index = morningPattern.hours.indexOf(hour);
+          if (index !== -1) {
+            trafficLevel = morningPattern.level[index];
+          }
+        }
+        // Afternoon hours
+        else if (hour >= 12 && hour <= 16) {
+          const afternoonPattern = pattern.pattern.afternoon;
+          const index = afternoonPattern.hours.indexOf(hour);
+          if (index !== -1) {
+            trafficLevel = afternoonPattern.level[index];
+          }
+        }
+        // Evening hours
+        else if (hour >= 17 && hour <= 23) {
+          const eveningPattern = pattern.pattern.evening;
+          const index = eveningPattern.hours.indexOf(hour);
+          if (index !== -1) {
+            trafficLevel = eveningPattern.level[index];
+          }
+        }
+        
+        // Add some randomness to make it more realistic (-2 to +2)
+        const randomOffset = Math.floor(Math.random() * 5) - 2;
+        trafficLevel = Math.max(1, Math.min(10, trafficLevel + randomOffset));
+        
+        // Calculate estimated user count based on traffic level (1-10 scale)
+        const userCount = Math.floor(trafficLevel * 5 + Math.random() * 10);
+        
+        const gymTraffic = await this.addGymTrafficData({
+          gymName,
+          dayOfWeek,
+          hourOfDay: hour,
+          trafficLevel,
+          userCount,
+          recordedAt: new Date()
+        });
+        
+        gymTrafficData.push(gymTraffic);
+      }
+    }
+    
+    console.log(`Created ${gymTrafficData.length} gym traffic records for ${gymName}`);
+    return gymTrafficData.length;
+  }
+  
   // Demo data generation
   // Keep track of demo users so they don't get removed
   // Using a static array to persist across multiple instances
