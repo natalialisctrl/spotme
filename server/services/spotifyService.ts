@@ -67,14 +67,14 @@ export async function callSpotifyApi(userId: number, endpoint: string, method = 
   const now = Date.now();
   let accessToken = spotifyConnection.accessToken;
 
-  if (now >= new Date(spotifyConnection.expiresAt).getTime()) {
+  if (now >= spotifyConnection.expiresAt) {
     try {
       const tokenData = await refreshSpotifyToken(spotifyConnection.refreshToken);
       
       // Update the stored credentials
       await storage.updateSpotifyConnection(userId, {
         accessToken: tokenData.access_token,
-        expiresAt: new Date(now + (tokenData.expires_in * 1000)),
+        expiresAt: now + (tokenData.expires_in * 1000),
         refreshToken: tokenData.refresh_token || spotifyConnection.refreshToken
       });
       
