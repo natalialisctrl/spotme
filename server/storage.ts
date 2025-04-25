@@ -1714,6 +1714,169 @@ export class MemStorage implements IStorage {
     return updatedPlaylist;
   }
   
+  // Gym traffic operations
+  async addGymTrafficData(data: InsertGymTraffic): Promise<GymTraffic> {
+    const id = this.currentGymTrafficId++;
+    const now = new Date();
+    const gymTrafficData: GymTraffic = {
+      id,
+      gymName: data.gymName,
+      gymChain: data.gymChain || null,
+      dayOfWeek: data.dayOfWeek,
+      hourOfDay: data.hourOfDay,
+      trafficLevel: data.trafficLevel,
+      userCount: data.userCount || 0,
+      latitude: data.latitude || null,
+      longitude: data.longitude || null,
+      recordedAt: data.recordedAt || now,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    this.gymTraffic.set(id, gymTrafficData);
+    return gymTrafficData;
+  }
+
+  async getGymTraffic(id: number): Promise<GymTraffic | undefined> {
+    return this.gymTraffic.get(id);
+  }
+
+  async getGymTrafficByHour(gymName: string, dayOfWeek: number, hourOfDay: number): Promise<GymTraffic | undefined> {
+    for (const traffic of this.gymTraffic.values()) {
+      if (
+        traffic.gymName === gymName && 
+        traffic.dayOfWeek === dayOfWeek &&
+        traffic.hourOfDay === hourOfDay
+      ) {
+        return traffic;
+      }
+    }
+    return undefined;
+  }
+
+  async getGymTrafficForDay(gymName: string, dayOfWeek: number): Promise<GymTraffic[]> {
+    const results: GymTraffic[] = [];
+    for (const traffic of this.gymTraffic.values()) {
+      if (traffic.gymName === gymName && traffic.dayOfWeek === dayOfWeek) {
+        results.push(traffic);
+      }
+    }
+    // Sort by hour of day
+    return results.sort((a, b) => a.hourOfDay - b.hourOfDay);
+  }
+
+  async getGymTrafficByQuery(query: GymTrafficQuery): Promise<GymTraffic[]> {
+    let results: GymTraffic[] = Array.from(this.gymTraffic.values());
+    
+    // Filter by gym name if provided
+    if (query.gymName) {
+      results = results.filter(traffic => traffic.gymName === query.gymName);
+    }
+    
+    // Filter by gym chain if provided
+    if (query.gymChain) {
+      results = results.filter(traffic => traffic.gymChain === query.gymChain);
+    }
+    
+    // Filter by day of week if provided
+    if (query.dayOfWeek !== undefined) {
+      results = results.filter(traffic => traffic.dayOfWeek === query.dayOfWeek);
+    }
+    
+    // Filter by location if provided
+    if (query.latitude !== undefined && query.longitude !== undefined && query.radius) {
+      results = results.filter(traffic => {
+        if (!traffic.latitude || !traffic.longitude) return false;
+        
+        const distance = this.calculateDistance(
+          query.latitude!,
+          query.longitude!,
+          traffic.latitude,
+          traffic.longitude
+        );
+        return distance <= query.radius!;
+      });
+    }
+    
+    return results;
+  }
+
+  async updateGymTrafficData(id: number, data: Partial<GymTraffic>): Promise<GymTraffic | undefined> {
+    const gymTraffic = this.gymTraffic.get(id);
+    if (!gymTraffic) return undefined;
+    
+    const updatedTraffic = {
+      ...gymTraffic,
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    this.gymTraffic.set(id, updatedTraffic);
+    return updatedTraffic;
+  }
+
+  async predictGymTraffic(gymName: string, dayOfWeek: number, hourOfDay: number): Promise<number> {
+    // First, look for exact match
+    const exactMatch = await this.getGymTrafficByHour(gymName, dayOfWeek, hourOfDay);
+    if (exactMatch) {
+      return exactMatch.trafficLevel;
+    }
+    
+    // If no exact match, get all traffic data for the gym
+    const allTraffic = Array.from(this.gymTraffic.values())
+      .filter(traffic => traffic.gymName === gymName);
+    
+    if (allTraffic.length === 0) {
+      // No data for this gym, return a medium traffic level
+      return 5;
+    }
+    
+    // Try to find data for the same day of week
+    const sameDayTraffic = allTraffic.filter(traffic => traffic.dayOfWeek === dayOfWeek);
+    
+    if (sameDayTraffic.length > 0) {
+      // Find closest hour
+      let closestHourTraffic = sameDayTraffic[0];
+      let minHourDiff = Math.abs(closestHourTraffic.hourOfDay - hourOfDay);
+      
+      for (const traffic of sameDayTraffic) {
+        const hourDiff = Math.abs(traffic.hourOfDay - hourOfDay);
+        if (hourDiff < minHourDiff) {
+          closestHourTraffic = traffic;
+          minHourDiff = hourDiff;
+        }
+      }
+      
+      return closestHourTraffic.trafficLevel;
+    }
+    
+    // If no data for the same day, calculate average traffic level across all data
+    const totalTrafficLevel = allTraffic.reduce((sum, traffic) => sum + traffic.trafficLevel, 0);
+    return Math.round(totalTrafficLevel / allTraffic.length);
+  }
+
+  async getBusiestTimes(gymName: string, dayOfWeek: number): Promise<{hour: number, trafficLevel: number}[]> {
+    const dayTraffic = await this.getGymTrafficForDay(gymName, dayOfWeek);
+    
+    return dayTraffic
+      .sort((a, b) => b.trafficLevel - a.trafficLevel) // Sort by traffic level (descending)
+      .map(traffic => ({
+        hour: traffic.hourOfDay,
+        trafficLevel: traffic.trafficLevel
+      }));
+  }
+
+  async getQuietestTimes(gymName: string, dayOfWeek: number): Promise<{hour: number, trafficLevel: number}[]> {
+    const dayTraffic = await this.getGymTrafficForDay(gymName, dayOfWeek);
+    
+    return dayTraffic
+      .sort((a, b) => a.trafficLevel - b.trafficLevel) // Sort by traffic level (ascending)
+      .map(traffic => ({
+        hour: traffic.hourOfDay,
+        trafficLevel: traffic.trafficLevel
+      }));
+  }
+  
   // Demo data generation
   // Keep track of demo users so they don't get removed
   // Using a static array to persist across multiple instances
