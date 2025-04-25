@@ -43,9 +43,12 @@ export default function GymTrafficCard({ gymName }: GymTrafficCardProps) {
   
   const seedGymTraffic = useSeedGymTraffic();
   
-  // Call seed endpoint if no traffic data is available
+  // Call seed endpoint if no traffic data is available (only once)
+  const [hasTriedSeed, setHasTriedSeed] = useState<boolean>(false);
+  
   useEffect(() => {
-    if (isPredictionError && !seedGymTraffic.isPending) {
+    if (isPredictionError && !seedGymTraffic.isPending && !hasTriedSeed) {
+      setHasTriedSeed(true); // Mark that we've tried seeding
       seedGymTraffic.mutate(gymName, {
         onSuccess: () => {
           toast({
@@ -62,7 +65,7 @@ export default function GymTrafficCard({ gymName }: GymTrafficCardProps) {
         }
       });
     }
-  }, [isPredictionError, gymName, seedGymTraffic, toast]);
+  }, [isPredictionError, gymName, seedGymTraffic, toast, hasTriedSeed]);
   
   // Generate array of day options
   const dayOptions = Array.from({ length: 7 }, (_, i) => ({
@@ -176,6 +179,23 @@ export default function GymTrafficCard({ gymName }: GymTrafficCardProps) {
                     </div>
                   </div>
                   <TrafficLevelIndicator level={trafficPrediction.trafficLevel} />
+                </div>
+              ) : isPredictionError && hasTriedSeed ? (
+                <div className="flex flex-col items-center justify-center h-16 text-gray-500">
+                  <div className="flex items-center gap-2 mb-1 text-amber-500">
+                    <CircleOff className="h-5 w-5" />
+                    <span className="text-sm font-medium">Unable to load traffic data</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => {
+                      setHasTriedSeed(false); // Allow another attempt
+                    }}
+                  >
+                    Try Again
+                  </Button>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-16 text-gray-500">
