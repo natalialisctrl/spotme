@@ -1520,6 +1520,185 @@ export class MemStorage implements IStorage {
     return sortedEntries;
   }
   
+  // Spotify connection operations
+  async getSpotifyConnection(userId: number): Promise<SpotifyConnection | undefined> {
+    for (const connection of this.spotifyConnections.values()) {
+      if (connection.userId === userId) {
+        return connection;
+      }
+    }
+    return undefined;
+  }
+  
+  async saveSpotifyConnection(userId: number, connection: InsertSpotifyConnection): Promise<SpotifyConnection> {
+    const newConnection: SpotifyConnection = {
+      id: this.currentSpotifyConnectionId++,
+      userId,
+      accessToken: connection.accessToken,
+      refreshToken: connection.refreshToken,
+      expiresAt: connection.expiresAt,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.spotifyConnections.set(newConnection.id, newConnection);
+    return newConnection;
+  }
+  
+  async updateSpotifyConnection(userId: number, connectionData: Partial<SpotifyConnection>): Promise<SpotifyConnection | undefined> {
+    const connection = await this.getSpotifyConnection(userId);
+    
+    if (!connection) {
+      return undefined;
+    }
+    
+    const updatedConnection: SpotifyConnection = {
+      ...connection,
+      ...connectionData,
+      updatedAt: new Date()
+    };
+    
+    this.spotifyConnections.set(connection.id, updatedConnection);
+    return updatedConnection;
+  }
+  
+  async deleteSpotifyConnection(userId: number): Promise<boolean> {
+    const connection = await this.getSpotifyConnection(userId);
+    
+    if (!connection) {
+      return false;
+    }
+    
+    return this.spotifyConnections.delete(connection.id);
+  }
+  
+  // Workout playlist operations
+  async createWorkoutPlaylist(playlist: InsertWorkoutPlaylist): Promise<WorkoutPlaylist> {
+    const newPlaylist: WorkoutPlaylist = {
+      id: this.currentWorkoutPlaylistId++,
+      userId: playlist.userId,
+      spotifyPlaylistId: playlist.spotifyPlaylistId,
+      name: playlist.name,
+      description: playlist.description || null,
+      workoutType: playlist.workoutType,
+      energyLevel: playlist.energyLevel,
+      isPublic: playlist.isPublic || false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.workoutPlaylists.set(newPlaylist.id, newPlaylist);
+    return newPlaylist;
+  }
+  
+  async getWorkoutPlaylist(id: number): Promise<WorkoutPlaylist | undefined> {
+    return this.workoutPlaylists.get(id);
+  }
+  
+  async getWorkoutPlaylistsByUserId(userId: number): Promise<WorkoutPlaylist[]> {
+    const playlists: WorkoutPlaylist[] = [];
+    
+    for (const playlist of this.workoutPlaylists.values()) {
+      if (playlist.userId === userId) {
+        playlists.push(playlist);
+      }
+    }
+    
+    return playlists;
+  }
+  
+  async getWorkoutPlaylistBySpotifyId(spotifyPlaylistId: string): Promise<WorkoutPlaylist | undefined> {
+    for (const playlist of this.workoutPlaylists.values()) {
+      if (playlist.spotifyPlaylistId === spotifyPlaylistId) {
+        return playlist;
+      }
+    }
+    
+    return undefined;
+  }
+  
+  async updateWorkoutPlaylist(id: number, playlistData: Partial<WorkoutPlaylist>): Promise<WorkoutPlaylist | undefined> {
+    const playlist = await this.getWorkoutPlaylist(id);
+    
+    if (!playlist) {
+      return undefined;
+    }
+    
+    const updatedPlaylist: WorkoutPlaylist = {
+      ...playlist,
+      ...playlistData,
+      updatedAt: new Date()
+    };
+    
+    this.workoutPlaylists.set(id, updatedPlaylist);
+    return updatedPlaylist;
+  }
+  
+  async deleteWorkoutPlaylist(id: number): Promise<boolean> {
+    return this.workoutPlaylists.delete(id);
+  }
+  
+  // Shared playlist operations
+  async saveSharedPlaylist(senderId: number, receiverId: number, playlistId: string): Promise<SharedPlaylist> {
+    const sharedPlaylist: SharedPlaylist = {
+      id: this.currentSharedPlaylistId++,
+      senderId,
+      receiverId,
+      playlistId,
+      status: 'pending',
+      sharedAt: new Date(),
+      respondedAt: null
+    };
+    
+    this.sharedPlaylists.set(sharedPlaylist.id, sharedPlaylist);
+    return sharedPlaylist;
+  }
+  
+  async getSharedPlaylist(id: number): Promise<SharedPlaylist | undefined> {
+    return this.sharedPlaylists.get(id);
+  }
+  
+  async getSharedPlaylistsBySenderId(senderId: number): Promise<SharedPlaylist[]> {
+    const playlists: SharedPlaylist[] = [];
+    
+    for (const playlist of this.sharedPlaylists.values()) {
+      if (playlist.senderId === senderId) {
+        playlists.push(playlist);
+      }
+    }
+    
+    return playlists;
+  }
+  
+  async getSharedPlaylistsByReceiverId(receiverId: number): Promise<SharedPlaylist[]> {
+    const playlists: SharedPlaylist[] = [];
+    
+    for (const playlist of this.sharedPlaylists.values()) {
+      if (playlist.receiverId === receiverId) {
+        playlists.push(playlist);
+      }
+    }
+    
+    return playlists;
+  }
+  
+  async updateSharedPlaylistStatus(id: number, status: string): Promise<SharedPlaylist | undefined> {
+    const playlist = await this.getSharedPlaylist(id);
+    
+    if (!playlist) {
+      return undefined;
+    }
+    
+    const updatedPlaylist: SharedPlaylist = {
+      ...playlist,
+      status,
+      respondedAt: new Date()
+    };
+    
+    this.sharedPlaylists.set(id, updatedPlaylist);
+    return updatedPlaylist;
+  }
+  
   // Demo data generation
   // Keep track of demo users so they don't get removed
   // Using a static array to persist across multiple instances

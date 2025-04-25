@@ -25,7 +25,7 @@ async function getSpotifyToken(code: string): Promise<any> {
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
+    const errorData = await response.json() as { error: string, error_description: string };
     throw new Error(`Spotify token error: ${errorData.error}: ${errorData.error_description}`);
   }
 
@@ -47,7 +47,7 @@ async function refreshSpotifyToken(refreshToken: string): Promise<any> {
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
+    const errorData = await response.json() as { error: string, error_description: string };
     throw new Error(`Spotify token refresh error: ${errorData.error}: ${errorData.error_description}`);
   }
 
@@ -96,7 +96,7 @@ export async function callSpotifyApi(userId: number, endpoint: string, method = 
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
+    const errorData = await response.json() as { error: { message: string } };
     throw new Error(`Spotify API error: ${errorData.error.message || 'Unknown error'}`);
   }
 
