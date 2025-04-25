@@ -67,14 +67,22 @@ export async function callSpotifyApi(userId: number, endpoint: string, method = 
   const now = Date.now();
   let accessToken = spotifyConnection.accessToken;
 
-  if (now >= spotifyConnection.expiresAt) {
+  // expiresAt is stored as a timestamp (number), but the type definition might expect a Date
+  // Convert expiresAt to number for comparison if needed
+  const expiresAtTimestamp = spotifyConnection.expiresAt instanceof Date 
+    ? spotifyConnection.expiresAt.getTime() 
+    : spotifyConnection.expiresAt;
+
+  if (now >= expiresAtTimestamp) {
     try {
       const tokenData = await refreshSpotifyToken(spotifyConnection.refreshToken);
       
       // Update the stored credentials
+      // Use the number type for expiresAt consistently to avoid type issues
+      const expiresAt = now + (tokenData.expires_in * 1000);
       await storage.updateSpotifyConnection(userId, {
         accessToken: tokenData.access_token,
-        expiresAt: now + (tokenData.expires_in * 1000),
+        expiresAt, // This will be used as a timestamp (number)
         refreshToken: tokenData.refresh_token || spotifyConnection.refreshToken
       });
       
@@ -133,10 +141,12 @@ export async function handleSpotifyCallback(code: string, userId: number): Promi
     const tokenData = await getSpotifyToken(code);
     
     // Store the Spotify connection for the user
+    // Use the number type for expiresAt consistently to avoid type issues
+    const expiresAt = Date.now() + (tokenData.expires_in * 1000);
     await storage.saveSpotifyConnection(userId, {
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token,
-      expiresAt: Date.now() + (tokenData.expires_in * 1000)
+      expiresAt // Using timestamp (number) instead of Date object
     });
   } catch (error) {
     console.error('Error in Spotify callback:', error);

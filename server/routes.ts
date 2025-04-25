@@ -30,6 +30,7 @@ import { setupExportRoutes } from "./routes/exportRoutes";
 import { setupBattleRoutes } from "./routes/battleRoutes";
 import workoutRoutes from "./routes/workoutRoutes";
 import gymVerificationRoutes from "./routes/gymVerification";
+import spotifyRoutes from "./routes/spotifyRoutes";
 
 import express from 'express';
 
@@ -89,6 +90,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Set up gym verification routes
   app.use('/api/users', gymVerificationRoutes);
+  
+  // Set up Spotify routes
+  app.use('/api/spotify', spotifyRoutes);
   
   // Make sure natalia user exists in the database
   try {
