@@ -688,6 +688,7 @@ export type InsertMeetupParticipant = z.infer<typeof insertMeetupParticipantSche
 export type InsertSpotifyConnection = z.infer<typeof insertSpotifyConnectionSchema>;
 export type InsertWorkoutPlaylist = z.infer<typeof insertWorkoutPlaylistSchema>;
 export type InsertSharedPlaylist = z.infer<typeof insertSharedPlaylistSchema>;
+export type InsertGymTraffic = z.infer<typeof insertGymTrafficSchema>;
 
 export type User = typeof users.$inferSelect;
 export type WorkoutFocus = typeof workoutFocus.$inferSelect;
@@ -711,6 +712,7 @@ export type BattlePerformance = typeof battlePerformance.$inferSelect;
 export type SpotifyConnection = typeof spotifyConnections.$inferSelect;
 export type WorkoutPlaylist = typeof workoutPlaylists.$inferSelect;
 export type SharedPlaylist = typeof sharedPlaylists.$inferSelect;
+export type GymTraffic = typeof gymTraffic.$inferSelect;
 
 export type Login = z.infer<typeof loginSchema>;
 export type ChangePassword = z.infer<typeof changePasswordSchema>;
@@ -721,6 +723,18 @@ export type RequestPasswordReset = z.infer<typeof requestPasswordResetSchema>;
 export type ResetPassword = z.infer<typeof resetPasswordSchema>;
 export type UpdateLocation = z.infer<typeof updateLocationSchema>;
 export type NearbyUsersParams = z.infer<typeof nearbyUsersSchema>;
+
+// Schema for querying gym traffic
+export const gymTrafficQuerySchema = z.object({
+  gymName: z.string().optional(),
+  gymChain: z.string().optional(),
+  dayOfWeek: z.number().int().min(0).max(6).optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  radius: z.number().positive().optional().default(5),
+});
+
+export type GymTrafficQuery = z.infer<typeof gymTrafficQuerySchema>;
 export type Exercise = z.infer<typeof exerciseSchema>;
 export type WorkoutRoutineData = z.infer<typeof workoutRoutineSchema>;
 export type ScheduledMeetupData = z.infer<typeof scheduledMeetupSchema>;

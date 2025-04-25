@@ -8,7 +8,7 @@ import {
   Challenge, InsertChallenge, ChallengeParticipant, InsertChallengeParticipant,
   ProgressEntry, InsertProgressEntry, ChallengeComment, InsertChallengeComment,
   SpotifyConnection, InsertSpotifyConnection, WorkoutPlaylist, InsertWorkoutPlaylist,
-  SharedPlaylist, InsertSharedPlaylist
+  SharedPlaylist, InsertSharedPlaylist, GymTraffic, InsertGymTraffic, GymTrafficQuery
 } from "@shared/schema";
 
 // Interface for storage operations
@@ -148,6 +148,17 @@ export interface IStorage {
   getSharedPlaylistsByReceiverId(receiverId: number): Promise<SharedPlaylist[]>;
   updateSharedPlaylistStatus(id: number, status: string): Promise<SharedPlaylist | undefined>;
   
+  // Gym traffic operations
+  addGymTrafficData(data: InsertGymTraffic): Promise<GymTraffic>;
+  getGymTraffic(id: number): Promise<GymTraffic | undefined>;
+  getGymTrafficByHour(gymName: string, dayOfWeek: number, hourOfDay: number): Promise<GymTraffic | undefined>;
+  getGymTrafficForDay(gymName: string, dayOfWeek: number): Promise<GymTraffic[]>;
+  getGymTrafficByQuery(query: GymTrafficQuery): Promise<GymTraffic[]>;
+  updateGymTrafficData(id: number, data: Partial<GymTraffic>): Promise<GymTraffic | undefined>;
+  predictGymTraffic(gymName: string, dayOfWeek: number, hourOfDay: number): Promise<number>;
+  getBusiestTimes(gymName: string, dayOfWeek: number): Promise<{hour: number, trafficLevel: number}[]>;
+  getQuietestTimes(gymName: string, dayOfWeek: number): Promise<{hour: number, trafficLevel: number}[]>;
+  
   // Demo data generation
   createDemoUsers(count?: number): Promise<User[]>;
   createDemoChallenges(count?: number, creatorId?: number, friendIds?: number[]): Promise<Challenge[]>;
@@ -174,6 +185,7 @@ export class MemStorage implements IStorage {
   private spotifyConnections: Map<number, SpotifyConnection>;
   private workoutPlaylists: Map<number, WorkoutPlaylist>;
   private sharedPlaylists: Map<number, SharedPlaylist>;
+  private gymTraffic: Map<number, GymTraffic>;
   
   // Store a reference to the main user to ensure persistence across restarts
   private nataliaUser: User;
@@ -194,6 +206,7 @@ export class MemStorage implements IStorage {
   private currentSpotifyConnectionId: number;
   private currentWorkoutPlaylistId: number;
   private currentSharedPlaylistId: number;
+  private currentGymTrafficId: number;
 
   sessionStore: any; // Using 'any' to avoid TypeScript errors
 
@@ -259,6 +272,7 @@ export class MemStorage implements IStorage {
     this.spotifyConnections = new Map();
     this.workoutPlaylists = new Map();
     this.sharedPlaylists = new Map();
+    this.gymTraffic = new Map();
     
     this.currentUserId = 1;
     this.currentWorkoutFocusId = 1;
@@ -276,6 +290,7 @@ export class MemStorage implements IStorage {
     this.currentSpotifyConnectionId = 1;
     this.currentWorkoutPlaylistId = 1;
     this.currentSharedPlaylistId = 1;
+    this.currentGymTrafficId = 1;
     
     // Create a memory session store
     const MemoryStore = createMemoryStore(session);
