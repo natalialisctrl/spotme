@@ -637,6 +637,20 @@ export const sharedPlaylists = pgTable("shared_playlists", {
   respondedAt: timestamp("responded_at"),
 });
 
+// Gym traffic data - used to track and predict busy times
+export const gymTraffic = pgTable("gym_traffic", {
+  id: serial("id").primaryKey(),
+  gymName: text("gym_name").notNull(),
+  gymChain: text("gym_chain"),
+  dayOfWeek: integer("day_of_week").notNull(), // 0-6 for Sunday-Saturday
+  hourOfDay: integer("hour_of_day").notNull(), // 0-23 for hours of the day
+  trafficLevel: integer("traffic_level").notNull(), // 1-5 scale (1=empty, 5=very busy)
+  sampleSize: integer("sample_size").notNull().default(1), // Number of data points collected
+  lastUpdated: timestamp("last_updated").notNull().defaultNow(),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
+});
+
 // Create Zod schemas for Spotify-related tables
 export const insertSpotifyConnectionSchema = createInsertSchema(spotifyConnections).omit({ 
   id: true, 
@@ -654,6 +668,11 @@ export const insertSharedPlaylistSchema = createInsertSchema(sharedPlaylists).om
   id: true, 
   sharedAt: true, 
   respondedAt: true 
+});
+
+export const insertGymTrafficSchema = createInsertSchema(gymTraffic).omit({
+  id: true,
+  lastUpdated: true
 });
 
 // Types for the schemas
