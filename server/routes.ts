@@ -115,8 +115,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { gymName, dayOfWeek, hourOfDay } = req.query;
       
-      if (!gymName || dayOfWeek === undefined || hourOfDay === undefined) {
-        return res.status(400).json({ message: 'Missing required parameters: gymName, dayOfWeek, hourOfDay' });
+      // Improved validation with detailed error messages
+      if (!gymName) {
+        console.log('Missing gymName parameter in traffic prediction request');
+        return res.status(400).json({ message: 'Missing required parameter: gymName' });
+      }
+      
+      if (dayOfWeek === undefined) {
+        console.log(`Missing dayOfWeek parameter for gym: ${gymName}`);
+        return res.status(400).json({ message: 'Missing required parameter: dayOfWeek' });
+      }
+      
+      if (hourOfDay === undefined) {
+        console.log(`Missing hourOfDay parameter for gym: ${gymName}`);
+        return res.status(400).json({ message: 'Missing required parameter: hourOfDay' });
+      }
+      
+      console.log(`Predicting traffic for gym: ${gymName}, day: ${dayOfWeek}, hour: ${hourOfDay}`);
+      
+      // Check if the gym has any traffic data
+      const hasAnyTrafficData = await storage.hasGymTrafficData(gymName as string);
+      
+      if (!hasAnyTrafficData) {
+        console.log(`No traffic data found for gym: ${gymName} - generating seed data`);
+        
+        // Automatically seed data for this gym if none exists
+        await storage.seedGymTrafficData(gymName as string);
+        console.log(`Successfully seeded traffic data for gym: ${gymName}`);
       }
 
       const trafficLevel = await storage.predictGymTraffic(
@@ -125,10 +150,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         parseInt(hourOfDay as string)
       );
       
+      console.log(`Predicted traffic level for ${gymName}: ${trafficLevel}`);
       res.json({ gymName, dayOfWeek, hourOfDay, trafficLevel });
     } catch (error) {
       console.error('Error predicting gym traffic:', error);
-      res.status(500).json({ message: 'Server error' });
+      res.status(500).json({ 
+        message: 'Server error predicting gym traffic',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 

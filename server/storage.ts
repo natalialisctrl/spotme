@@ -158,6 +158,8 @@ export interface IStorage {
   predictGymTraffic(gymName: string, dayOfWeek: number, hourOfDay: number): Promise<number>;
   getBusiestTimes(gymName: string, dayOfWeek: number): Promise<{hour: number, trafficLevel: number}[]>;
   getQuietestTimes(gymName: string, dayOfWeek: number): Promise<{hour: number, trafficLevel: number}[]>;
+  hasGymTrafficData(gymName: string): Promise<boolean>;
+  seedGymTrafficData(gymName: string): Promise<number>;
   
   // Demo data generation
   createDemoUsers(count?: number): Promise<User[]>;
