@@ -7,6 +7,7 @@ import WorkoutSelection from "@/components/workout/WorkoutSelection";
 import MapView from "@/components/map/MapView";
 import PartnersList from "@/components/partners/PartnersList";
 import Leaderboard from "@/components/challenges/Leaderboard";
+import GymTrafficCard from "@/components/gym-traffic/GymTrafficCard";
 import { Loader2, Dumbbell, Plus, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -181,35 +182,54 @@ const FindPartners: FC = () => {
       </div>
       
       {/* Leaderboard section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Leaderboard 
-          title="Top Fitness Champions" 
-          maxEntries={5}
-          showAllLink={true}
-        />
-        
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center">
-              <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
-              Challenge Spotlight
-            </h2>
-            <p className="text-gray-600">
-              Join an active challenge to compete with others and track your progress! Earn points by participating
-              in challenges and reaching your fitness goals.
-            </p>
-            {user ? (
-              <Link href="/challenges">
-                <Button variant="default" size="sm" className="w-full mt-4 gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create or Join a Challenge
-                </Button>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-1">
+          {/* Gym Traffic Card */}
+          {user?.gymName ? (
+            <GymTrafficCard gymName={user.gymName} />
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm p-6 h-full flex flex-col justify-center items-center text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Gym Selected</h3>
+              <p className="text-gray-600 mb-4">Add your preferred gym in your profile to see traffic predictions.</p>
+              <Link href="/profile">
+                <Button variant="outline" size="sm">Update Profile</Button>
               </Link>
-            ) : (
-              <p className="text-sm italic text-gray-500 mt-4">
-                Sign in to create and join challenges with other members.
-              </p>
-            )}
+            </div>
+          )}
+        </div>
+        
+        <div className="md:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+            <Leaderboard 
+              title="Top Fitness Champions" 
+              maxEntries={5}
+              showAllLink={true}
+            />
+            
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                  <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
+                  Challenge Spotlight
+                </h2>
+                <p className="text-gray-600">
+                  Join an active challenge to compete with others and track your progress! Earn points by participating
+                  in challenges and reaching your fitness goals.
+                </p>
+                {user ? (
+                  <Link href="/challenges">
+                    <Button variant="default" size="sm" className="w-full mt-4 gap-2">
+                      <Plus className="h-4 w-4" />
+                      Create or Join a Challenge
+                    </Button>
+                  </Link>
+                ) : (
+                  <p className="text-sm italic text-gray-500 mt-4">
+                    Sign in to create and join challenges with other members.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

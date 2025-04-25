@@ -7,7 +7,8 @@ import {
   insertConnectionRequestSchema, insertMessageSchema, nearbyUsersSchema, WebSocketMessage,
   workoutRoutineSchema, scheduledMeetupSchema, insertWorkoutRoutineSchema, insertScheduledMeetupSchema,
   insertMeetupParticipantSchema, challengeSchema, progressEntrySchema, challengeCommentSchema,
-  insertChallengeSchema, insertChallengeParticipantSchema, insertProgressEntrySchema, insertChallengeCommentSchema
+  insertChallengeSchema, insertChallengeParticipantSchema, insertProgressEntrySchema, insertChallengeCommentSchema,
+  insertGymTrafficSchema, gymTrafficQuerySchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { generatePersonalityInsights, PersonalityQuizResponses } from "./openai";
@@ -93,6 +94,197 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Set up Spotify routes
   app.use('/api/spotify', spotifyRoutes);
+  
+  // Gym traffic prediction routes
+  app.post('/api/gym-traffic', async (req, res) => {
+    try {
+      const data = insertGymTrafficSchema.parse(req.body);
+      const gymTraffic = await storage.addGymTrafficData(data);
+      res.json(gymTraffic);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: 'Invalid data', errors: error.errors });
+      } else {
+        console.error('Error adding gym traffic data:', error);
+        res.status(500).json({ message: 'Server error' });
+      }
+    }
+  });
+
+  app.get('/api/gym-traffic/predict', async (req, res) => {
+    try {
+      const { gymName, dayOfWeek, hourOfDay } = req.query;
+      
+      if (!gymName || dayOfWeek === undefined || hourOfDay === undefined) {
+        return res.status(400).json({ message: 'Missing required parameters: gymName, dayOfWeek, hourOfDay' });
+      }
+
+      const trafficLevel = await storage.predictGymTraffic(
+        gymName as string, 
+        parseInt(dayOfWeek as string), 
+        parseInt(hourOfDay as string)
+      );
+      
+      res.json({ gymName, dayOfWeek, hourOfDay, trafficLevel });
+    } catch (error) {
+      console.error('Error predicting gym traffic:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  app.get('/api/gym-traffic/query', async (req, res) => {
+    try {
+      // Parse the query parameters
+      const query = gymTrafficQuerySchema.parse(req.query);
+      const gymTrafficData = await storage.getGymTrafficByQuery(query);
+      res.json(gymTrafficData);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({ message: 'Invalid query parameters', errors: error.errors });
+      } else {
+        console.error('Error querying gym traffic data:', error);
+        res.status(500).json({ message: 'Server error' });
+      }
+    }
+  });
+
+  app.get('/api/gym-traffic/busiest-times', async (req, res) => {
+    try {
+      const { gymName, dayOfWeek } = req.query;
+      
+      if (!gymName || dayOfWeek === undefined) {
+        return res.status(400).json({ message: 'Missing required parameters: gymName, dayOfWeek' });
+      }
+
+      const busiestTimes = await storage.getBusiestTimes(
+        gymName as string, 
+        parseInt(dayOfWeek as string)
+      );
+      
+      res.json({ gymName, dayOfWeek, busiestTimes });
+    } catch (error) {
+      console.error('Error getting busiest times:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  app.get('/api/gym-traffic/quietest-times', async (req, res) => {
+    try {
+      const { gymName, dayOfWeek } = req.query;
+      
+      if (!gymName || dayOfWeek === undefined) {
+        return res.status(400).json({ message: 'Missing required parameters: gymName, dayOfWeek' });
+      }
+
+      const quietestTimes = await storage.getQuietestTimes(
+        gymName as string, 
+        parseInt(dayOfWeek as string)
+      );
+      
+      res.json({ gymName, dayOfWeek, quietestTimes });
+    } catch (error) {
+      console.error('Error getting quietest times:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  // Generate seed gym traffic data for testing
+  app.post('/api/gym-traffic/seed', async (req, res) => {
+    try {
+      const { gymName } = req.body;
+      
+      if (!gymName) {
+        return res.status(400).json({ message: 'Missing required parameter: gymName' });
+      }
+      
+      // Generate traffic data for each day of the week and each hour (5am-11pm)
+      const daysOfWeek = [0, 1, 2, 3, 4, 5, 6]; // Sunday to Saturday
+      const hours = Array.from({ length: 19 }, (_, i) => i + 5); // 5am to 11pm
+      
+      const trafficPatterns = [
+        // Weekend pattern (higher traffic, peaks in morning and evening)
+        {
+          days: [0, 6], // Sunday, Saturday
+          pattern: {
+            morning: { hours: [8, 9, 10, 11], level: [7, 9, 10, 8] },
+            afternoon: { hours: [12, 13, 14, 15, 16], level: [6, 5, 4, 5, 6] },
+            evening: { hours: [17, 18, 19, 20, 21], level: [7, 8, 9, 7, 5] }
+          }
+        },
+        // Weekday pattern (peaks in early morning and after work)
+        {
+          days: [1, 2, 3, 4, 5], // Monday to Friday
+          pattern: {
+            morning: { hours: [5, 6, 7, 8], level: [6, 9, 10, 8] },
+            afternoon: { hours: [9, 10, 11, 12, 13, 14, 15, 16], level: [5, 4, 3, 5, 6, 4, 3, 5] },
+            evening: { hours: [17, 18, 19, 20, 21, 22, 23], level: [8, 10, 9, 7, 5, 3, 2] }
+          }
+        }
+      ];
+      
+      const gymTrafficData = [];
+      
+      for (const dayOfWeek of daysOfWeek) {
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const pattern = isWeekend ? trafficPatterns[0] : trafficPatterns[1];
+        
+        for (const hour of hours) {
+          let trafficLevel = 5; // Default medium traffic
+          
+          // Morning hours
+          if (hour >= 5 && hour <= 11) {
+            const morningPattern = pattern.pattern.morning;
+            const index = morningPattern.hours.indexOf(hour);
+            if (index !== -1) {
+              trafficLevel = morningPattern.level[index];
+            }
+          }
+          // Afternoon hours
+          else if (hour >= 12 && hour <= 16) {
+            const afternoonPattern = pattern.pattern.afternoon;
+            const index = afternoonPattern.hours.indexOf(hour);
+            if (index !== -1) {
+              trafficLevel = afternoonPattern.level[index];
+            }
+          }
+          // Evening hours
+          else if (hour >= 17 && hour <= 23) {
+            const eveningPattern = pattern.pattern.evening;
+            const index = eveningPattern.hours.indexOf(hour);
+            if (index !== -1) {
+              trafficLevel = eveningPattern.level[index];
+            }
+          }
+          
+          // Add some randomness to make it more realistic (-2 to +2)
+          const randomOffset = Math.floor(Math.random() * 5) - 2;
+          trafficLevel = Math.max(1, Math.min(10, trafficLevel + randomOffset));
+          
+          // Calculate estimated user count based on traffic level (1-10 scale)
+          const userCount = Math.floor(trafficLevel * 5 + Math.random() * 10);
+          
+          const gymTraffic = await storage.addGymTrafficData({
+            gymName,
+            dayOfWeek,
+            hourOfDay: hour,
+            trafficLevel,
+            userCount,
+            recordedAt: new Date()
+          });
+          
+          gymTrafficData.push(gymTraffic);
+        }
+      }
+      
+      res.json({ 
+        message: `Created ${gymTrafficData.length} gym traffic records for ${gymName}`,
+        count: gymTrafficData.length
+      });
+    } catch (error) {
+      console.error('Error seeding gym traffic data:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
   
   // Make sure natalia user exists in the database
   try {
