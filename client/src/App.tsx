@@ -18,6 +18,7 @@ import WorkoutRoutines from "@/pages/WorkoutRoutines"; // Import workout routine
 import ScheduledMeetups from "@/pages/ScheduledMeetups"; // Import scheduled meetups page
 import Challenges from "@/pages/Challenges"; // Import challenges page
 import Achievements from "@/pages/Achievements"; // Import achievements page
+import MusicSharing from "@/pages/MusicSharing"; // Import music sharing page
 
 import WorkoutBattles from "@/pages/WorkoutBattles"; // Import workout battles page
 import WorkoutRecommendations from "@/pages/WorkoutRecommendations"; // Import workout recommendations page
@@ -81,6 +82,9 @@ function WorkoutRecommendationsPage() {
   return <WorkoutRecommendations />;
 }
 
+function MusicSharingPage() {
+  return <MusicSharing />;
+}
 
 
 function ChallengeDetailPage({ params }: { params: { id: string } }) {
@@ -160,6 +164,7 @@ function Router() {
 
         <Route path="/workout-battles" component={WorkoutBattlesPage} />
         <Route path="/workout-recommendations" component={WorkoutRecommendationsPage} />
+        <Route path="/music-sharing" component={MusicSharingPage} />
 
         <Route component={NotFound} />
       </Switch>
