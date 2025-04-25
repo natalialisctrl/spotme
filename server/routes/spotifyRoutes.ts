@@ -18,10 +18,10 @@ router.get('/connect', (req, res) => {
   res.json({ url: authUrl });
 });
 
-// OAuth callback route
-router.get('/callback', async (req, res) => {
+// Process the callback code without redirecting
+router.post('/callback', async (req, res) => {
   try {
-    const { code, state } = req.query;
+    const { code, state } = req.body;
     
     if (!code || !state) {
       return res.status(400).json({ error: 'Missing required parameters' });
@@ -35,8 +35,8 @@ router.get('/callback', async (req, res) => {
     
     await spotifyService.handleSpotifyCallback(code as string, userId);
     
-    // Redirect to success page
-    res.redirect('/spotify-connected');
+    // Return success message
+    res.status(200).json({ success: true, message: 'Spotify account connected successfully' });
   } catch (error) {
     console.error('Error in Spotify callback:', error);
     res.status(500).json({ error: 'Failed to connect Spotify account' });
