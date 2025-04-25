@@ -1,38 +1,69 @@
-import { useEffect, useState } from "react";
-import { useLocation, useRoute } from "wouter";
+import React, { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function SpotifyCallback() {
   const [isProcessing, setIsProcessing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const { toast } = useToast();
   
   useEffect(() => {
+    console.log("SpotifyCallback component mounted");
+    
     const processCallback = async () => {
       try {
         // Parse the URL for code and state
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
-        const state = urlParams.get('state');
+        const error = urlParams.get('error');
         
-        if (!code) {
-          const errorMsg = urlParams.get('error') || 'No authorization code received';
-          setError(errorMsg);
+        if (error) {
+          setError(`Spotify authorization error: ${error}`);
           setIsProcessing(false);
           return;
         }
         
+        if (!code) {
+          setError('No authorization code received from Spotify');
+          setIsProcessing(false);
+          return;
+        }
+        
+        if (!user) {
+          setError('You must be logged in to connect Spotify');
+          setIsProcessing(false);
+          return;
+        }
+        
+        console.log("Sending code to backend:", code);
+        
         // Call our backend to process the code
-        const response = await apiRequest("POST", "/api/spotify/callback", { code, state });
+        const response = await apiRequest("POST", "/api/spotify/callback", { 
+          code, 
+          state: user.id.toString() 
+        });
         
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.error || 'Failed to connect Spotify account');
         }
         
+        // Invalidate Spotify connection cache
+        queryClient.invalidateQueries({ queryKey: ['/api/spotify/connection'] });
+        
         // Successful connection
+        toast({
+          title: "Success!",
+          description: "Your Spotify account has been connected successfully.",
+        });
+        
         setTimeout(() => {
           setIsProcessing(false);
           setLocation("/music-sharing");
@@ -42,11 +73,17 @@ export default function SpotifyCallback() {
         console.error('Error processing Spotify callback:', error);
         setError(error instanceof Error ? error.message : 'Failed to connect Spotify account');
         setIsProcessing(false);
+        
+        toast({
+          title: "Connection Failed",
+          description: error instanceof Error ? error.message : 'Failed to connect Spotify account',
+          variant: "destructive"
+        });
       }
     };
     
     processCallback();
-  }, [setLocation]);
+  }, [setLocation, user, toast]);
   
   return (
     <div className="container max-w-md mx-auto py-12">

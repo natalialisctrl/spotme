@@ -79,9 +79,10 @@ export async function callSpotifyApi(userId: number, endpoint: string, method = 
       // Update the stored credentials
       // Use the number type for expiresAt consistently to avoid type issues
       const expiresAt = now + (tokenData.expires_in * 1000);
-      await storage.updateSpotifyConnection(userId, {
+      await storage.updateSpotifyConnection({
+        userId,
         accessToken: tokenData.access_token,
-        expiresAt, // This will be used as a timestamp (number)
+        expiresAt: new Date(expiresAt), // Convert to Date for storage
         refreshToken: tokenData.refresh_token || spotifyConnection.refreshToken
       });
       
@@ -142,10 +143,11 @@ export async function handleSpotifyCallback(code: string, userId: number): Promi
     // Store the Spotify connection for the user
     // Use the number type for expiresAt consistently to avoid type issues
     const expiresAt = Date.now() + (tokenData.expires_in * 1000);
-    await storage.saveSpotifyConnection(userId, {
+    await storage.saveSpotifyConnection({
+      userId,
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token,
-      expiresAt // Using timestamp (number) instead of Date object
+      expiresAt: new Date(expiresAt) // Convert to Date for storage
     });
   } catch (error) {
     console.error('Error in Spotify callback:', error);
