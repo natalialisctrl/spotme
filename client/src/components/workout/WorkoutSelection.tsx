@@ -2,7 +2,7 @@ import { FC, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { workoutTypes } from "@shared/schema";
-import { WorkoutFocus } from "@shared/schema";
+import { WorkoutFocus, DailyWorkoutFocus } from "@shared/schema";
 
 type WorkoutType = typeof workoutTypes[number];
 
@@ -14,8 +14,8 @@ const WorkoutSelection: FC<WorkoutSelectionProps> = ({ onSelectWorkout }) => {
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutType | null>(null);
   const queryClient = useQueryClient();
 
-  // Get current workout focus
-  const { data: currentWorkoutFocus, isLoading: isLoadingWorkout } = useQuery<WorkoutFocus>({
+  // Get current workout focus (either WorkoutFocus or DailyWorkoutFocus)
+  const { data: currentWorkoutFocus, isLoading: isLoadingWorkout } = useQuery<WorkoutFocus | DailyWorkoutFocus>({
     queryKey: ['/api/workout-focus'],
     retry: false,
     refetchOnWindowFocus: false,
