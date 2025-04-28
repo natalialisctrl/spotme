@@ -748,22 +748,60 @@ export class MemStorage implements IStorage {
   }
 
   // Workout focus operations
-  async getWorkoutFocus(userId: number): Promise<WorkoutFocus | undefined> {
+  async getWorkoutFocus(userId: number): Promise<WorkoutFocus | DailyWorkoutFocus | undefined> {
+    // First try to get a dailyWorkoutFocus for today
+    const dailyFocus = await this.getDailyWorkoutFocus(userId);
+    if (dailyFocus) {
+      return dailyFocus;
+    }
+    
+    // Fall back to the original workoutFocus if no daily focus exists
     for (const focus of this.workoutFocuses.values()) {
-      // Find the most recent workout focus for today
-      if (focus.userId === userId && 
-          focus.date.toDateString() === new Date().toDateString()) {
+      if (focus.userId === userId) {
         return focus;
       }
     }
     return undefined;
   }
+  
+  async getDailyWorkoutFocus(userId: number): Promise<DailyWorkoutFocus | undefined> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Find the workout focus for today
+    for (const focus of this.dailyWorkoutFocuses.values()) {
+      const focusDate = new Date(focus.date);
+      focusDate.setHours(0, 0, 0, 0);
+      
+      if (focus.userId === userId && focusDate.getTime() === today.getTime()) {
+        return focus;
+      }
+    }
+    
+    return undefined;
+  }
 
-  async setWorkoutFocus(workoutFocus: InsertWorkoutFocus): Promise<WorkoutFocus> {
-    const id = this.currentWorkoutFocusId++;
-    const newWorkoutFocus: WorkoutFocus = { ...workoutFocus, id };
-    this.workoutFocuses.set(id, newWorkoutFocus);
-    return newWorkoutFocus;
+  async setWorkoutFocus(workoutFocus: InsertWorkoutFocus | InsertDailyWorkoutFocus): Promise<WorkoutFocus | DailyWorkoutFocus> {
+    // Check if it's a dailyWorkoutFocus by looking for the workoutType property
+    if ('workoutType' in workoutFocus) {
+      const id = this.currentDailyWorkoutFocusId++;
+      
+      const newDailyWorkoutFocus: DailyWorkoutFocus = {
+        id,
+        userId: workoutFocus.userId,
+        workoutType: workoutFocus.workoutType,
+        date: workoutFocus.date || new Date()
+      };
+      
+      this.dailyWorkoutFocuses.set(id, newDailyWorkoutFocus);
+      return newDailyWorkoutFocus;
+    } else {
+      // Original WorkoutFocus implementation
+      const id = this.currentWorkoutFocusId++;
+      const newWorkoutFocus: WorkoutFocus = { ...workoutFocus, id };
+      this.workoutFocuses.set(id, newWorkoutFocus);
+      return newWorkoutFocus;
+    }
   }
 
   // Connection request operations
