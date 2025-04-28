@@ -21,7 +21,6 @@ import Achievements from "@/pages/Achievements"; // Import achievements page
 import MusicSharing from "@/pages/MusicSharing"; // Import music sharing page
 import SpotifyCallback from "@/pages/SpotifyCallback"; // Import Spotify callback page
 
-import WorkoutBattles from "@/pages/WorkoutBattles"; // Import workout battles page
 import WorkoutRecommendations from "@/pages/WorkoutRecommendations"; // Import workout recommendations page
 
 import { ChallengeDetail } from "@/components/challenges/ChallengeDetail"; // Import challenge detail component
@@ -75,9 +74,7 @@ function AchievementsPage() {
 
 
 
-function WorkoutBattlesPage() {
-  return <WorkoutBattles />;
-}
+
 
 function WorkoutRecommendationsPage() {
   return <WorkoutRecommendations />;
@@ -163,7 +160,6 @@ function Router() {
         <Route path="/challenges/:id" component={ChallengeDetailPage} />
         <Route path="/achievements" component={AchievementsPage} />
 
-        <Route path="/workout-battles" component={WorkoutBattlesPage} />
         <Route path="/workout-recommendations" component={WorkoutRecommendationsPage} />
         <Route path="/music-sharing" component={MusicSharingPage} />
         <Route path="/spotify-callback" component={SpotifyCallback} />
