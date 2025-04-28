@@ -1,9 +1,9 @@
-import { FC, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { FC, useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { workoutTypes } from "@shared/schema";
+import { workoutTypes, WorkoutFocus, DailyWorkoutFocus } from "@shared/schema";
 import { Loader2, Calendar, Dumbbell, Trophy, Clock, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -113,6 +113,25 @@ const WorkoutFocusPage: FC = () => {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Get current workout focus
+  const { data: currentWorkoutFocus, isLoading: isLoadingWorkout } = useQuery<WorkoutFocus | DailyWorkoutFocus>({
+    queryKey: ['/api/workout-focus'],
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  
+  // Initialize selected workout from current focus when data is loaded
+  useEffect(() => {
+    if (currentWorkoutFocus && !selectedWorkout) {
+      // Handle both WorkoutFocus and DailyWorkoutFocus schema formats
+      const workoutType = currentWorkoutFocus.workoutType;
+      
+      if (workoutType && workoutTypes.includes(workoutType as any)) {
+        setSelectedWorkout(workoutType);
+      }
+    }
+  }, [currentWorkoutFocus, selectedWorkout]);
 
   // Handle workout selection
   const handleWorkoutSelected = (workoutType: string) => {
@@ -156,8 +175,8 @@ const WorkoutFocusPage: FC = () => {
     navigate("/");
   };
 
-  // Render loading state only when authenticating
-  if (authLoading || isSettingWorkout) {
+  // Render loading state when authenticating or loading workout data
+  if (authLoading || isSettingWorkout || isLoadingWorkout) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Loader2 className="h-8 w-8 text-primary animate-spin" />

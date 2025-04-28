@@ -35,9 +35,14 @@ const WorkoutSelection: FC<WorkoutSelectionProps> = ({ onSelectWorkout }) => {
   // Initialize selected workout from current focus
   useEffect(() => {
     if (currentWorkoutFocus && !selectedWorkout) {
-      setSelectedWorkout(currentWorkoutFocus.workoutType as WorkoutType);
-      if (onSelectWorkout) {
-        onSelectWorkout(currentWorkoutFocus.workoutType as WorkoutType);
+      // Handle both WorkoutFocus and DailyWorkoutFocus schema formats
+      const workoutType = currentWorkoutFocus.workoutType as WorkoutType;
+      
+      if (workoutTypes.includes(workoutType)) {
+        setSelectedWorkout(workoutType);
+        if (onSelectWorkout) {
+          onSelectWorkout(workoutType);
+        }
       }
     }
   }, [currentWorkoutFocus, selectedWorkout, onSelectWorkout]);
