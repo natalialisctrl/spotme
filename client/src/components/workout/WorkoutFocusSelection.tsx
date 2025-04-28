@@ -1,6 +1,7 @@
 import React from 'react';
-import { Dumbbell, Heart, HeartPulse, BicepsFlexed, PersonStanding, Weight, Target } from 'lucide-react';
+import { Dumbbell, Heart, HeartPulse, BicepsFlexed, Weight, Target } from 'lucide-react';
 import { useWorkoutFocus, workoutTypes, type WorkoutType } from '@/context/WorkoutFocusContext';
+import LowerBodyIcon from '@/components/icons/LowerBodyIcon';
 
 interface WorkoutFocusSelectionProps {
   className?: string;
@@ -8,7 +9,7 @@ interface WorkoutFocusSelectionProps {
 
 const workoutIcons = {
   upper_body: <BicepsFlexed className="h-8 w-8" />,
-  lower_body: <PersonStanding className="h-8 w-8" />,
+  lower_body: <LowerBodyIcon className="h-8 w-8" />,
   cardio: <HeartPulse className="h-8 w-8" />,
   core: <Target className="h-8 w-8" />,
   full_body: <Dumbbell className="h-8 w-8" />,
