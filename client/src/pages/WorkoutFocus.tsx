@@ -252,7 +252,7 @@ const WorkoutFocusPage: FC = () => {
               <CardHeader>
                 <CardTitle>Training Tips & Techniques</CardTitle>
                 <CardDescription>
-                  Maximize your {selectedWorkout.replace('_', ' ')} workout with these pro tips
+                  Maximize your {currentWorkout ? currentWorkout.replace('_', ' ') : ""} workout with these pro tips
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -287,7 +287,7 @@ const WorkoutFocusPage: FC = () => {
                 <div className="border-l-4 border-primary pl-4 py-2">
                   <h3 className="font-medium">Training Partners</h3>
                   <p className="text-sm text-muted-foreground">
-                    Working out with a partner can improve motivation, form, and safety, especially for challenging {selectedWorkout.replace('_', ' ')} exercises.
+                    Working out with a partner can improve motivation, form, and safety, especially for challenging {currentWorkout ? currentWorkout.replace('_', ' ') : ""} exercises.
                   </p>
                 </div>
               </CardContent>

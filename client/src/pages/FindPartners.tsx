@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useAuth } from "@/hooks/use-auth";
-import WorkoutSelection from "@/components/workout/WorkoutSelection";
+import { useWorkoutFocus } from "@/context/WorkoutFocusContext";
+import WorkoutFocusSelection from "@/components/workout/WorkoutFocusSelection";
 import MapView from "@/components/map/MapView";
 import PartnersList from "@/components/partners/PartnersList";
 import Leaderboard from "@/components/challenges/Leaderboard";
@@ -19,6 +20,7 @@ import { apiRequest } from "@/lib/queryClient";
 const FindPartners: FC = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { latitude, longitude, error: locationError } = useGeolocation();
+  const { currentWorkout, isLoading: workoutLoading } = useWorkoutFocus();
   const [filterParams, setFilterParams] = useState({
     workoutType: undefined as string | undefined,
     gender: undefined as string | undefined,
@@ -112,9 +114,12 @@ const FindPartners: FC = () => {
     }
   }, [locationError, toast]);
 
-  const handleWorkoutSelect = (workoutType: string) => {
-    setFilterParams(prev => ({ ...prev, workoutType }));
-  };
+  // Update filter params when workout focus changes in the context
+  useEffect(() => {
+    if (currentWorkout) {
+      setFilterParams(prev => ({ ...prev, workoutType: currentWorkout }));
+    }
+  }, [currentWorkout]);
 
   const handleUpdateFilters = (newFilters: any) => {
     setFilterParams(prev => ({ ...prev, ...newFilters }));
@@ -178,7 +183,7 @@ const FindPartners: FC = () => {
             </Button>
           </Link>
         </div>
-        <WorkoutSelection onSelectWorkout={handleWorkoutSelect} />
+        <WorkoutFocusSelection />
       </div>
       
       {/* Leaderboard section */}

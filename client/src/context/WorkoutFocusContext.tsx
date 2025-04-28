@@ -1,77 +1,92 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { DailyWorkoutFocus, workoutTypes } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 
-type WorkoutType = typeof workoutTypes[number];
+// Define constant workout types
+export const workoutTypes = [
+  'upper_body',
+  'lower_body',
+  'cardio',
+  'core',
+  'full_body',
+] as const;
 
+// Define WorkoutType as a union of the constant workout types
+export type WorkoutType = typeof workoutTypes[number];
+
+// Define the context type
 interface WorkoutFocusContextType {
   currentWorkout: WorkoutType | null;
   setWorkoutFocus: (workoutType: WorkoutType) => void;
   isLoading: boolean;
 }
 
-const WorkoutFocusContext = createContext<WorkoutFocusContextType | undefined>(undefined);
+// Create the context
+const WorkoutFocusContext = createContext<WorkoutFocusContextType | null>(null);
 
+// Provider component
 export const WorkoutFocusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentWorkout, setCurrentWorkout] = useState<WorkoutType | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // Get current workout focus
-  const { data: workoutFocusData, isLoading: isLoadingWorkout } = useQuery<DailyWorkoutFocus>({
+  
+  // Get current workout focus from API
+  const { data: workoutFocus, isLoading } = useQuery<{ workoutType?: string; focus?: string }>({
     queryKey: ['/api/workout-focus'],
     retry: false,
     refetchOnWindowFocus: false,
   });
-
+  
   // Set workout focus mutation
-  const { mutate, isPending: isSettingWorkout } = useMutation({
-    mutationFn: async (workoutType: string) => {
-      return apiRequest('POST', '/api/workout-focus', { workoutType });
+  const setWorkoutFocusMutation = useMutation({
+    mutationFn: async (workoutType: WorkoutType) => {
+      const res = await apiRequest('POST', '/api/workout-focus', { workoutType });
+      return await res.json();
     },
     onSuccess: () => {
-      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/workout-focus'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/users/nearby'] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
-        title: "Error updating workout focus",
-        description: error.message || "Something went wrong. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: `Failed to update workout focus: ${error.message}`,
+        variant: 'destructive',
       });
-    }
+    },
   });
-
-  // Initialize from server data
+  
+  // Initialize current workout from API data
   useEffect(() => {
-    if (workoutFocusData && workoutFocusData.workoutType) {
-      const workoutType = workoutFocusData.workoutType as WorkoutType;
-      if (workoutTypes.includes(workoutType)) {
-        setCurrentWorkout(workoutType);
+    if (workoutFocus) {
+      // Handle different schema formats that might exist
+      const workoutType = workoutFocus.workoutType || workoutFocus.focus;
+      
+      if (workoutType && workoutTypes.includes(workoutType as WorkoutType)) {
+        setCurrentWorkout(workoutType as WorkoutType);
       }
     }
-  }, [workoutFocusData]);
-
-  // Function to update workout focus
+  }, [workoutFocus]);
+  
+  // Function to set workout focus
   const setWorkoutFocus = (workoutType: WorkoutType) => {
     setCurrentWorkout(workoutType);
-    mutate(workoutType);
+    setWorkoutFocusMutation.mutate(workoutType);
     
+    // Show success toast
     toast({
       title: "Workout focus updated!",
       description: `You've set your focus for today to ${workoutType.charAt(0).toUpperCase() + workoutType.slice(1).replace('_', ' ')}.`,
     });
   };
-
+  
+  // Context value
   const contextValue: WorkoutFocusContextType = {
     currentWorkout,
     setWorkoutFocus,
-    isLoading: isLoadingWorkout || isSettingWorkout
+    isLoading,
   };
-
+  
   return (
     <WorkoutFocusContext.Provider value={contextValue}>
       {children}
@@ -79,10 +94,13 @@ export const WorkoutFocusProvider: React.FC<{ children: ReactNode }> = ({ childr
   );
 };
 
+// Custom hook to use the workout focus context
 export const useWorkoutFocus = (): WorkoutFocusContextType => {
   const context = useContext(WorkoutFocusContext);
+  
   if (!context) {
-    throw new Error("useWorkoutFocus must be used within a WorkoutFocusProvider");
+    throw new Error('useWorkoutFocus must be used within a WorkoutFocusProvider');
   }
+  
   return context;
 };
