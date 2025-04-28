@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dumbbell, Heart, HeartPulse, BicepsFlexed, Footprints, Weight, Target } from 'lucide-react';
+import { Dumbbell, Heart, HeartPulse, BicepsFlexed, PersonStanding, Weight, Target } from 'lucide-react';
 import { useWorkoutFocus, workoutTypes, type WorkoutType } from '@/context/WorkoutFocusContext';
 
 interface WorkoutFocusSelectionProps {
@@ -8,7 +8,7 @@ interface WorkoutFocusSelectionProps {
 
 const workoutIcons = {
   upper_body: <BicepsFlexed className="h-8 w-8" />,
-  lower_body: <Footprints className="h-8 w-8" />,
+  lower_body: <PersonStanding className="h-8 w-8" />,
   cardio: <HeartPulse className="h-8 w-8" />,
   core: <Target className="h-8 w-8" />,
   full_body: <Dumbbell className="h-8 w-8" />,
@@ -30,7 +30,7 @@ const WorkoutFocusSelection: React.FC<WorkoutFocusSelectionProps> = ({ className
       {workoutTypes.map((type) => (
         <button
           key={type}
-          className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
+          className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
             currentWorkout === type
               ? 'bg-primary/10 border-primary text-primary'
               : 'bg-white border-gray-200 hover:border-primary/40 hover:bg-primary/5'
