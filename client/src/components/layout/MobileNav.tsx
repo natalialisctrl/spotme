@@ -13,7 +13,9 @@ import {
   Clipboard, 
   CalendarDays,
   Trophy,
-  Award
+  Award,
+  Star,
+  Music
 } from "lucide-react";
 import { 
   Popover,
@@ -43,7 +45,7 @@ const MobileNav: FC = () => {
             <span className="text-xs mt-1">Connections</span>
         </Link>
         <Popover>
-          <PopoverTrigger className={`flex flex-col items-center justify-center py-3 w-1/4 ${(location === '/profile' || location === '/security-settings' || location === '/workout-focus' || location === '/workout-routines' || location === '/scheduled-meetups' || location === '/challenges' || location === '/achievements') ? 'text-primary border-t-2 border-primary' : 'text-gray-500'}`}>
+          <PopoverTrigger className={`flex flex-col items-center justify-center py-3 w-1/4 ${(location === '/profile' || location === '/security-settings' || location === '/workout-focus' || location === '/workout-routines' || location === '/scheduled-meetups' || location === '/challenges' || location === '/achievements' || location === '/music-sharing' || location === '/partner-ratings') ? 'text-primary border-t-2 border-primary' : 'text-gray-500'}`}>
             <User className="h-6 w-6" />
             <span className="text-xs mt-1">Menu</span>
           </PopoverTrigger>
@@ -87,6 +89,14 @@ const MobileNav: FC = () => {
               <Link href="/achievements" className="flex items-center p-3 hover:bg-gray-100">
                 <Award className="h-4 w-4 mr-2" />
                 <span className="text-sm">Achievements</span>
+              </Link>
+              <Link href="/music-sharing" className="flex items-center p-3 hover:bg-gray-100">
+                <Music className="h-4 w-4 mr-2" />
+                <span className="text-sm">Music Sharing</span>
+              </Link>
+              <Link href="/partner-ratings" className="flex items-center p-3 hover:bg-gray-100">
+                <Star className="h-4 w-4 mr-2" />
+                <span className="text-sm">Partner Ratings</span>
               </Link>
               <Separator />
               <button 
