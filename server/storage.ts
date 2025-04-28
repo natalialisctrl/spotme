@@ -2340,6 +2340,219 @@ export class MemStorage implements IStorage {
     
     return demoChallenges;
   }
+
+  // Partner Ratings operations
+  async createPartnerRating(rating: InsertPartnerRating): Promise<PartnerRating> {
+    const newRating: PartnerRating = {
+      id: this.currentPartnerRatingId++,
+      raterId: rating.raterId,
+      ratedUserId: rating.ratedUserId,
+      workoutId: rating.workoutId || null,
+      meetupId: rating.meetupId || null,
+      rating: rating.rating,
+      feedback: rating.feedback || null,
+      isProfessional: rating.isProfessional || false,
+      isReliable: rating.isReliable || false,
+      isMotivating: rating.isMotivating || false,
+      isPublic: rating.isPublic !== false, // Default to true
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    this.partnerRatings.set(newRating.id, newRating);
+    
+    // Update the rating summary for the rated user
+    this.updateUserRatingSummary(rating.ratedUserId);
+    
+    return newRating;
+  }
+  
+  async getPartnerRating(id: number): Promise<PartnerRating | undefined> {
+    return this.partnerRatings.get(id);
+  }
+  
+  async getPartnerRatingsByRater(raterId: number): Promise<PartnerRating[]> {
+    const ratings: PartnerRating[] = [];
+    for (const rating of this.partnerRatings.values()) {
+      if (rating.raterId === raterId) {
+        ratings.push(rating);
+      }
+    }
+    return ratings;
+  }
+  
+  async getPartnerRatingsByRatedUser(ratedUserId: number): Promise<PartnerRating[]> {
+    const ratings: PartnerRating[] = [];
+    for (const rating of this.partnerRatings.values()) {
+      if (rating.ratedUserId === ratedUserId) {
+        ratings.push(rating);
+      }
+    }
+    return ratings;
+  }
+  
+  async updatePartnerRating(id: number, ratingData: Partial<PartnerRating>): Promise<PartnerRating | undefined> {
+    const existingRating = this.partnerRatings.get(id);
+    if (!existingRating) {
+      return undefined;
+    }
+    
+    const updatedRating: PartnerRating = {
+      ...existingRating,
+      ...ratingData,
+      updatedAt: new Date()
+    };
+    
+    this.partnerRatings.set(id, updatedRating);
+    
+    // Update the rating summary for the rated user
+    this.updateUserRatingSummary(existingRating.ratedUserId);
+    
+    return updatedRating;
+  }
+  
+  async deletePartnerRating(id: number): Promise<boolean> {
+    const existingRating = this.partnerRatings.get(id);
+    if (!existingRating) {
+      return false;
+    }
+    
+    const ratedUserId = existingRating.ratedUserId;
+    const deleted = this.partnerRatings.delete(id);
+    
+    if (deleted) {
+      // Update the rating summary for the user
+      this.updateUserRatingSummary(ratedUserId);
+      return true;
+    }
+    
+    return false;
+  }
+  
+  // User Rating Summary operations
+  async getUserRatingSummary(userId: number): Promise<UserRatingSummary | undefined> {
+    return this.userRatingSummaries.get(userId);
+  }
+  
+  async updateUserRatingSummary(userId: number): Promise<UserRatingSummary | undefined> {
+    // Get all ratings for this user
+    const ratings = await this.getPartnerRatingsByRatedUser(userId);
+    if (ratings.length === 0) {
+      const emptySummary: UserRatingSummary = {
+        userId,
+        totalRatings: 0,
+        averageRating: 0,
+        professionalScore: 0,
+        reliabilityScore: 0,
+        motivationScore: 0,
+        testimonialCount: 0,
+        updatedAt: new Date()
+      };
+      this.userRatingSummaries.set(userId, emptySummary);
+      return emptySummary;
+    }
+    
+    // Calculate summary statistics
+    const totalRatings = ratings.length;
+    
+    // Average rating
+    const ratingSum = ratings.reduce((sum, rating) => sum + rating.rating, 0);
+    const averageRating = ratingSum / totalRatings;
+    
+    // Count attribute scores
+    const professionalCount = ratings.filter(r => r.isProfessional).length;
+    const reliableCount = ratings.filter(r => r.isReliable).length;
+    const motivatingCount = ratings.filter(r => r.isMotivating).length;
+    
+    // Convert to percentages
+    const professionalScore = professionalCount / totalRatings;
+    const reliabilityScore = reliableCount / totalRatings;
+    const motivationScore = motivatingCount / totalRatings;
+    
+    // Count testimonials (ratings with feedback)
+    const testimonialCount = ratings.filter(r => r.feedback && r.feedback.trim() !== '').length;
+    
+    // Create or update the summary
+    const summary: UserRatingSummary = {
+      userId,
+      totalRatings,
+      averageRating,
+      professionalScore,
+      reliabilityScore,
+      motivationScore,
+      testimonialCount,
+      updatedAt: new Date()
+    };
+    
+    this.userRatingSummaries.set(userId, summary);
+    return summary;
+  }
+
+  // Create demo ratings for testing
+  async createDemoRatings(count: number = 10): Promise<PartnerRating[]> {
+    const users = Array.from(this.users.values());
+    if (users.length < 2) {
+      throw new Error("Need at least 2 users to create demo ratings");
+    }
+    
+    const ratings: PartnerRating[] = [];
+    
+    // Create random ratings between users
+    for (let i = 0; i < count; i++) {
+      // Select random rater and rated user (ensuring they're different)
+      let raterIndex = Math.floor(Math.random() * users.length);
+      let ratedUserIndex = Math.floor(Math.random() * users.length);
+      
+      // Make sure we don't rate ourselves
+      while (raterIndex === ratedUserIndex) {
+        ratedUserIndex = Math.floor(Math.random() * users.length);
+      }
+      
+      const rater = users[raterIndex];
+      const ratedUser = users[ratedUserIndex];
+      
+      // Generate a random rating between 3-5 (mostly positive)
+      const ratingValue = Math.floor(Math.random() * 3) + 3;
+      
+      // Randomize attributes
+      const isProfessional = Math.random() > 0.3; // 70% chance
+      const isReliable = Math.random() > 0.2;     // 80% chance
+      const isMotivating = Math.random() > 0.4;   // 60% chance
+      
+      // Generate testimonials for some ratings
+      let feedback = null;
+      if (Math.random() > 0.4) { // 60% chance of having feedback
+        const feedbackOptions = [
+          `${ratedUser.name} is a great workout partner. Very motivating!`,
+          `Had a great session with ${ratedUser.name}. Looking forward to the next one.`,
+          `${ratedUser.name} really knows their way around the gym. Learned a lot.`,
+          `${ratedUser.name} helped me improve my form on several exercises.`,
+          `Really enjoyed working out with ${ratedUser.name}. Very knowledgeable and supportive.`,
+          `${ratedUser.name} is punctual and reliable. Great partner!`,
+          `${ratedUser.name} pushes me just the right amount during our workouts.`,
+          `Fantastic energy and good vibes training with ${ratedUser.name}.`
+        ];
+        
+        feedback = feedbackOptions[Math.floor(Math.random() * feedbackOptions.length)];
+      }
+      
+      // Create the rating
+      const newRating = await this.createPartnerRating({
+        raterId: rater.id,
+        ratedUserId: ratedUser.id,
+        rating: ratingValue,
+        isProfessional,
+        isReliable,
+        isMotivating,
+        feedback,
+        isPublic: true
+      });
+      
+      ratings.push(newRating);
+    }
+    
+    return ratings;
+  }
 }
 
 export const storage = new MemStorage();

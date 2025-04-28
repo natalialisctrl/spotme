@@ -95,6 +95,253 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up Spotify routes
   app.use('/api/spotify', spotifyRoutes);
   
+  // Partner Ratings routes
+  app.post('/api/ratings', async (req, res) => {
+    try {
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+      
+      const { ratedUserId, rating, feedback, isProfessional, isReliable, isMotivating, isPublic } = req.body;
+      
+      // Validate required fields
+      if (!ratedUserId || rating === undefined) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+      
+      // Validate rating value (1-5)
+      if (rating < 1 || rating > 5) {
+        return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+      }
+      
+      // Create the partner rating
+      const partnerRating = await storage.createPartnerRating({
+        raterId: req.user.id,
+        ratedUserId,
+        rating,
+        feedback: feedback || null,
+        isProfessional: isProfessional || false,
+        isReliable: isReliable || false,
+        isMotivating: isMotivating || false,
+        isPublic: isPublic !== false, // Default to true
+      });
+      
+      res.status(201).json(partnerRating);
+    } catch (error) {
+      console.error('Error creating partner rating:', error);
+      res.status(500).json({ message: 'Server error creating partner rating' });
+    }
+  });
+  
+  app.get('/api/ratings/by-user/:userId', async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: 'Invalid user ID' });
+      }
+      
+      const ratings = await storage.getPartnerRatingsByRatedUser(userId);
+      
+      // Only return public ratings or all ratings if the requesting user is the rated user
+      const isOwnProfile = req.isAuthenticated() && req.user.id === userId;
+      const filteredRatings = isOwnProfile 
+        ? ratings 
+        : ratings.filter(r => r.isPublic);
+      
+      res.json(filteredRatings);
+    } catch (error) {
+      console.error('Error getting user ratings:', error);
+      res.status(500).json({ message: 'Server error getting user ratings' });
+    }
+  });
+  
+  app.get('/api/ratings/summary/:userId', async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: 'Invalid user ID' });
+      }
+      
+      // Get or create rating summary for user
+      let summary = await storage.getUserRatingSummary(userId);
+      
+      if (!summary) {
+        summary = await storage.updateUserRatingSummary(userId);
+      }
+      
+      res.json(summary);
+    } catch (error) {
+      console.error('Error getting rating summary:', error);
+      res.status(500).json({ message: 'Server error getting rating summary' });
+    }
+  });
+  
+  app.get('/api/ratings/given', async (req, res) => {
+    try {
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+      
+      const ratings = await storage.getPartnerRatingsByRater(req.user.id);
+      res.json(ratings);
+    } catch (error) {
+      console.error('Error getting ratings given by user:', error);
+      res.status(500).json({ message: 'Server error getting ratings' });
+    }
+  });
+  
+  app.get('/api/ratings/received', async (req, res) => {
+    try {
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+      
+      const ratings = await storage.getPartnerRatingsByRatedUser(req.user.id);
+      res.json(ratings);
+    } catch (error) {
+      console.error('Error getting ratings received by user:', error);
+      res.status(500).json({ message: 'Server error getting ratings' });
+    }
+  });
+  
+  app.get('/api/ratings/:id', async (req, res) => {
+    try {
+      const ratingId = parseInt(req.params.id);
+      if (isNaN(ratingId)) {
+        return res.status(400).json({ message: 'Invalid rating ID' });
+      }
+      
+      const rating = await storage.getPartnerRating(ratingId);
+      
+      if (!rating) {
+        return res.status(404).json({ message: 'Rating not found' });
+      }
+      
+      // Only return the rating if it's public or if the requesting user is either the rater or rated user
+      const isAuthorized = req.isAuthenticated() && 
+        (req.user.id === rating.raterId || req.user.id === rating.ratedUserId || rating.isPublic);
+      
+      if (!isAuthorized) {
+        return res.status(403).json({ message: 'Not authorized to view this rating' });
+      }
+      
+      res.json(rating);
+    } catch (error) {
+      console.error('Error getting rating:', error);
+      res.status(500).json({ message: 'Server error getting rating' });
+    }
+  });
+  
+  app.put('/api/ratings/:id', async (req, res) => {
+    try {
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+      
+      const ratingId = parseInt(req.params.id);
+      if (isNaN(ratingId)) {
+        return res.status(400).json({ message: 'Invalid rating ID' });
+      }
+      
+      const rating = await storage.getPartnerRating(ratingId);
+      
+      if (!rating) {
+        return res.status(404).json({ message: 'Rating not found' });
+      }
+      
+      // Only allow the rater to update their own rating
+      if (rating.raterId !== req.user.id) {
+        return res.status(403).json({ message: 'Not authorized to update this rating' });
+      }
+      
+      const { rating: ratingValue, feedback, isProfessional, isReliable, isMotivating, isPublic } = req.body;
+      
+      // Validate rating value if provided
+      if (ratingValue !== undefined && (ratingValue < 1 || ratingValue > 5)) {
+        return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+      }
+      
+      // Update the rating
+      const updatedRating = await storage.updatePartnerRating(ratingId, {
+        rating: ratingValue,
+        feedback,
+        isProfessional,
+        isReliable,
+        isMotivating,
+        isPublic
+      });
+      
+      res.json(updatedRating);
+    } catch (error) {
+      console.error('Error updating rating:', error);
+      res.status(500).json({ message: 'Server error updating rating' });
+    }
+  });
+  
+  app.delete('/api/ratings/:id', async (req, res) => {
+    try {
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+      
+      const ratingId = parseInt(req.params.id);
+      if (isNaN(ratingId)) {
+        return res.status(400).json({ message: 'Invalid rating ID' });
+      }
+      
+      const rating = await storage.getPartnerRating(ratingId);
+      
+      if (!rating) {
+        return res.status(404).json({ message: 'Rating not found' });
+      }
+      
+      // Only allow the rater to delete their own rating
+      if (rating.raterId !== req.user.id) {
+        return res.status(403).json({ message: 'Not authorized to delete this rating' });
+      }
+      
+      const deleted = await storage.deletePartnerRating(ratingId);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: 'Failed to delete rating' });
+      }
+      
+      res.json({ message: 'Rating deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting rating:', error);
+      res.status(500).json({ message: 'Server error deleting rating' });
+    }
+  });
+  
+  // Create demo ratings for testing
+  app.post('/api/ratings/demo', async (req, res) => {
+    try {
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+      
+      const count = req.body.count || 10;
+      const ratings = await storage.createDemoRatings(count);
+      
+      res.json({ 
+        message: `Created ${ratings.length} demo ratings successfully`,
+        count: ratings.length
+      });
+    } catch (error) {
+      console.error('Error creating demo ratings:', error);
+      res.status(500).json({ 
+        message: 'Server error creating demo ratings',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
   // Gym traffic prediction routes
   app.post('/api/gym-traffic', async (req, res) => {
     try {
