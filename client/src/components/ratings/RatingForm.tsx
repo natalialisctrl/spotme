@@ -1,18 +1,17 @@
-import React from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, StarHalf } from "lucide-react";
-import { RatingFormData, usePartnerRatings } from "@/hooks/use-partner-ratings";
+import React from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { PartnerRating, RatingFormData, usePartnerRatings } from '@/hooks/use-partner-ratings';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { StarRating } from '@/components/ui/star-rating';
 
-// Form validation schema
-const ratingSchema = z.object({
+// Define form validation schema
+const ratingFormSchema = z.object({
   rating: z.number().min(1).max(5),
   feedback: z.string().optional(),
   isProfessional: z.boolean().default(false),
@@ -21,115 +20,89 @@ const ratingSchema = z.object({
   isPublic: z.boolean().default(true),
 });
 
-type RatingFormProps = {
-  user: {
-    id: number;
-    name: string;
-  };
+interface RatingFormProps {
+  ratedUserId: number;
+  userName: string;
+  existingRating?: PartnerRating;
   onSuccess?: () => void;
-  existingRating?: {
-    id: number;
-    rating: number;
-    feedback?: string;
-    isProfessional: boolean;
-    isReliable: boolean;
-    isMotivating: boolean;
-    isPublic: boolean;
-  };
-};
+  onCancel?: () => void;
+}
 
-export function RatingForm({ user, onSuccess, existingRating }: RatingFormProps) {
+export function RatingForm({ ratedUserId, userName, existingRating, onSuccess, onCancel }: RatingFormProps) {
   const { useCreateRating, useUpdateRating } = usePartnerRatings();
-  const createRatingMutation = useCreateRating();
-  const updateRatingMutation = useUpdateRating();
-  const [selectedRating, setSelectedRating] = React.useState(existingRating?.rating || 0);
-
-  const form = useForm<z.infer<typeof ratingSchema>>({
-    resolver: zodResolver(ratingSchema),
-    defaultValues: {
-      rating: existingRating?.rating || 0,
-      feedback: existingRating?.feedback || "",
-      isProfessional: existingRating?.isProfessional || false,
-      isReliable: existingRating?.isReliable || false,
-      isMotivating: existingRating?.isMotivating || false,
-      isPublic: existingRating?.isPublic !== false,
-    },
+  const createRating = useCreateRating();
+  const updateRating = useUpdateRating();
+  
+  const form = useForm<z.infer<typeof ratingFormSchema>>({
+    resolver: zodResolver(ratingFormSchema),
+    defaultValues: existingRating ? {
+      rating: existingRating.rating,
+      feedback: existingRating.feedback || '',
+      isProfessional: existingRating.isProfessional,
+      isReliable: existingRating.isReliable,
+      isMotivating: existingRating.isMotivating,
+      isPublic: existingRating.isPublic,
+    } : {
+      rating: 0,
+      feedback: '',
+      isProfessional: false,
+      isReliable: false,
+      isMotivating: false,
+      isPublic: true,
+    }
   });
 
-  const onSubmit = (values: z.infer<typeof ratingSchema>) => {
-    const data: RatingFormData = {
-      ...values,
-      ratedUserId: user.id,
-    };
-
-    if (existingRating) {
-      updateRatingMutation.mutate(
-        { id: existingRating.id, ...data },
-        {
-          onSuccess: () => {
-            if (onSuccess) onSuccess();
-          },
-        }
-      );
-    } else {
-      createRatingMutation.mutate(data, {
-        onSuccess: () => {
-          form.reset();
-          setSelectedRating(0);
-          if (onSuccess) onSuccess();
-        },
-      });
+  async function onSubmit(data: z.infer<typeof ratingFormSchema>) {
+    try {
+      if (existingRating) {
+        // Update existing rating
+        await updateRating.mutateAsync({
+          ...data,
+          ratedUserId,
+          id: existingRating.id,
+        } as PartnerRating);
+      } else {
+        // Create new rating
+        await createRating.mutateAsync({
+          ...data,
+          ratedUserId,
+        } as RatingFormData);
+      }
+      
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error('Error submitting rating:', error);
     }
-  };
-
-  // Star rating component
-  const renderStars = () => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <Star
-          key={i}
-          className={`w-8 h-8 cursor-pointer transition-colors ${
-            i <= selectedRating
-              ? "text-yellow-400 fill-yellow-400"
-              : "text-gray-300"
-          }`}
-          onClick={() => {
-            setSelectedRating(i);
-            form.setValue("rating", i);
-          }}
-        />
-      );
-    }
-    return stars;
-  };
+  }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-lg">
       <CardHeader>
-        <CardTitle>{existingRating ? "Update Rating" : "Rate Your Partner"}</CardTitle>
+        <CardTitle>{existingRating ? 'Edit Rating' : `Rate ${userName}`}</CardTitle>
         <CardDescription>
-          Share your experience working out with {user.name}
+          {existingRating 
+            ? 'Update your feedback and rating'
+            : `Share your experience working out with ${userName}`}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form id="rating-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
               name="rating"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Rating</FormLabel>
+                  <FormLabel>Overall Rating</FormLabel>
                   <FormControl>
-                    <div className="flex space-x-1">
-                      {renderStars()}
-                      <input
-                        type="hidden"
-                        {...field}
-                        value={selectedRating}
-                      />
-                    </div>
+                    <StarRating 
+                      rating={field.value} 
+                      onChange={field.onChange}
+                      max={5}
+                      size="lg"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -141,66 +114,69 @@ export function RatingForm({ user, onSuccess, existingRating }: RatingFormProps)
               name="feedback"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Feedback (Optional)</FormLabel>
+                  <FormLabel>Your Feedback (Optional)</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Share your experience with this workout partner..."
+                      placeholder="Share your experience..."
                       {...field}
-                      value={field.value || ""}
+                      className="min-h-[100px]"
                     />
                   </FormControl>
+                  <FormDescription>
+                    Your feedback helps others find great workout partners.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="space-y-2">
-              <FormLabel>Partner Qualities</FormLabel>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium">Partner Qualities</h3>
+              <div className="space-y-2">
                 <FormField
                   control={form.control}
                   name="isProfessional"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                    <FormItem className="flex items-center space-x-2 space-y-0">
                       <FormControl>
                         <Checkbox
                           checked={field.value}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
-                      <FormLabel className="font-normal">Professional</FormLabel>
+                      <FormLabel className="font-normal cursor-pointer">Professional form & technique</FormLabel>
                     </FormItem>
                   )}
                 />
-
+                
                 <FormField
                   control={form.control}
                   name="isReliable"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                    <FormItem className="flex items-center space-x-2 space-y-0">
                       <FormControl>
                         <Checkbox
                           checked={field.value}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
-                      <FormLabel className="font-normal">Reliable</FormLabel>
+                      <FormLabel className="font-normal cursor-pointer">Reliable & punctual</FormLabel>
                     </FormItem>
                   )}
                 />
-
+                
                 <FormField
                   control={form.control}
                   name="isMotivating"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                    <FormItem className="flex items-center space-x-2 space-y-0">
                       <FormControl>
                         <Checkbox
                           checked={field.value}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
-                      <FormLabel className="font-normal">Motivating</FormLabel>
+                      <FormLabel className="font-normal cursor-pointer">Motivating & supportive</FormLabel>
                     </FormItem>
                   )}
                 />
@@ -211,28 +187,42 @@ export function RatingForm({ user, onSuccess, existingRating }: RatingFormProps)
               control={form.control}
               name="isPublic"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                <FormItem className="flex items-center space-x-2 space-y-0">
                   <FormControl>
                     <Checkbox
                       checked={field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
-                  <FormLabel className="font-normal">Make this rating public</FormLabel>
+                  <div>
+                    <FormLabel className="font-normal cursor-pointer">Make this rating public</FormLabel>
+                    <FormDescription className="mt-0">
+                      Public ratings are visible to all users
+                    </FormDescription>
+                  </div>
                 </FormItem>
               )}
             />
-
-            <Button 
-              type="submit" 
-              className="w-full"
-              disabled={createRatingMutation.isPending || updateRatingMutation.isPending}
-            >
-              {existingRating ? "Update Rating" : "Submit Rating"}
-            </Button>
           </form>
         </Form>
       </CardContent>
+      <CardFooter className="flex justify-end space-x-2">
+        {onCancel && (
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+        <Button 
+          type="submit" 
+          form="rating-form"
+          disabled={createRating.isPending || updateRating.isPending}
+        >
+          {createRating.isPending || updateRating.isPending ? 
+            'Submitting...' : 
+            existingRating ? 'Update Rating' : 'Submit Rating'
+          }
+        </Button>
+      </CardFooter>
     </Card>
   );
 }
