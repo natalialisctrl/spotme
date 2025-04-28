@@ -8,7 +8,8 @@ import {
   Challenge, InsertChallenge, ChallengeParticipant, InsertChallengeParticipant,
   ProgressEntry, InsertProgressEntry, ChallengeComment, InsertChallengeComment,
   SpotifyConnection, InsertSpotifyConnection, WorkoutPlaylist, InsertWorkoutPlaylist,
-  SharedPlaylist, InsertSharedPlaylist, GymTraffic, InsertGymTraffic, GymTrafficQuery
+  SharedPlaylist, InsertSharedPlaylist, GymTraffic, InsertGymTraffic, GymTrafficQuery,
+  PartnerRating, InsertPartnerRating, UserRatingSummary, InsertUserRatingSummary
 } from "@shared/schema";
 
 // Interface for storage operations
@@ -162,9 +163,22 @@ export interface IStorage {
   hasGymTrafficData(gymName: string): Promise<boolean>;
   seedGymTrafficData(gymName: string): Promise<number>;
   
+  // Partner Ratings operations
+  createPartnerRating(rating: InsertPartnerRating): Promise<PartnerRating>;
+  getPartnerRating(id: number): Promise<PartnerRating | undefined>;
+  getPartnerRatingsByRater(raterId: number): Promise<PartnerRating[]>;
+  getPartnerRatingsByRatedUser(ratedUserId: number): Promise<PartnerRating[]>;
+  updatePartnerRating(id: number, rating: Partial<PartnerRating>): Promise<PartnerRating | undefined>;
+  deletePartnerRating(id: number): Promise<boolean>;
+  
+  // User Rating Summary operations
+  getUserRatingSummary(userId: number): Promise<UserRatingSummary | undefined>;
+  updateUserRatingSummary(userId: number): Promise<UserRatingSummary | undefined>;
+  
   // Demo data generation
   createDemoUsers(count?: number): Promise<User[]>;
   createDemoChallenges(count?: number, creatorId?: number, friendIds?: number[]): Promise<Challenge[]>;
+  createDemoRatings(count?: number): Promise<PartnerRating[]>;
   
   // Session storage
   sessionStore: any; // Using 'any' to avoid TypeScript errors with SessionStore
@@ -190,6 +204,8 @@ export class MemStorage implements IStorage {
   private workoutPlaylists: Map<number, WorkoutPlaylist>;
   private sharedPlaylists: Map<number, SharedPlaylist>;
   private gymTraffic: Map<number, GymTraffic>;
+  private partnerRatings: Map<number, PartnerRating>;
+  private userRatingSummaries: Map<number, UserRatingSummary>;
   
   // Store a reference to the main user to ensure persistence across restarts
   private nataliaUser: User;
@@ -212,6 +228,8 @@ export class MemStorage implements IStorage {
   private currentWorkoutPlaylistId: number;
   private currentSharedPlaylistId: number;
   private currentGymTrafficId: number;
+  private currentPartnerRatingId: number;
+  private currentUserRatingSummaryId: number;
 
   sessionStore: any; // Using 'any' to avoid TypeScript errors
 
@@ -279,6 +297,8 @@ export class MemStorage implements IStorage {
     this.workoutPlaylists = new Map();
     this.sharedPlaylists = new Map();
     this.gymTraffic = new Map();
+    this.partnerRatings = new Map();
+    this.userRatingSummaries = new Map();
     
     this.currentUserId = 1;
     this.currentWorkoutFocusId = 1;
@@ -298,6 +318,8 @@ export class MemStorage implements IStorage {
     this.currentWorkoutPlaylistId = 1;
     this.currentSharedPlaylistId = 1;
     this.currentGymTrafficId = 1;
+    this.currentPartnerRatingId = 1;
+    this.currentUserRatingSummaryId = 1;
     
     // Create a memory session store
     const MemoryStore = createMemoryStore(session);
