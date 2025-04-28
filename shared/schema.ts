@@ -68,6 +68,14 @@ export const workoutTypes = [
   "chest", "arms", "legs", "back", "shoulders", "core", "cardio", "full_body"
 ] as const;
 
+// Table for user's daily workout focus
+export const dailyWorkoutFocus = pgTable("daily_workout_focus", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  workoutType: text("workout_type").notNull(),
+  date: timestamp("date").notNull().defaultNow(),
+});
+
 // Table for user workout preferences
 export const workoutFocus = pgTable("workout_focus", {
   id: serial("id").primaryKey(),
@@ -390,6 +398,7 @@ export const insertAchievementBadgeSchema = createInsertSchema(achievementBadges
 export const insertUserAchievementSchema = createInsertSchema(userAchievements).omit({ id: true });
 export const insertWorkoutCheckinSchema = createInsertSchema(workoutCheckins).omit({ id: true });
 export const insertUserStreakSchema = createInsertSchema(userStreaks).omit({ id: true });
+export const insertDailyWorkoutFocusSchema = createInsertSchema(dailyWorkoutFocus).omit({ id: true });
 export const insertWorkoutBattleSchema = createInsertSchema(workoutBattles).omit({ id: true });
 export const insertBattlePerformanceSchema = createInsertSchema(battlePerformance).omit({ id: true });
 
@@ -678,6 +687,7 @@ export const insertGymTrafficSchema = createInsertSchema(gymTraffic).omit({
 // Types for the schemas
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertWorkoutFocus = z.infer<typeof insertWorkoutFocusSchema>;
+export type InsertDailyWorkoutFocus = z.infer<typeof insertDailyWorkoutFocusSchema>;
 export type InsertConnectionRequest = z.infer<typeof insertConnectionRequestSchema>;
 export type InsertConnection = z.infer<typeof insertConnectionSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
@@ -692,6 +702,7 @@ export type InsertGymTraffic = z.infer<typeof insertGymTrafficSchema>;
 
 export type User = typeof users.$inferSelect;
 export type WorkoutFocus = typeof workoutFocus.$inferSelect;
+export type DailyWorkoutFocus = typeof dailyWorkoutFocus.$inferSelect;
 export type ConnectionRequest = typeof connectionRequests.$inferSelect;
 export type Connection = typeof connections.$inferSelect;
 export type Message = typeof messages.$inferSelect;

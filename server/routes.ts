@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { 
-  loginSchema, insertUserSchema, updateLocationSchema, insertWorkoutFocusSchema,
+  loginSchema, insertUserSchema, updateLocationSchema, insertWorkoutFocusSchema, insertDailyWorkoutFocusSchema,
   insertConnectionRequestSchema, insertMessageSchema, nearbyUsersSchema, WebSocketMessage,
   workoutRoutineSchema, scheduledMeetupSchema, insertWorkoutRoutineSchema, insertScheduledMeetupSchema,
   insertMeetupParticipantSchema, challengeSchema, progressEntrySchema, challengeCommentSchema,
@@ -930,7 +930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
-      const workoutFocusData = insertWorkoutFocusSchema.parse({
+      const workoutFocusData = insertDailyWorkoutFocusSchema.parse({
         ...req.body,
         userId: req.session.userId,
         date: new Date()
