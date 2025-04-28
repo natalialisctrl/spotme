@@ -7,11 +7,11 @@ interface WorkoutFocusSelectionProps {
 }
 
 const workoutIcons = {
-  upper_body: <BicepsFlexed className="h-8 w-8" />,
-  lower_body: <PersonStanding className="h-8 w-8" />,
-  cardio: <HeartPulse className="h-8 w-8" />,
-  core: <Target className="h-8 w-8" />,
-  full_body: <Dumbbell className="h-8 w-8" />,
+  upper_body: <BicepsFlexed className="h-8 w-8 stroke-[1]" />,
+  lower_body: <PersonStanding className="h-8 w-8 stroke-[1]" />,
+  cardio: <HeartPulse className="h-8 w-8 stroke-[1]" />,
+  core: <Target className="h-8 w-8 stroke-[1]" />,
+  full_body: <Dumbbell className="h-8 w-8 stroke-[1]" />,
 };
 
 const workoutLabels = {
