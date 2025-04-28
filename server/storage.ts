@@ -1,5 +1,5 @@
 import { 
-  User, InsertUser, WorkoutFocus, InsertWorkoutFocus, 
+  User, InsertUser, WorkoutFocus, InsertWorkoutFocus, DailyWorkoutFocus, InsertDailyWorkoutFocus,
   ConnectionRequest, InsertConnectionRequest, Connection, 
   InsertConnection, Message, InsertMessage, CompatibilityResponse,
   InsertCompatibilityResponse, NearbyUsersParams, UpdateLocation,
@@ -33,7 +33,8 @@ export interface IStorage {
   
   // Workout focus operations
   getWorkoutFocus(userId: number): Promise<WorkoutFocus | undefined>;
-  setWorkoutFocus(workoutFocus: InsertWorkoutFocus): Promise<WorkoutFocus>;
+  setWorkoutFocus(workoutFocus: InsertWorkoutFocus | InsertDailyWorkoutFocus): Promise<WorkoutFocus | DailyWorkoutFocus>;
+  getDailyWorkoutFocus(userId: number): Promise<DailyWorkoutFocus | undefined>;
   
   // Connection request operations
   createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest>;
@@ -173,6 +174,7 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private workoutFocuses: Map<number, WorkoutFocus>;
+  private dailyWorkoutFocuses: Map<number, DailyWorkoutFocus>;
   private connectionRequests: Map<number, ConnectionRequest>;
   private connections: Map<number, Connection>;
   private messages: Map<number, Message>;
@@ -194,6 +196,7 @@ export class MemStorage implements IStorage {
   
   private currentUserId: number;
   private currentWorkoutFocusId: number;
+  private currentDailyWorkoutFocusId: number;
   private currentConnectionRequestId: number;
   private currentConnectionId: number;
   private currentMessageId: number;
@@ -260,6 +263,7 @@ export class MemStorage implements IStorage {
   constructor() {
     this.users = new Map();
     this.workoutFocuses = new Map();
+    this.dailyWorkoutFocuses = new Map();
     this.connectionRequests = new Map();
     this.connections = new Map();
     this.messages = new Map();
@@ -278,6 +282,7 @@ export class MemStorage implements IStorage {
     
     this.currentUserId = 1;
     this.currentWorkoutFocusId = 1;
+    this.currentDailyWorkoutFocusId = 1;
     this.currentConnectionRequestId = 1;
     this.currentConnectionId = 1;
     this.currentMessageId = 1;
