@@ -964,13 +964,27 @@ export class MemStorage implements IStorage {
       
       // Filter by workout type
       if (workoutType) {
-        const userWorkoutFocus = Array.from(this.workoutFocuses.values())
+        // First try to find a dailyWorkoutFocus entry
+        const userDailyWorkoutFocus = Array.from(this.dailyWorkoutFocuses.values())
           .find(focus => 
             focus.userId === user.id && 
-            focus.date.toDateString() === new Date().toDateString()
+            new Date(focus.date).toDateString() === new Date().toDateString()
           );
         
-        if (!userWorkoutFocus || userWorkoutFocus.workoutType !== workoutType) return false;
+        if (userDailyWorkoutFocus) {
+          // If we found a daily focus, check if it matches the requested workout type
+          if (userDailyWorkoutFocus.workoutType !== workoutType) return false;
+        } else {
+          // Fall back to the original workoutFocus if no daily focus exists
+          const userWorkoutFocus = Array.from(this.workoutFocuses.values())
+            .find(focus => 
+              focus.userId === user.id && 
+              focus.date.toDateString() === new Date().toDateString()
+            );
+          
+          // If we didn't find any workout focus or it doesn't match, filter this user out
+          if (!userWorkoutFocus || userWorkoutFocus.workoutType !== workoutType) return false;
+        }
       }
       
       // User passed all filters - log for demo users and return true
