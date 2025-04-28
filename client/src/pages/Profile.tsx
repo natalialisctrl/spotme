@@ -16,6 +16,8 @@ import { workoutTypes } from "@shared/schema";
 import IdentityVerification from "@/components/profile/IdentityVerification";
 import ProfilePictureUpload from "@/components/profile/ProfilePictureUpload";
 import { GymVerification } from "@/components/profile/GymVerification";
+import { UserRatings } from "@/components/ratings/UserRatings";
+import { RatingSummaryBadge } from "@/components/ratings/RatingSummaryBadge";
 
 const Profile: FC = () => {
   const { user, refreshUserData } = useAuth();
@@ -277,7 +279,10 @@ const Profile: FC = () => {
               </div>
               <div className="text-center">
                 <h3 className="font-semibold text-xl">{user.name}</h3>
-                <p className="text-sm text-gray-500">{user.username}</p>
+                <div className="flex items-center justify-center gap-2 mt-1">
+                  <p className="text-sm text-gray-500">{user.username}</p>
+                  <RatingSummaryBadge userId={user.id} size="sm" />
+                </div>
               </div>
             </div>
             <div className="flex-1 space-y-4">
@@ -533,6 +538,9 @@ const Profile: FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Partner Ratings */}
+      <UserRatings userId={user.id} userName={user.name} showForm={false} />
     </div>
   );
 };

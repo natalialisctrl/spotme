@@ -1,170 +1,205 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "../lib/queryClient";
-import { useToast } from "./use-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
-export interface PartnerRating {
+// Types
+export type PartnerRating = {
   id: number;
   raterId: number;
   ratedUserId: number;
-  workoutId: number | null;
-  meetupId: number | null;
   rating: number;
-  feedback: string | null;
+  feedback?: string;
   isProfessional: boolean;
   isReliable: boolean;
   isMotivating: boolean;
   isPublic: boolean;
   createdAt: string;
   updatedAt: string;
-}
+};
 
-export interface RatingSummary {
+export type RatingFormData = {
+  rating: number;
+  feedback?: string;
+  isProfessional: boolean;
+  isReliable: boolean;
+  isMotivating: boolean;
+  isPublic: boolean;
+  ratedUserId: number;
+};
+
+export type RatingSummary = {
   userId: number;
-  totalRatings: number;
   averageRating: number;
+  totalRatings: number;
   professionalScore: number;
   reliabilityScore: number;
   motivationScore: number;
   testimonialCount: number;
   updatedAt: string;
-}
+};
 
-export interface RatingFormData {
-  ratedUserId: number;
-  rating: number;
-  feedback?: string;
-  isProfessional?: boolean;
-  isReliable?: boolean;
-  isMotivating?: boolean;
-  isPublic?: boolean;
-}
-
+// Main hook
 export function usePartnerRatings() {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Get ratings received by the current user
-  const useReceivedRatings = () => {
-    return useQuery<PartnerRating[]>({
-      queryKey: ['/api/ratings/received'],
-      retry: 1,
-    });
-  };
-
-  // Get ratings given by the current user
-  const useGivenRatings = () => {
-    return useQuery<PartnerRating[]>({
-      queryKey: ['/api/ratings/given'],
-      retry: 1,
-    });
-  };
-
-  // Get ratings for a specific user
+  // Query hook to get ratings for a specific user
   const useUserRatings = (userId: number) => {
-    return useQuery<PartnerRating[]>({
-      queryKey: ['/api/ratings/by-user', userId],
+    return useQuery({
+      queryKey: ['/api/ratings', userId],
       queryFn: async () => {
-        const res = await apiRequest('GET', `/api/ratings/by-user/${userId}`);
-        return res.json();
+        const response = await apiRequest('GET', `/api/ratings/${userId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch user ratings');
+        }
+        return response.json() as Promise<PartnerRating[]>;
       },
-      retry: 1,
+      enabled: !!userId,
     });
   };
 
-  // Get rating summary for a specific user
+  // Query hook to get rating summary for a user
   const useRatingSummary = (userId: number) => {
-    return useQuery<RatingSummary>({
+    return useQuery({
       queryKey: ['/api/ratings/summary', userId],
       queryFn: async () => {
-        const res = await apiRequest('GET', `/api/ratings/summary/${userId}`);
-        return res.json();
+        const response = await apiRequest('GET', `/api/ratings/summary/${userId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch rating summary');
+        }
+        return response.json() as Promise<RatingSummary>;
       },
-      retry: 1,
+      enabled: !!userId,
     });
   };
 
-  // Mutation to create a new rating
+  // Query hook to get ratings the current user has received
+  const useReceivedRatings = () => {
+    return useQuery({
+      queryKey: ['/api/ratings/received'],
+      queryFn: async () => {
+        const response = await apiRequest('GET', '/api/ratings/received');
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Authentication required');
+          }
+          throw new Error('Failed to fetch received ratings');
+        }
+        return response.json() as Promise<PartnerRating[]>;
+      },
+    });
+  };
+
+  // Query hook to get ratings the current user has given
+  const useGivenRatings = () => {
+    return useQuery({
+      queryKey: ['/api/ratings/given'],
+      queryFn: async () => {
+        const response = await apiRequest('GET', '/api/ratings/given');
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Authentication required');
+          }
+          throw new Error('Failed to fetch given ratings');
+        }
+        return response.json() as Promise<PartnerRating[]>;
+      },
+    });
+  };
+
+  // Mutation hook to create a new rating
   const useCreateRating = () => {
     return useMutation({
       mutationFn: async (data: RatingFormData) => {
-        const res = await apiRequest('POST', '/api/ratings', data);
-        return res.json();
+        const response = await apiRequest('POST', '/api/ratings', data);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to create rating');
+        }
+        return response.json() as Promise<PartnerRating>;
       },
-      onSuccess: () => {
-        // Invalidate all ratings queries to ensure latest data
+      onSuccess: (data) => {
+        // Invalidate relevant queries
+        queryClient.invalidateQueries({ queryKey: ['/api/ratings', data.ratedUserId] });
+        queryClient.invalidateQueries({ queryKey: ['/api/ratings/summary', data.ratedUserId] });
         queryClient.invalidateQueries({ queryKey: ['/api/ratings/received'] });
         queryClient.invalidateQueries({ queryKey: ['/api/ratings/given'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/ratings/by-user'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/ratings/summary'] });
-        
+
         toast({
-          title: "Rating submitted",
-          description: "Your partner rating has been submitted successfully.",
+          title: 'Rating Submitted',
+          description: 'Your rating has been submitted successfully.',
         });
       },
-      onError: (error) => {
+      onError: (error: Error) => {
         toast({
-          title: "Failed to submit rating",
-          description: error instanceof Error ? error.message : "An unknown error occurred",
-          variant: "destructive",
+          title: 'Failed to Submit Rating',
+          description: error.message,
+          variant: 'destructive',
         });
       },
     });
   };
 
-  // Mutation to update an existing rating
+  // Mutation hook to update an existing rating
   const useUpdateRating = () => {
     return useMutation({
-      mutationFn: async ({ id, ...data }: { id: number } & Partial<RatingFormData>) => {
-        const res = await apiRequest('PUT', `/api/ratings/${id}`, data);
-        return res.json();
+      mutationFn: async (data: PartnerRating) => {
+        const response = await apiRequest('PUT', `/api/ratings/${data.id}`, data);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to update rating');
+        }
+        return response.json() as Promise<PartnerRating>;
       },
-      onSuccess: (_, variables) => {
-        // Invalidate all ratings queries to ensure latest data
+      onSuccess: (data) => {
+        // Invalidate relevant queries
+        queryClient.invalidateQueries({ queryKey: ['/api/ratings', data.ratedUserId] });
+        queryClient.invalidateQueries({ queryKey: ['/api/ratings/summary', data.ratedUserId] });
         queryClient.invalidateQueries({ queryKey: ['/api/ratings/received'] });
         queryClient.invalidateQueries({ queryKey: ['/api/ratings/given'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/ratings/by-user'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/ratings/summary'] });
-        
+
         toast({
-          title: "Rating updated",
-          description: "Your partner rating has been updated successfully.",
+          title: 'Rating Updated',
+          description: 'Your rating has been updated successfully.',
         });
       },
-      onError: (error) => {
+      onError: (error: Error) => {
         toast({
-          title: "Failed to update rating",
-          description: error instanceof Error ? error.message : "An unknown error occurred",
-          variant: "destructive",
+          title: 'Failed to Update Rating',
+          description: error.message,
+          variant: 'destructive',
         });
       },
     });
   };
 
-  // Mutation to delete a rating
+  // Mutation hook to delete a rating
   const useDeleteRating = () => {
     return useMutation({
-      mutationFn: async (id: number) => {
-        const res = await apiRequest('DELETE', `/api/ratings/${id}`);
-        return res.json();
+      mutationFn: async (ratingId: number) => {
+        const response = await apiRequest('DELETE', `/api/ratings/${ratingId}`);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to delete rating');
+        }
+        return { id: ratingId };
       },
-      onSuccess: () => {
-        // Invalidate all ratings queries to ensure latest data
+      onSuccess: (_, ratingId) => {
+        // We need to invalidate all rating queries since we don't know the user ID
+        queryClient.invalidateQueries({ queryKey: ['/api/ratings'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/ratings/summary'] });
         queryClient.invalidateQueries({ queryKey: ['/api/ratings/received'] });
         queryClient.invalidateQueries({ queryKey: ['/api/ratings/given'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/ratings/by-user'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/ratings/summary'] });
-        
+
         toast({
-          title: "Rating deleted",
-          description: "The partner rating has been deleted successfully.",
+          title: 'Rating Deleted',
+          description: 'Your rating has been deleted successfully.',
         });
       },
-      onError: (error) => {
+      onError: (error: Error) => {
         toast({
-          title: "Failed to delete rating",
-          description: error instanceof Error ? error.message : "An unknown error occurred",
-          variant: "destructive",
+          title: 'Failed to Delete Rating',
+          description: error.message,
+          variant: 'destructive',
         });
       },
     });
@@ -173,37 +208,36 @@ export function usePartnerRatings() {
   // Mutation to create demo ratings (for testing)
   const useCreateDemoRatings = () => {
     return useMutation({
-      mutationFn: async (count: number = 10) => {
-        const res = await apiRequest('POST', '/api/ratings/demo', { count });
-        return res.json();
+      mutationFn: async (count: number = 5) => {
+        const response = await apiRequest('POST', '/api/ratings/demo', { count });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to create demo ratings');
+        }
+        return response.json() as Promise<{ success: boolean; count: number }>;
       },
-      onSuccess: (data) => {
-        // Invalidate all ratings queries to ensure latest data
+      onSuccess: () => {
+        // Invalidate all rating queries
+        queryClient.invalidateQueries({ queryKey: ['/api/ratings'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/ratings/summary'] });
         queryClient.invalidateQueries({ queryKey: ['/api/ratings/received'] });
         queryClient.invalidateQueries({ queryKey: ['/api/ratings/given'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/ratings/by-user'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/ratings/summary'] });
-        
-        toast({
-          title: "Demo ratings created",
-          description: `Created ${data.count} demo ratings successfully.`,
-        });
       },
-      onError: (error) => {
+      onError: (error: Error) => {
         toast({
-          title: "Failed to create demo ratings",
-          description: error instanceof Error ? error.message : "An unknown error occurred",
-          variant: "destructive",
+          title: 'Failed to Create Demo Ratings',
+          description: error.message,
+          variant: 'destructive',
         });
       },
     });
   };
 
   return {
-    useReceivedRatings,
-    useGivenRatings,
     useUserRatings,
     useRatingSummary,
+    useReceivedRatings,
+    useGivenRatings,
     useCreateRating,
     useUpdateRating,
     useDeleteRating,
