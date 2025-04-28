@@ -766,6 +766,52 @@ export type InsertUserStreak = z.infer<typeof insertUserStreakSchema>;
 export type InsertWorkoutBattle = z.infer<typeof insertWorkoutBattleSchema>;
 export type InsertBattlePerformance = z.infer<typeof insertBattlePerformanceSchema>;
 
+// Partner Ratings & Testimonials
+export const partnerRatings = pgTable("partner_ratings", {
+  id: serial("id").primaryKey(),
+  raterId: integer("rater_id").notNull().references(() => users.id),
+  ratedUserId: integer("rated_user_id").notNull().references(() => users.id),
+  workoutId: integer("workout_id").references(() => workoutCheckins.id),
+  meetupId: integer("meetup_id").references(() => scheduledMeetups.id),
+  rating: integer("rating").notNull(), // 1-5 star rating
+  feedback: text("feedback"), // Optional written testimonial/feedback
+  isProfessional: boolean("is_professional").notNull().default(false), // Indicates workout form/technique feedback
+  isReliable: boolean("is_reliable").notNull().default(false), // Shows up on time, keeps commitments
+  isMotivating: boolean("is_motivating").notNull().default(false), // Encourages good performance
+  isPublic: boolean("is_public").notNull().default(true), // Whether this review should be visible to others
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// User Rating Summary - denormalized for performance
+export const userRatingSummaries = pgTable("user_rating_summaries", {
+  userId: integer("user_id").primaryKey().references(() => users.id),
+  totalRatings: integer("total_ratings").notNull().default(0),
+  averageRating: real("average_rating").notNull().default(0),
+  professionalScore: real("professional_score").notNull().default(0), // % of ratings marked as professional
+  reliabilityScore: real("reliability_score").notNull().default(0), // % of ratings marked as reliable
+  motivationScore: real("motivation_score").notNull().default(0), // % of ratings marked as motivating
+  testimonialCount: integer("testimonial_count").notNull().default(0), // Number of written testimonials
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Insert schemas for ratings
+export const insertPartnerRatingSchema = createInsertSchema(partnerRatings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserRatingSummarySchema = createInsertSchema(userRatingSummaries).omit({
+  updatedAt: true,
+});
+
+// Additional export types for ratings
+export type PartnerRating = typeof partnerRatings.$inferSelect;
+export type InsertPartnerRating = z.infer<typeof insertPartnerRatingSchema>;
+export type UserRatingSummary = typeof userRatingSummaries.$inferSelect;
+export type InsertUserRatingSummary = z.infer<typeof insertUserRatingSummarySchema>;
+
 // Type for WebSocket messages
 export type WebSocketMessage = {
   type: 'message' | 'connection_request' | 'connection_accepted' | 'user_location' | 
