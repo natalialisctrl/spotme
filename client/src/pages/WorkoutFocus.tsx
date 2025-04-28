@@ -2,74 +2,33 @@ import { FC } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { workoutTypes } from "@shared/schema";
 import { Loader2, Calendar, Dumbbell, Trophy, Clock, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import WorkoutFocusSelection from "@/components/workout/WorkoutFocusSelection";
-import { useWorkoutFocus } from "@/context/WorkoutFocusContext";
+import { useWorkoutFocus, workoutTypes } from "@/context/WorkoutFocusContext";
 
 // Workout benefits information
 const workoutBenefits: Record<string, { title: string; benefits: string[] }> = {
-  chest: {
-    title: "Chest Day",
+  upper_body: {
+    title: "Upper Body Day",
     benefits: [
-      "Improves upper body strength",
+      "Improves chest, shoulders, and arm strength",
       "Enhances pushing power",
-      "Develops pectoral muscles",
+      "Develops balanced upper body musculature",
       "Supports better posture",
-      "Increases bench press capacity"
+      "Increases functional strength for daily activities"
     ]
   },
-  arms: {
-    title: "Arms Day",
+  lower_body: {
+    title: "Lower Body Day",
     benefits: [
-      "Builds bicep and tricep strength",
-      "Improves grip strength",
-      "Enhances forearm definition",
-      "Increases pulling power",
-      "Supports functional daily movements"
-    ]
-  },
-  legs: {
-    title: "Legs Day",
-    benefits: [
-      "Builds lower body strength",
+      "Builds leg and glute strength",
       "Improves athletic performance",
-      "Enhances core stability",
+      "Enhances stability and balance",
       "Boosts metabolism",
       "Strengthens joints and ligaments"
-    ]
-  },
-  back: {
-    title: "Back Day",
-    benefits: [
-      "Improves posture",
-      "Reduces risk of back pain",
-      "Increases pulling strength",
-      "Enhances overall body stability",
-      "Supports better spinal alignment"
-    ]
-  },
-  shoulders: {
-    title: "Shoulders Day",
-    benefits: [
-      "Improves upper body definition",
-      "Enhances overhead pressing power",
-      "Increases shoulder stability",
-      "Supports better posture",
-      "Reduces risk of shoulder injuries"
-    ]
-  },
-  core: {
-    title: "Core Day",
-    benefits: [
-      "Improves body stability and balance",
-      "Enhances all athletic movements",
-      "Supports better posture",
-      "Reduces risk of lower back pain",
-      "Increases functional strength"
     ]
   },
   cardio: {
@@ -80,6 +39,16 @@ const workoutBenefits: Record<string, { title: string; benefits: string[] }> = {
       "Burns calories efficiently",
       "Reduces stress",
       "Enhances recovery between strength workouts"
+    ]
+  },
+  core: {
+    title: "Core Day",
+    benefits: [
+      "Improves body stability and balance",
+      "Enhances all athletic movements",
+      "Supports better posture",
+      "Reduces risk of lower back pain",
+      "Increases functional strength"
     ]
   },
   full_body: {
@@ -96,13 +65,10 @@ const workoutBenefits: Record<string, { title: string; benefits: string[] }> = {
 
 // Recommended exercise templates
 const recommendedExercises: Record<string, string[]> = {
-  chest: ["Bench Press", "Incline Dumbbell Press", "Push-Ups", "Chest Flyes", "Cable Crossovers"],
-  arms: ["Bicep Curls", "Tricep Extensions", "Hammer Curls", "Skull Crushers", "Forearm Curls"],
-  legs: ["Squats", "Deadlifts", "Lunges", "Leg Press", "Calf Raises"],
-  back: ["Pull-Ups", "Rows", "Lat Pulldowns", "Face Pulls", "Back Extensions"],
-  shoulders: ["Overhead Press", "Lateral Raises", "Front Raises", "Reverse Flyes", "Shrugs"],
-  core: ["Planks", "Russian Twists", "Leg Raises", "Ab Rollouts", "Mountain Climbers"],
+  upper_body: ["Bench Press", "Overhead Press", "Push-Ups", "Rows", "Pull-Ups"],
+  lower_body: ["Squats", "Deadlifts", "Lunges", "Leg Press", "Calf Raises"],
   cardio: ["Running", "Cycling", "Jump Rope", "Stair Climbing", "HIIT Intervals"],
+  core: ["Planks", "Russian Twists", "Leg Raises", "Ab Rollouts", "Mountain Climbers"],
   full_body: ["Burpees", "Thrusters", "Kettlebell Swings", "Turkish Get-Ups", "Mountain Climbers"]
 };
 
