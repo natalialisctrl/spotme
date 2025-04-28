@@ -1,16 +1,14 @@
-import { FC, useState, useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FC } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { workoutTypes, WorkoutFocus, DailyWorkoutFocus } from "@shared/schema";
+import { workoutTypes } from "@shared/schema";
 import { Loader2, Calendar, Dumbbell, Trophy, Clock, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { apiRequest } from "@/lib/queryClient";
-import WorkoutSelection from "@/components/workout/WorkoutSelection";
+import WorkoutFocusSelection from "@/components/workout/WorkoutFocusSelection";
+import { useWorkoutFocus } from "@/context/WorkoutFocusContext";
 
 // Workout benefits information
 const workoutBenefits: Record<string, { title: string; benefits: string[] }> = {
@@ -110,31 +108,8 @@ const recommendedExercises: Record<string, string[]> = {
 
 const WorkoutFocusPage: FC = () => {
   const { user, isLoading: authLoading } = useAuth();
-  const [selectedWorkout, setSelectedWorkout] = useState<string | null>(null);
   const [, navigate] = useLocation();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  
-  // Get current workout focus - We're leaving this query here even though WorkoutSelection has it too
-  // because we use the selected workout value in the rest of the page
-  const { data: currentWorkoutFocus, isLoading: isLoadingWorkout } = useQuery<WorkoutFocus | DailyWorkoutFocus>({
-    queryKey: ['/api/workout-focus'],
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
-  
-  // Initialize selected workout from current focus when data is loaded
-  useEffect(() => {
-    if (currentWorkoutFocus) {
-      // Handle both WorkoutFocus and DailyWorkoutFocus schema formats
-      // @ts-ignore - handle both schema formats
-      const workoutType = currentWorkoutFocus.workoutType;
-      
-      if (workoutType && workoutTypes.includes(workoutType as any)) {
-        setSelectedWorkout(workoutType);
-      }
-    }
-  }, [currentWorkoutFocus]);
+  const { currentWorkout, isLoading: isLoadingWorkout } = useWorkoutFocus();
 
   const handleFindPartners = () => {
     navigate("/");
@@ -167,7 +142,7 @@ const WorkoutFocusPage: FC = () => {
             <Calendar className="w-4 h-4 mr-1" /> {formattedDate}
           </p>
         </div>
-        {selectedWorkout && (
+        {currentWorkout && (
           <Button 
             onClick={handleFindPartners} 
             className="flex items-center gap-2"
@@ -186,22 +161,12 @@ const WorkoutFocusPage: FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Use the shared WorkoutSelection component instead of duplicating the UI */}
-          <WorkoutSelection 
-            onSelectWorkout={(workoutType) => {
-              setSelectedWorkout(workoutType);
-              
-              // Show success toast
-              toast({
-                title: "Workout focus updated!",
-                description: `You've set your focus for today to ${workoutType.charAt(0).toUpperCase() + workoutType.slice(1).replace('_', ' ')}.`,
-              });
-            }} 
-          />
+          {/* Use our new WorkoutFocusSelection component that uses the shared context */}
+          <WorkoutFocusSelection />
         </CardContent>
       </Card>
 
-      {selectedWorkout && (
+      {currentWorkout && (
         <Tabs defaultValue="info" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="info">Workout Info</TabsTrigger>
@@ -215,10 +180,10 @@ const WorkoutFocusPage: FC = () => {
                 <div className="flex justify-between items-center">
                   <CardTitle className="flex items-center gap-2">
                     <Dumbbell className="h-6 w-6" />
-                    {workoutBenefits[selectedWorkout]?.title || "Workout Details"}
+                    {currentWorkout ? workoutBenefits[currentWorkout]?.title || "Workout Details" : "Workout Details"}
                   </CardTitle>
                   <Badge variant="secondary" className="text-sm">
-                    {selectedWorkout.charAt(0).toUpperCase() + selectedWorkout.slice(1).replace('_', ' ')}
+                    {currentWorkout ? currentWorkout.charAt(0).toUpperCase() + currentWorkout.slice(1).replace('_', ' ') : ""}
                   </Badge>
                 </div>
                 <CardDescription>
@@ -232,7 +197,7 @@ const WorkoutFocusPage: FC = () => {
                       <Trophy className="h-5 w-5 text-primary" /> Benefits
                     </h3>
                     <ul className="list-disc pl-5 space-y-1">
-                      {workoutBenefits[selectedWorkout]?.benefits.map((benefit, index) => (
+                      {currentWorkout && workoutBenefits[currentWorkout]?.benefits.map((benefit, index) => (
                         <li key={index}>{benefit}</li>
                       ))}
                     </ul>
@@ -242,7 +207,7 @@ const WorkoutFocusPage: FC = () => {
                     <h3 className="font-medium text-lg mb-2 flex items-center gap-2">
                       <Clock className="h-5 w-5 text-primary" /> Ideal Training Frequency
                     </h3>
-                    <p>For optimal results, train {selectedWorkout === 'full_body' ? '2-3 times per week with rest days in between' : '1-2 times per week with 48-72 hours recovery between sessions'}.</p>
+                    <p>For optimal results, train {currentWorkout === 'full_body' ? '2-3 times per week with rest days in between' : '1-2 times per week with 48-72 hours recovery between sessions'}.</p>
                   </div>
                 </div>
               </CardContent>
@@ -254,12 +219,12 @@ const WorkoutFocusPage: FC = () => {
               <CardHeader>
                 <CardTitle>Recommended Exercises</CardTitle>
                 <CardDescription>
-                  A selection of effective exercises for your {selectedWorkout.replace('_', ' ')} workout
+                  A selection of effective exercises for your {currentWorkout ? currentWorkout.replace('_', ' ') : ""} workout
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {recommendedExercises[selectedWorkout]?.map((exercise, index) => (
+                  {currentWorkout && recommendedExercises[currentWorkout]?.map((exercise, index) => (
                     <div key={index} className="flex items-center p-3 border rounded-lg">
                       <div className="bg-primary/10 p-2 rounded-full mr-3">
                         <Dumbbell className="h-5 w-5 text-primary" />

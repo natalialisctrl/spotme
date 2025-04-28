@@ -26,6 +26,7 @@ import WorkoutRecommendations from "@/pages/WorkoutRecommendations"; // Import w
 import { ChallengeDetail } from "@/components/challenges/ChallengeDetail"; // Import challenge detail component
 import AuthPage from "@/pages/AuthPage";
 import { Loader2 } from "lucide-react";
+import { WorkoutFocusProvider } from "@/context/WorkoutFocusContext"; // Import the workout focus context
 
 function HomePage() {
   return <FindPartners />;
@@ -172,10 +173,10 @@ function Router() {
 
 function App() {
   return (
-    <>
+    <WorkoutFocusProvider>
       <Router />
       <Toaster />
-    </>
+    </WorkoutFocusProvider>
   );
 }
 
