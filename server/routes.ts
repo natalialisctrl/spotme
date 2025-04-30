@@ -32,6 +32,7 @@ import { setupBattleRoutes } from "./routes/battleRoutes";
 import workoutRoutes from "./routes/workoutRoutes";
 import gymVerificationRoutes from "./routes/gymVerification";
 import spotifyRoutes from "./routes/spotifyRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
 
 import express from 'express';
 

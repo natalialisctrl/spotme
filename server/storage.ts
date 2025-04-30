@@ -855,6 +855,23 @@ export class MemStorage implements IStorage {
     const id = this.currentConnectionRequestId++;
     const newRequest: ConnectionRequest = { ...request, id };
     this.connectionRequests.set(id, newRequest);
+
+    // Create a notification for the connection request recipient
+    const sender = await this.getUser(request.senderId);
+    if (sender) {
+      await this.createNotification({
+        userId: request.receiverId,
+        type: 'new_connection_request',
+        title: 'New Connection Request',
+        message: `${sender.name} would like to connect with you`,
+        read: false,
+        actionLink: '/connections',
+        relatedEntityId: id,
+        relatedEntityType: 'connection_request',
+        metadata: { senderId: request.senderId }
+      });
+    }
+    
     return newRequest;
   }
 
@@ -878,6 +895,25 @@ export class MemStorage implements IStorage {
     
     const updatedRequest = { ...request, status };
     this.connectionRequests.set(id, updatedRequest);
+    
+    // If the connection request is accepted, create a notification for the sender
+    if (status === 'accepted') {
+      const receiver = await this.getUser(request.receiverId);
+      if (receiver) {
+        await this.createNotification({
+          userId: request.senderId,
+          type: 'connection_request_accepted',
+          title: 'Connection Request Accepted',
+          message: `${receiver.name} has accepted your connection request`,
+          read: false,
+          actionLink: '/connections',
+          relatedEntityId: id,
+          relatedEntityType: 'connection_request',
+          metadata: { receiverId: request.receiverId }
+        });
+      }
+    }
+    
     return updatedRequest;
   }
 
@@ -913,6 +949,35 @@ export class MemStorage implements IStorage {
     const id = this.currentMessageId++;
     const newMessage: Message = { ...message, id };
     this.messages.set(id, newMessage);
+
+    // Create a notification for the recipient
+    // First, determine the recipient ID from the connection
+    const connection = await this.getConnection(message.connectionId);
+    if (connection) {
+      const recipientId = connection.user1Id === message.senderId 
+        ? connection.user2Id 
+        : connection.user1Id;
+      
+      const sender = await this.getUser(message.senderId);
+      if (sender) {
+        await this.createNotification({
+          userId: recipientId,
+          type: 'new_message',
+          title: 'New Message',
+          message: `${sender.name} sent you a new message`,
+          read: false,
+          actionLink: '/messages',
+          relatedEntityId: id,
+          relatedEntityType: 'message',
+          metadata: { 
+            connectionId: message.connectionId,
+            senderId: message.senderId,
+            preview: message.content.substring(0, 50) + (message.content.length > 50 ? '...' : '')
+          }
+        });
+      }
+    }
+    
     return newMessage;
   }
 
@@ -2576,6 +2641,187 @@ export class MemStorage implements IStorage {
     }
     
     return ratings;
+  }
+
+  // Notification operations
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const newNotification: Notification = {
+      id: this.currentNotificationId++,
+      userId: notification.userId,
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      read: notification.read || false,
+      actionLink: notification.actionLink || null,
+      relatedEntityId: notification.relatedEntityId || null,
+      relatedEntityType: notification.relatedEntityType || null,
+      metadata: notification.metadata || null,
+      createdAt: new Date(),
+      readAt: null,
+      expiresAt: notification.expiresAt || null
+    };
+    
+    this.notifications.set(newNotification.id, newNotification);
+    
+    return newNotification;
+  }
+  
+  async getNotification(id: number): Promise<Notification | undefined> {
+    return this.notifications.get(id);
+  }
+  
+  async getUserNotifications(userId: number): Promise<Notification[]> {
+    const results: Notification[] = [];
+    
+    for (const notification of this.notifications.values()) {
+      if (notification.userId === userId) {
+        results.push(notification);
+      }
+    }
+    
+    // Sort by creation date (newest first)
+    return results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  
+  async getUserUnreadNotifications(userId: number): Promise<Notification[]> {
+    const results: Notification[] = [];
+    
+    for (const notification of this.notifications.values()) {
+      if (notification.userId === userId && !notification.read) {
+        results.push(notification);
+      }
+    }
+    
+    // Sort by creation date (newest first)
+    return results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  
+  async markNotificationAsRead(id: number): Promise<Notification | undefined> {
+    const notification = this.notifications.get(id);
+    if (!notification) return undefined;
+    
+    const updatedNotification: Notification = {
+      ...notification,
+      read: true,
+      readAt: new Date()
+    };
+    
+    this.notifications.set(id, updatedNotification);
+    
+    return updatedNotification;
+  }
+  
+  async markAllNotificationsAsRead(userId: number): Promise<void> {
+    for (const [id, notification] of this.notifications.entries()) {
+      if (notification.userId === userId && !notification.read) {
+        this.notifications.set(id, {
+          ...notification,
+          read: true,
+          readAt: new Date()
+        });
+      }
+    }
+  }
+  
+  async deleteNotification(id: number): Promise<boolean> {
+    return this.notifications.delete(id);
+  }
+  
+  // Notification preferences operations
+  async getNotificationPreference(userId: number, type: string): Promise<NotificationPreference | undefined> {
+    for (const pref of this.notificationPreferences.values()) {
+      if (pref.userId === userId && pref.type === type) {
+        return pref;
+      }
+    }
+    
+    return undefined;
+  }
+  
+  async getUserNotificationPreferences(userId: number): Promise<NotificationPreference[]> {
+    const results: NotificationPreference[] = [];
+    
+    for (const pref of this.notificationPreferences.values()) {
+      if (pref.userId === userId) {
+        results.push(pref);
+      }
+    }
+    
+    return results;
+  }
+  
+  async updateNotificationPreference(
+    userId: number, 
+    type: string, 
+    enabled: boolean, 
+    emailEnabled: boolean, 
+    pushEnabled: boolean
+  ): Promise<NotificationPreference | undefined> {
+    let preference: NotificationPreference | undefined;
+    
+    // Find the existing preference
+    for (const pref of this.notificationPreferences.values()) {
+      if (pref.userId === userId && pref.type === type) {
+        preference = pref;
+        break;
+      }
+    }
+    
+    if (preference) {
+      // Update existing preference
+      const updatedPreference: NotificationPreference = {
+        ...preference,
+        enabled,
+        emailEnabled,
+        pushEnabled,
+        updatedAt: new Date()
+      };
+      
+      this.notificationPreferences.set(preference.id, updatedPreference);
+      return updatedPreference;
+    }
+    
+    // Create a new preference
+    const newPreference: NotificationPreference = {
+      id: this.currentNotificationPreferenceId++,
+      userId,
+      type,
+      enabled,
+      emailEnabled,
+      pushEnabled,
+      updatedAt: new Date()
+    };
+    
+    this.notificationPreferences.set(newPreference.id, newPreference);
+    return newPreference;
+  }
+  
+  async createDefaultNotificationPreferences(userId: number): Promise<NotificationPreference[]> {
+    const preferences: NotificationPreference[] = [];
+    
+    // Using notificationTypes from schema
+    const notificationTypes = [
+      'new_connection_request',
+      'connection_request_accepted',
+      'new_message',
+      'workout_invitation',
+      'workout_reminder',
+      'challenge_invitation',
+      'challenge_completed',
+      'achievement_earned',
+      'partner_rating_received',
+      'workout_streak_milestone',
+      'gym_traffic_alert'
+    ];
+    
+    for (const type of notificationTypes) {
+      const preference = await this.updateNotificationPreference(userId, type, true, true, true);
+      if (preference) {
+        preferences.push(preference);
+      }
+    }
+    
+    return preferences;
   }
 }
 
