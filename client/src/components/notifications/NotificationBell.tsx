@@ -12,10 +12,10 @@ import {
 import { useNotifications } from '@/hooks/use-notifications';
 import { NotificationItem } from './NotificationItem';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 
 export function NotificationBell() {
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
   const {
     unreadNotifications,
     isLoadingUnread,

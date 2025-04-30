@@ -1,4 +1,4 @@
-import { useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 import { Card } from '@/components/ui/card';
 import { formatDistanceToNow } from 'date-fns';
 import { Notification, useNotifications } from '@/hooks/use-notifications';
@@ -11,7 +11,7 @@ interface NotificationItemProps {
 }
 
 export function NotificationItem({ notification, detailed = false }: NotificationItemProps) {
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
   const { markAsRead, deleteNotification } = useNotifications();
   
   const handleClick = () => {

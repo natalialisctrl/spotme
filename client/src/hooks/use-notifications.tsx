@@ -29,7 +29,10 @@ export function useNotifications() {
     refetch: refetchNotifications,
   } = useQuery<Notification[]>({
     queryKey: ['/api/notifications'],
-    queryFn: getQueryFn(),
+    queryFn: getQueryFn({
+      on401: 'return',
+      on404: 'returnEmptyArray',
+    }),
   });
 
   // Get unread notifications
@@ -40,7 +43,10 @@ export function useNotifications() {
     refetch: refetchUnread,
   } = useQuery<Notification[]>({
     queryKey: ['/api/notifications/unread'],
-    queryFn: getQueryFn(),
+    queryFn: getQueryFn({
+      on401: 'return',
+      on404: 'returnEmptyArray',
+    }),
   });
 
   // Get notification preferences
@@ -51,7 +57,10 @@ export function useNotifications() {
     refetch: refetchPreferences,
   } = useQuery({
     queryKey: ['/api/notifications/preferences'],
-    queryFn: getQueryFn(),
+    queryFn: getQueryFn({
+      on401: 'return',
+      on404: 'returnEmptyArray',
+    }),
   });
 
   // Mark notification as read

@@ -163,6 +163,7 @@ function Router() {
         <Route path="/challenges/:id" component={ChallengeDetailPage} />
         <Route path="/achievements" component={AchievementsPage} />
         <Route path="/partner-ratings" component={PartnerRatingsPage} />
+        <Route path="/notifications" component={Notifications} />
 
         <Route path="/workout-recommendations" component={WorkoutRecommendationsPage} />
         <Route path="/music-sharing" component={MusicSharingPage} />
