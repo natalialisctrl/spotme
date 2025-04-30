@@ -6,7 +6,7 @@ import { notifications, notificationTypes, insertNotificationSchema } from '@sha
  * Middleware to ensure the user is authenticated
  */
 function isAuthenticated(req: Request, res: Response, next: NextFunction) {
-  if (!req.session.userId) {
+  if (!req.isAuthenticated()) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
   next();
