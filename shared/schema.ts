@@ -812,6 +812,71 @@ export type InsertPartnerRating = z.infer<typeof insertPartnerRatingSchema>;
 export type UserRatingSummary = typeof userRatingSummaries.$inferSelect;
 export type InsertUserRatingSummary = z.infer<typeof insertUserRatingSummarySchema>;
 
+// Notification types
+export const notificationTypes = [
+  'new_connection_request',
+  'connection_request_accepted',
+  'new_message',
+  'workout_invitation',
+  'workout_reminder',
+  'challenge_invitation',
+  'challenge_completed',
+  'achievement_earned',
+  'partner_rating_received',
+  'workout_streak_milestone',
+  'gym_traffic_alert'
+] as const;
+
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(), // One of notificationTypes
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  read: boolean("read").notNull().default(false),
+  actionLink: text("action_link"), // Optional link to navigate when notification is clicked
+  relatedEntityId: integer("related_entity_id"), // ID of related entity (user, challenge, etc.)
+  relatedEntityType: text("related_entity_type"), // Type of the related entity
+  metadata: jsonb("metadata"), // Additional custom data
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  readAt: timestamp("read_at"),
+  expiresAt: timestamp("expires_at"), // Optional expiration time
+});
+
+// Notification preferences
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(), // One of notificationTypes
+  enabled: boolean("enabled").notNull().default(true),
+  emailEnabled: boolean("email_enabled").notNull().default(true),
+  pushEnabled: boolean("push_enabled").notNull().default(true),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+  return {
+    uniqueUserPref: primaryKey({ columns: [table.userId, table.type] })
+  };
+});
+
+// Insert schemas for notifications
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+  readAt: true
+});
+
+export const insertNotificationPreferenceSchema = createInsertSchema(notificationPreferences).omit({
+  id: true,
+  updatedAt: true
+});
+
+// Export types for notifications
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type InsertNotificationPreference = z.infer<typeof insertNotificationPreferenceSchema>;
+
 // Type for WebSocket messages
 export type WebSocketMessage = {
   type: 'message' | 'connection_request' | 'connection_accepted' | 'user_location' | 
@@ -823,7 +888,7 @@ export type WebSocketMessage = {
         'workout_checkin' | 'partner_workout_completed' |
         'battle_invitation' | 'battle_accepted' | 'battle_declined' | 'battle_started' | 
         'battle_countdown' | 'battle_rep_update' | 'battle_completed' | 'battle_cancelled' |
-        'quick_challenge_nearby';
+        'quick_challenge_nearby' | 'notification' | 'notification_read' | 'notification_cleared';
   senderId: number;
   receiverId?: number;
   data: any;

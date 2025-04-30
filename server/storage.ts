@@ -9,7 +9,8 @@ import {
   ProgressEntry, InsertProgressEntry, ChallengeComment, InsertChallengeComment,
   SpotifyConnection, InsertSpotifyConnection, WorkoutPlaylist, InsertWorkoutPlaylist,
   SharedPlaylist, InsertSharedPlaylist, GymTraffic, InsertGymTraffic, GymTrafficQuery,
-  PartnerRating, InsertPartnerRating, UserRatingSummary, InsertUserRatingSummary
+  PartnerRating, InsertPartnerRating, UserRatingSummary, InsertUserRatingSummary,
+  Notification, InsertNotification, NotificationPreference, InsertNotificationPreference
 } from "@shared/schema";
 
 // Interface for storage operations
