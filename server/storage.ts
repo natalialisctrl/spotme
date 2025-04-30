@@ -176,6 +176,21 @@ export interface IStorage {
   getUserRatingSummary(userId: number): Promise<UserRatingSummary | undefined>;
   updateUserRatingSummary(userId: number): Promise<UserRatingSummary | undefined>;
   
+  // Notification operations
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getNotification(id: number): Promise<Notification | undefined>;
+  getUserNotifications(userId: number): Promise<Notification[]>;
+  getUserUnreadNotifications(userId: number): Promise<Notification[]>;
+  markNotificationAsRead(id: number): Promise<Notification | undefined>;
+  markAllNotificationsAsRead(userId: number): Promise<void>;
+  deleteNotification(id: number): Promise<boolean>;
+  
+  // Notification preferences operations
+  getNotificationPreference(userId: number, type: string): Promise<NotificationPreference | undefined>;
+  getUserNotificationPreferences(userId: number): Promise<NotificationPreference[]>;
+  updateNotificationPreference(userId: number, type: string, enabled: boolean, emailEnabled: boolean, pushEnabled: boolean): Promise<NotificationPreference | undefined>;
+  createDefaultNotificationPreferences(userId: number): Promise<NotificationPreference[]>;
+  
   // Demo data generation
   createDemoUsers(count?: number): Promise<User[]>;
   createDemoChallenges(count?: number, creatorId?: number, friendIds?: number[]): Promise<Challenge[]>;
@@ -207,6 +222,8 @@ export class MemStorage implements IStorage {
   private gymTraffic: Map<number, GymTraffic>;
   private partnerRatings: Map<number, PartnerRating>;
   private userRatingSummaries: Map<number, UserRatingSummary>;
+  private notifications: Map<number, Notification>;
+  private notificationPreferences: Map<number, NotificationPreference>;
   
   // Store a reference to the main user to ensure persistence across restarts
   private nataliaUser: User;
@@ -231,6 +248,8 @@ export class MemStorage implements IStorage {
   private currentGymTrafficId: number;
   private currentPartnerRatingId: number;
   private currentUserRatingSummaryId: number;
+  private currentNotificationId: number;
+  private currentNotificationPreferenceId: number;
 
   sessionStore: any; // Using 'any' to avoid TypeScript errors
 
@@ -300,6 +319,8 @@ export class MemStorage implements IStorage {
     this.gymTraffic = new Map();
     this.partnerRatings = new Map();
     this.userRatingSummaries = new Map();
+    this.notifications = new Map();
+    this.notificationPreferences = new Map();
     
     this.currentUserId = 1;
     this.currentWorkoutFocusId = 1;
@@ -321,6 +342,8 @@ export class MemStorage implements IStorage {
     this.currentGymTrafficId = 1;
     this.currentPartnerRatingId = 1;
     this.currentUserRatingSummaryId = 1;
+    this.currentNotificationId = 1;
+    this.currentNotificationPreferenceId = 1;
     
     // Create a memory session store
     const MemoryStore = createMemoryStore(session);
