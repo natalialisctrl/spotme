@@ -197,6 +197,28 @@ export interface IStorage {
   createDemoRatings(count?: number): Promise<PartnerRating[]>;
   
   // Session storage
+  // Notification operations
+  getNotifications(userId: number): Promise<Notification[]>;
+  getUnreadNotifications(userId: number): Promise<Notification[]>;
+  getNotification(id: number): Promise<Notification | undefined>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: number): Promise<Notification | undefined>;
+  markAllNotificationsAsRead(userId: number): Promise<void>;
+  deleteNotification(id: number): Promise<boolean>;
+  
+  // Notification preferences operations
+  getNotificationPreferences(userId: number): Promise<NotificationPreference[]>;
+  updateNotificationPreference(
+    userId: number, 
+    type: string, 
+    preferences: {
+      enabled: boolean;
+      emailEnabled: boolean;
+      pushEnabled: boolean;
+    }
+  ): Promise<NotificationPreference>;
+  initializeNotificationPreferences(userId: number): Promise<NotificationPreference[]>;
+
   sessionStore: any; // Using 'any' to avoid TypeScript errors with SessionStore
 }
 
@@ -2822,6 +2844,81 @@ export class MemStorage implements IStorage {
     }
     
     return preferences;
+  }
+  
+  // Notification methods implementation
+  async getNotifications(userId: number): Promise<Notification[]> {
+    const userNotifications: Notification[] = [];
+    
+    for (const notification of this.notifications.values()) {
+      if (notification.userId === userId) {
+        userNotifications.push(notification);
+      }
+    }
+    
+    // Sort by creation date, newest first
+    return userNotifications.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+  
+  async getUnreadNotifications(userId: number): Promise<Notification[]> {
+    const notifications = await this.getNotifications(userId);
+    return notifications.filter(notification => !notification.read);
+  }
+  
+  async getNotification(id: number): Promise<Notification | undefined> {
+    return this.notifications.get(id);
+  }
+  
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const now = new Date();
+    
+    const newNotification: Notification = {
+      id: this.currentNotificationId++,
+      ...notification,
+      read: false,
+      createdAt: now,
+      readAt: null,
+    };
+    
+    this.notifications.set(newNotification.id, newNotification);
+    return newNotification;
+  }
+  
+  async markNotificationAsRead(id: number): Promise<Notification | undefined> {
+    const notification = this.notifications.get(id);
+    
+    if (!notification) {
+      return undefined;
+    }
+    
+    const updatedNotification: Notification = {
+      ...notification,
+      read: true,
+      readAt: new Date()
+    };
+    
+    this.notifications.set(id, updatedNotification);
+    return updatedNotification;
+  }
+  
+  async markAllNotificationsAsRead(userId: number): Promise<void> {
+    const now = new Date();
+    
+    for (const [id, notification] of this.notifications.entries()) {
+      if (notification.userId === userId && !notification.read) {
+        this.notifications.set(id, {
+          ...notification,
+          read: true,
+          readAt: now
+        });
+      }
+    }
+  }
+  
+  async deleteNotification(id: number): Promise<boolean> {
+    return this.notifications.delete(id);
   }
 }
 
