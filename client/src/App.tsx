@@ -21,6 +21,7 @@ import Achievements from "@/pages/Achievements"; // Import achievements page
 import MusicSharing from "@/pages/MusicSharing"; // Import music sharing page
 import SpotifyCallback from "@/pages/SpotifyCallback"; // Import Spotify callback page
 import PartnerRatings from "@/pages/PartnerRatings"; // Import partner ratings page
+import Notifications from "@/pages/Notifications"; // Import notifications page
 
 import WorkoutRecommendations from "@/pages/WorkoutRecommendations"; // Import workout recommendations page
 

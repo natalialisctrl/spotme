@@ -96,6 +96,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up Spotify routes
   app.use('/api/spotify', spotifyRoutes);
   
+  // Set up notification routes
+  app.use('/api/notifications', notificationRoutes);
+  
   // Partner Ratings routes
   app.post('/api/ratings', async (req, res) => {
     try {
