@@ -30,7 +30,7 @@ export function useNotifications() {
   } = useQuery<Notification[]>({
     queryKey: ['/api/notifications'],
     queryFn: getQueryFn({
-      on401: 'return',
+      on401: 'returnNull',
       on404: 'returnEmptyArray',
     }),
   });
@@ -44,7 +44,7 @@ export function useNotifications() {
   } = useQuery<Notification[]>({
     queryKey: ['/api/notifications/unread'],
     queryFn: getQueryFn({
-      on401: 'return',
+      on401: 'returnNull',
       on404: 'returnEmptyArray',
     }),
   });
@@ -58,7 +58,7 @@ export function useNotifications() {
   } = useQuery({
     queryKey: ['/api/notifications/preferences'],
     queryFn: getQueryFn({
-      on401: 'return',
+      on401: 'returnNull',
       on404: 'returnEmptyArray',
     }),
   });
