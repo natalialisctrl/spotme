@@ -7,6 +7,14 @@ declare module 'express' {
     user?: User;
   }
 }
+
+// Helper function to safely get the authenticated user ID
+function getUserId(req: Request): number {
+  if (!req.user) {
+    throw new Error('User not authenticated');
+  }
+  return req.user.id;
+}
 import { storage } from '../storage';
 import { notifications, notificationTypes, insertNotificationSchema } from '@shared/schema';
 
@@ -27,7 +35,7 @@ export function setupNotificationRoutes(app: Express) {
   // Get all notifications for the current user
   app.get('/api/notifications', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = getUserId(req);
       const userNotifications = await storage.getNotifications(userId);
       res.json(userNotifications);
     } catch (error) {
@@ -39,7 +47,7 @@ export function setupNotificationRoutes(app: Express) {
   // Get unread notifications for the current user
   app.get('/api/notifications/unread', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = getUserId(req);
       const unreadNotifications = await storage.getUnreadNotifications(userId);
       res.json(unreadNotifications);
     } catch (error) {
@@ -51,7 +59,7 @@ export function setupNotificationRoutes(app: Express) {
   // Mark a notification as read
   app.patch('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = getUserId(req);
       const notificationId = parseInt(req.params.id, 10);
       
       // Ensure the notification belongs to the user
@@ -71,7 +79,7 @@ export function setupNotificationRoutes(app: Express) {
   // Mark all notifications as read
   app.post('/api/notifications/mark-all-read', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = getUserId(req);
       await storage.markAllNotificationsAsRead(userId);
       res.json({ success: true });
     } catch (error) {
@@ -83,7 +91,7 @@ export function setupNotificationRoutes(app: Express) {
   // Delete a notification
   app.delete('/api/notifications/:id', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = getUserId(req);
       const notificationId = parseInt(req.params.id, 10);
       
       // Ensure the notification belongs to the user
@@ -103,7 +111,7 @@ export function setupNotificationRoutes(app: Express) {
   // Get notification preferences
   app.get('/api/notifications/preferences', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = getUserId(req);
       const preferences = await storage.getUserNotificationPreferences(userId);
       res.json(preferences);
     } catch (error) {
@@ -115,7 +123,7 @@ export function setupNotificationRoutes(app: Express) {
   // Update notification preference
   app.patch('/api/notifications/preferences/:type', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = getUserId(req);
       const type = req.params.type;
       
       // Validate notification type
@@ -150,7 +158,7 @@ export function setupNotificationRoutes(app: Express) {
   // Initialize notification preferences (default settings for all types)
   app.post('/api/notifications/preferences/initialize', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = getUserId(req);
       await storage.createDefaultNotificationPreferences(userId);
       const preferences = await storage.getUserNotificationPreferences(userId);
       res.json(preferences);
