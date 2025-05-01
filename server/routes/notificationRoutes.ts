@@ -1,4 +1,12 @@
 import { Express, Request, Response, NextFunction } from 'express';
+import type { User } from '@shared/schema';
+
+// Extend Express Request to include the user property
+declare module 'express' {
+  interface Request {
+    user?: User;
+  }
+}
 import { storage } from '../storage';
 import { notifications, notificationTypes, insertNotificationSchema } from '@shared/schema';
 
@@ -6,7 +14,7 @@ import { notifications, notificationTypes, insertNotificationSchema } from '@sha
  * Middleware to ensure the user is authenticated
  */
 function isAuthenticated(req: Request, res: Response, next: NextFunction) {
-  if (!req.isAuthenticated()) {
+  if (!req.isAuthenticated() || !req.user) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
   next();
@@ -127,7 +135,9 @@ export function setupNotificationRoutes(app: Express) {
       const preference = await storage.updateNotificationPreference(
         userId, 
         type, 
-        { enabled, emailEnabled, pushEnabled }
+        enabled,
+        emailEnabled,
+        pushEnabled
       );
       
       res.json(preference);
