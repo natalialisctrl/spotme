@@ -96,7 +96,7 @@ export function setupNotificationRoutes(app: Express) {
   app.get('/api/notifications/preferences', isAuthenticated, async (req, res) => {
     try {
       const userId = req.user.id;
-      const preferences = await storage.getNotificationPreferences(userId);
+      const preferences = await storage.getUserNotificationPreferences(userId);
       res.json(preferences);
     } catch (error) {
       console.error('Error fetching notification preferences:', error);
@@ -140,9 +140,9 @@ export function setupNotificationRoutes(app: Express) {
   // Initialize notification preferences (default settings for all types)
   app.post('/api/notifications/preferences/initialize', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.session.userId!;
-      await storage.initializeNotificationPreferences(userId);
-      const preferences = await storage.getNotificationPreferences(userId);
+      const userId = req.user.id;
+      await storage.createDefaultNotificationPreferences(userId);
+      const preferences = await storage.getUserNotificationPreferences(userId);
       res.json(preferences);
     } catch (error) {
       console.error('Error initializing notification preferences:', error);
