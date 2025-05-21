@@ -96,23 +96,18 @@ function Router() {
   const { user, isLoading, attemptAutoLogin } = useAuth();
   const [autoLoginAttempted, setAutoLoginAttempted] = React.useState(false);
 
-  // On first render, try to automatically log in (for easier testing)
+  // Auto-login is disabled per user request
   React.useEffect(() => {
-    if (!user && !autoLoginAttempted && !isLoading) {
-      const tryAutoLogin = async () => {
-        console.log("Attempting automatic login...");
-        setAutoLoginAttempted(true);
-        await attemptAutoLogin();
-      };
-      tryAutoLogin();
+    if (!autoLoginAttempted) {
+      setAutoLoginAttempted(true);
     }
-  }, [user, autoLoginAttempted, isLoading, attemptAutoLogin]);
+  }, [autoLoginAttempted]);
 
   if (isLoading || (!user && !autoLoginAttempted)) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center">
         <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
-        <p className="text-sm text-gray-500">{!autoLoginAttempted ? "Trying automatic login..." : "Loading your profile..."}</p>
+        <p className="text-sm text-gray-500">Loading...</p>
       </div>
     );
   }
