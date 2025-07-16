@@ -27,7 +27,7 @@ const Sidebar: FC = () => {
   if (!user) return null;
 
   return (
-    <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-64 bg-white border-r border-gray-200 z-30 glow-effect-subtle">
+    <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-64 bg-white border-r border-gray-200 z-30">
       <div className="flex items-center justify-center px-6 py-4 h-16 bg-[#f5f5f5]">
         <Logo size="md" showTagline={true} />
       </div>
