@@ -852,6 +852,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Force regenerate demo users with proper workout focus distribution
+  app.post('/api/demo/force-regenerate', async (req, res) => {
+    try {
+      console.log("Force regenerating demo users with proper workout focus distribution...");
+      
+      // Clear all existing demo users first
+      const allUsers = await storage.getAllUsers();
+      const demoUsers = allUsers.filter(u => u.username.startsWith('demouser'));
+      
+      // Remove existing demo users
+      for (const demoUser of demoUsers) {
+        await storage.deleteUser(demoUser.id);
+      }
+      
+      // Create 25 new demo users (5 for each workout type)
+      const newDemoUsers = await storage.createDemoUsers(25);
+      if (newDemoUsers.length === 0) {
+        return res.status(500).json({ success: false, error: 'Failed to create demo users' });
+      }
+      
+      // Assign workout focuses ensuring each type has exactly 5 users
+      const workoutTypes = ["upper_body", "lower_body", "cardio", "core", "full_body"];
+      
+      for (let i = 0; i < newDemoUsers.length; i++) {
+        const demoUser = newDemoUsers[i];
+        const workoutType = workoutTypes[i % workoutTypes.length];
+        
+        try {
+          await storage.setWorkoutFocus(demoUser.id, workoutType);
+          console.log(`Set ${workoutType} workout focus for demo user ${demoUser.id}`);
+        } catch (error) {
+          console.error(`Failed to set workout focus for user ${demoUser.id}:`, error);
+        }
+      }
+      
+      return res.json({
+        success: true,
+        message: `Created ${newDemoUsers.length} demo users with proper workout focus distribution`,
+        data: {
+          users: newDemoUsers.length,
+          workoutTypes: workoutTypes.length,
+          usersPerWorkoutType: Math.ceil(newDemoUsers.length / workoutTypes.length)
+        }
+      });
+      
+    } catch (error) {
+      console.error("Error force regenerating demo users:", error);
+      return res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+
   // Enhanced demo data initialization with ratings, chats, and connections
   app.post('/api/demo/initialize-enhanced', async (req, res) => {
     try {
@@ -1446,32 +1500,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Assign workout focuses to demo users
       const newDemoUsers = (await storage.getAllUsers()).filter(u => u.username.startsWith('demouser'));
-      const workoutTypes = ["chest", "arms", "legs", "back", "shoulders", "core", "cardio", "full_body"];
+      const workoutTypes = ["upper_body", "lower_body", "cardio", "core", "full_body"];
       const today = new Date();
       today.setHours(0, 0, 0, 0);
         
-      for (const demoUser of newDemoUsers) {
-        // Check if user already has a workout focus for today
-        const existingFocus = await storage.getWorkoutFocus(demoUser.id);
-        const existingFocusIsToday = existingFocus && 
-          new Date(existingFocus.date).toDateString() === today.toDateString();
-          
-          if (!existingFocus || !existingFocusIsToday) {
-            // Assign a random workout type from the list
-            const randomWorkoutType = workoutTypes[Math.floor(Math.random() * workoutTypes.length)];
-            
-            try {
-              await storage.setWorkoutFocusFromObject({
-                userId: demoUser.id,
-                workoutType: randomWorkoutType,
-                date: today
-              });
-              console.log(`Set ${randomWorkoutType} workout focus for demo user ${demoUser.id}`);
-            } catch (error) {
-              console.error(`Failed to set workout focus for user ${demoUser.id}:`, error);
-            }
-          }
+      // Force regenerate workout focuses for ALL demo users to ensure proper distribution
+      for (let i = 0; i < newDemoUsers.length; i++) {
+        const demoUser = newDemoUsers[i];
+        // Ensure each workout type has at least 2 users
+        const workoutType = workoutTypes[i % workoutTypes.length];
+        
+        try {
+          await storage.setWorkoutFocus(demoUser.id, workoutType);
+          console.log(`Set ${workoutType} workout focus for demo user ${demoUser.id}`);
+        } catch (error) {
+          console.error(`Failed to set workout focus for user ${demoUser.id}:`, error);
         }
+      }
       
       // For testing purposes, we'll generate demo data even if location isn't available
       let nearbyUsers;
