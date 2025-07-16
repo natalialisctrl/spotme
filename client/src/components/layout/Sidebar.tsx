@@ -34,7 +34,7 @@ const Sidebar: FC = () => {
       <div className="flex-1 overflow-y-auto bg-[#ffffff] text-[#ffffff]">
         <nav className="px-4 pt-4">
           <div className="space-y-1">
-            <Link href="/" className={`flex items-center px-4 py-3 text-[#fffef9] font-bold hover-pulse ${location === '/' ? 'bg-[#e09980] rounded-lg glow-effect' : 'hover:bg-[#e09980] rounded-lg'}`}>
+            <Link href="/" className="flex items-center px-4 py-3 text-[#fff7d4] font-bold hover-pulse rounded-lg glow-effect bg-[#ffc8b3]">
                 <MapPin className="h-5 w-5 mr-3 text-[#fffef9]" />
                 Find Gym Partners
             </Link>
