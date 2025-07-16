@@ -34,8 +34,8 @@ const Sidebar: FC = () => {
       <div className="flex-1 overflow-y-auto text-[#fafafa] bg-[#c98f8f]">
         <nav className="px-4 pt-4">
           <div className="space-y-1">
-            <Link href="/" className={`flex items-center px-4 py-3 text-gray-700 hover-pulse ${location === '/' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium glow-effect' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
-                <MapPin className="h-5 w-5 mr-3 text-primary" />
+            <Link href="/" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+                <MapPin className="h-5 w-5 mr-3 text-gray-500" />
                 Find Gym Partners
             </Link>
             <Link href="/workout-focus" className="flex items-center px-4 py-3 hover:bg-gray-100 rounded-lg text-[#fff7d4] font-semibold">
@@ -46,7 +46,7 @@ const Sidebar: FC = () => {
                 <Clipboard className="h-5 w-5 mr-3 text-gray-500" />
                 Workout Routines
             </Link>
-            <Link href="/workout-recommendations" className="flex items-center px-4 py-3 rounded-lg font-medium text-[#fff7d4] bg-[#c9938f]">
+            <Link href="/workout-recommendations" className="flex items-center px-4 py-3 bg-gray-100 text-gray-900 rounded-lg font-bold">
                 <Dumbbell className="h-5 w-5 mr-3 text-gray-500" />
                 Workout Recommendations
             </Link>
