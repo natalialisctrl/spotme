@@ -852,6 +852,213 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Enhanced demo data initialization with ratings, chats, and connections
+  app.post('/api/demo/initialize-enhanced', async (req, res) => {
+    try {
+      console.log("Creating enhanced demo data set...");
+      
+      // Check if we have existing demo users
+      const existingUsers = await storage.getAllUsers();
+      const demoUserCount = existingUsers.filter(u => u.username.startsWith('demouser')).length;
+      
+      let demoUsers;
+      if (demoUserCount < 15) {
+        // Create 15 demo users with diverse profiles
+        demoUsers = await storage.createDemoUsers(15);
+      } else {
+        demoUsers = existingUsers.filter(u => u.username.startsWith('demouser')).slice(0, 15);
+      }
+      
+      if (demoUsers.length === 0) {
+        return res.status(500).json({ success: false, error: 'Failed to create demo users' });
+      }
+      
+      // Create varied workout focuses for demo users
+      const workoutTypes = ['upper_body', 'lower_body', 'cardio', 'core', 'full_body'];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      for (const user of demoUsers) {
+        const randomWorkout = workoutTypes[Math.floor(Math.random() * workoutTypes.length)];
+        await storage.setWorkoutFocus(user.id, randomWorkout);
+        console.log(`Set ${randomWorkout} workout focus for demo user ${user.id}`);
+      }
+      
+      // Create connections between demo users
+      const connectionCount = Math.floor(demoUsers.length * 0.6); // 60% connection rate
+      const createdConnections = [];
+      
+      for (let i = 0; i < connectionCount; i++) {
+        const user1 = demoUsers[Math.floor(Math.random() * demoUsers.length)];
+        const user2 = demoUsers[Math.floor(Math.random() * demoUsers.length)];
+        
+        if (user1.id !== user2.id) {
+          try {
+            const connection = await storage.createConnection(user1.id, user2.id);
+            if (connection) {
+              createdConnections.push(connection);
+            }
+          } catch (error) {
+            // Connection might already exist, continue
+          }
+        }
+      }
+      
+      // Create partner ratings
+      const ratingsCount = Math.floor(demoUsers.length * 0.8); // 80% have ratings
+      const createdRatings = [];
+      
+      for (let i = 0; i < ratingsCount; i++) {
+        const rater = demoUsers[Math.floor(Math.random() * demoUsers.length)];
+        const rated = demoUsers[Math.floor(Math.random() * demoUsers.length)];
+        
+        if (rater.id !== rated.id) {
+          try {
+            const rating = await storage.createPartnerRating({
+              raterId: rater.id,
+              ratedUserId: rated.id,
+              rating: Math.floor(Math.random() * 5) + 1, // 1-5 stars
+              feedback: `Great workout partner! ${['Very motivating', 'Reliable and punctual', 'Excellent form', 'Helpful spotter', 'Fun to train with'][Math.floor(Math.random() * 5)]}`,
+              isProfessional: Math.random() > 0.5,
+              isReliable: Math.random() > 0.3,
+              isMotivating: Math.random() > 0.4,
+              isPublic: Math.random() > 0.2
+            });
+            
+            if (rating) {
+              createdRatings.push(rating);
+            }
+          } catch (error) {
+            // Rating might already exist, continue
+          }
+        }
+      }
+      
+      // Create demo messages between connected users
+      const messagesCount = Math.floor(createdConnections.length * 1.5); // 1.5 messages per connection
+      const createdMessages = [];
+      
+      const sampleMessages = [
+        "Hey! Want to hit the gym together today?",
+        "Great workout session yesterday! 💪",
+        "I'm planning a leg day tomorrow, want to join?",
+        "Thanks for spotting me on that bench press!",
+        "What time works best for you this week?",
+        "I found a great new protein shake recipe!",
+        "Ready for our cardio session?",
+        "Let's try that new workout routine we discussed",
+        "How did your workout go today?",
+        "Want to grab a smoothie after our workout?"
+      ];
+      
+      for (let i = 0; i < messagesCount; i++) {
+        const connection = createdConnections[Math.floor(Math.random() * createdConnections.length)];
+        if (connection) {
+          const sender = Math.random() > 0.5 ? connection.userId : connection.friendId;
+          const receiver = sender === connection.userId ? connection.friendId : connection.userId;
+          
+          try {
+            const message = await storage.createMessage({
+              senderId: sender,
+              receiverId: receiver,
+              content: sampleMessages[Math.floor(Math.random() * sampleMessages.length)],
+              messageType: 'text'
+            });
+            
+            if (message) {
+              createdMessages.push(message);
+            }
+          } catch (error) {
+            // Continue if message creation fails
+          }
+        }
+      }
+      
+      // Create demo challenges
+      const challengesCount = 5;
+      const createdChallenges = [];
+      
+      const challengeTypes = [
+        { name: "30-Day Push-Up Challenge", type: "push_ups", goal: 1000, description: "Complete 1000 push-ups in 30 days" },
+        { name: "Weekly Cardio Challenge", type: "cardio_minutes", goal: 300, description: "Complete 300 minutes of cardio this week" },
+        { name: "Strength Training Streak", type: "workout_days", goal: 21, description: "Complete 21 consecutive strength training days" },
+        { name: "Flexibility Focus", type: "stretching_minutes", goal: 150, description: "Complete 150 minutes of stretching this month" },
+        { name: "Distance Running Goal", type: "running_miles", goal: 50, description: "Run 50 miles this month" }
+      ];
+      
+      for (let i = 0; i < challengesCount; i++) {
+        const challenge = challengeTypes[i];
+        const creator = demoUsers[Math.floor(Math.random() * demoUsers.length)];
+        
+        try {
+          const startDate = new Date();
+          startDate.setDate(startDate.getDate() - Math.floor(Math.random() * 10)); // Started 0-10 days ago
+          
+          const endDate = new Date(startDate);
+          endDate.setDate(endDate.getDate() + 30); // 30 day challenge
+          
+          const createdChallenge = await storage.createChallenge({
+            creatorId: creator.id,
+            title: challenge.name,
+            description: challenge.description,
+            challengeType: challenge.type,
+            goalValue: challenge.goal,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            isPublic: true
+          });
+          
+          if (createdChallenge) {
+            createdChallenges.push(createdChallenge);
+            
+            // Add random participants to each challenge
+            const participantCount = Math.floor(Math.random() * 5) + 3; // 3-7 participants
+            for (let j = 0; j < participantCount; j++) {
+              const participant = demoUsers[Math.floor(Math.random() * demoUsers.length)];
+              if (participant.id !== creator.id) {
+                try {
+                  await storage.joinChallenge(createdChallenge.id, participant.id);
+                  
+                  // Add some random progress
+                  const progressValue = Math.floor(Math.random() * (challenge.goal * 0.8));
+                  if (progressValue > 0) {
+                    await storage.updateChallengeProgress(participant.id, progressValue);
+                  }
+                } catch (error) {
+                  // Continue if participant join fails
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error creating challenge:", error);
+        }
+      }
+      
+      return res.json({
+        success: true,
+        data: {
+          users: demoUsers.length,
+          connections: createdConnections.length,
+          ratings: createdRatings.length,
+          messages: createdMessages.length,
+          challenges: createdChallenges.length,
+          loginCredentials: {
+            username: "natalia",
+            password: "liscr12"
+          }
+        }
+      });
+      
+    } catch (error) {
+      console.error("Error creating enhanced demo data:", error);
+      return res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+
   // Reset demo users endpoint to generate new locations
   app.post('/api/demo/reset-users', async (req, res) => {
     try {
@@ -1187,7 +1394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         date: new Date()
       });
       
-      const workoutFocus = await storage.setWorkoutFocus(workoutFocusData);
+      const workoutFocus = await storage.setWorkoutFocusFromObject(workoutFocusData);
       return res.status(201).json(workoutFocus);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -1254,7 +1461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const randomWorkoutType = workoutTypes[Math.floor(Math.random() * workoutTypes.length)];
             
             try {
-              await storage.setWorkoutFocus({
+              await storage.setWorkoutFocusFromObject({
                 userId: demoUser.id,
                 workoutType: randomWorkoutType,
                 date: today

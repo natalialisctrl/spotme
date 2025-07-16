@@ -65,7 +65,7 @@ export const gymChains = [
 
 // Workout types
 export const workoutTypes = [
-  "chest", "arms", "legs", "back", "shoulders", "core", "cardio", "full_body"
+  "upper_body", "lower_body", "cardio", "core", "full_body"
 ] as const;
 
 // Table for user's daily workout focus

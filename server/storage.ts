@@ -849,7 +849,21 @@ export class MemStorage implements IStorage {
     return undefined;
   }
 
-  async setWorkoutFocus(workoutFocus: InsertWorkoutFocus | InsertDailyWorkoutFocus): Promise<WorkoutFocus | DailyWorkoutFocus> {
+  async setWorkoutFocus(userId: number, workoutType: string): Promise<DailyWorkoutFocus> {
+    const id = this.currentDailyWorkoutFocusId++;
+    
+    const newDailyWorkoutFocus: DailyWorkoutFocus = {
+      id,
+      userId,
+      workoutType,
+      date: new Date()
+    };
+    
+    this.dailyWorkoutFocuses.set(id, newDailyWorkoutFocus);
+    return newDailyWorkoutFocus;
+  }
+
+  async setWorkoutFocusFromObject(workoutFocus: InsertWorkoutFocus | InsertDailyWorkoutFocus): Promise<WorkoutFocus | DailyWorkoutFocus> {
     // Check if it's a dailyWorkoutFocus by looking for the workoutType property
     if ('workoutType' in workoutFocus) {
       const id = this.currentDailyWorkoutFocusId++;

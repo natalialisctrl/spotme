@@ -58,18 +58,21 @@ const FindPartners: FC = () => {
   // Create demo data mutation
   const createDemoDataMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', '/api/demo/initialize', {});
+      const res = await apiRequest('POST', '/api/demo/initialize-enhanced', {});
       return await res.json();
     },
     onSuccess: (data) => {
       toast({
-        title: 'Demo Data Created',
-        description: `Created ${data.data.users} users, ${data.data.challenges} challenges, and ${data.data.connections} connections.`,
+        title: 'Enhanced Demo Data Created',
+        description: `Created ${data.data.users} users, ${data.data.connections} connections, ${data.data.ratings} ratings, ${data.data.messages} messages, and ${data.data.challenges} challenges.`,
       });
       // Invalidate all relevant queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/users/nearby'] });
       queryClient.invalidateQueries({ queryKey: ['/api/connections'] });
       queryClient.invalidateQueries({ queryKey: ['/api/challenges'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ratings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/leaderboard'] });
     },
     onError: (error: Error) => {
       toast({
