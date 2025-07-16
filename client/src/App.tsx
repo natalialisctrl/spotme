@@ -172,10 +172,12 @@ function Router() {
 
 function App() {
   return (
-    <WorkoutFocusProvider>
-      <Router />
-      <Toaster />
-    </WorkoutFocusProvider>
+    <div className="app-container">
+      <WorkoutFocusProvider>
+        <Router />
+        <Toaster />
+      </WorkoutFocusProvider>
+    </div>
   );
 }
 

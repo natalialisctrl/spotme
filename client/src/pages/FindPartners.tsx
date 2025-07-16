@@ -137,11 +137,11 @@ const FindPartners: FC = () => {
   // Main dashboard content
   return (
     <div className="space-y-6">
-      <section className="bg-white p-6 rounded-xl shadow-sm">
+      <section className="glass-morphism p-6 rounded-xl shadow-lg floating-element">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome back, {user?.name}</h1>
-            <p className="text-gray-600">Set your workout focus for today and find compatible partners nearby.</p>
+            <h1 className="text-3xl font-bold text-gradient mb-2">Welcome back, {user?.name}</h1>
+            <p className="text-gray-700">Set your workout focus for today and find compatible partners nearby.</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <Link href="/challenges">
@@ -153,7 +153,7 @@ const FindPartners: FC = () => {
             <Button 
               variant="default" 
               size="sm" 
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 glow-effect"
               onClick={() => createDemoDataMutation.mutate()}
               disabled={createDemoDataMutation.isPending}
             >
@@ -173,9 +173,9 @@ const FindPartners: FC = () => {
         </div>
       </section>
       
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="card-gradient rounded-xl shadow-lg p-6 border border-purple-100">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900 mb-2 md:mb-0">Today's Workout Focus</h2>
+          <h2 className="text-xl font-bold text-gradient mb-2 md:mb-0">Today's Workout Focus</h2>
           <Link href="/workout-focus">
             <Button variant="outline" size="sm" className="flex items-center gap-2">
               <Dumbbell className="h-4 w-4" />
@@ -193,9 +193,9 @@ const FindPartners: FC = () => {
           {user?.gymName ? (
             <GymTrafficCard gymName={user.gymName} />
           ) : (
-            <div className="bg-white rounded-xl shadow-sm p-6 h-full flex flex-col justify-center items-center text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Gym Selected</h3>
-              <p className="text-gray-600 mb-4">Add your preferred gym in your profile to see traffic predictions.</p>
+            <div className="glass-morphism rounded-xl shadow-lg p-6 h-full flex flex-col justify-center items-center text-center border border-purple-100">
+              <h3 className="text-lg font-medium text-gradient mb-2">No Gym Selected</h3>
+              <p className="text-gray-700 mb-4">Add your preferred gym in your profile to see traffic predictions.</p>
               <Link href="/profile">
                 <Button variant="outline" size="sm">Update Profile</Button>
               </Link>
@@ -211,13 +211,13 @@ const FindPartners: FC = () => {
               showAllLink={true}
             />
             
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="card-gradient rounded-xl shadow-lg p-6 border border-purple-100 floating-element">
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-xl font-bold text-gradient flex items-center">
                   <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
                   Challenge Spotlight
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-gray-700">
                   Join an active challenge to compete with others and track your progress! Earn points by participating
                   in challenges and reaching your fitness goals.
                 </p>

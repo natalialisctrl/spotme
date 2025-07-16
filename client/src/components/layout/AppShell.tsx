@@ -17,7 +17,7 @@ const AppShell: FC<AppShellProps> = ({ children }) => {
       <Sidebar />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto mt-14 md:mt-0 md:ml-64 bg-gray-100">
+      <main className="flex-1 overflow-y-auto mt-14 md:mt-0 md:ml-64 bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 min-h-screen">
         <div className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
           {children}
         </div>

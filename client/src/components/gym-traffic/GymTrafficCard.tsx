@@ -103,10 +103,10 @@ export default function GymTrafficCard({ gymName }: GymTrafficCardProps) {
   };
   
   return (
-    <Card className="w-full max-w-md shadow-md">
+    <Card className="w-full max-w-md shadow-lg card-gradient border-purple-100">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Gym Traffic</span>
+          <span className="text-gradient">Gym Traffic</span>
           <Button 
             variant="ghost" 
             size="sm"
