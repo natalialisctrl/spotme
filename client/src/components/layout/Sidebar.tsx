@@ -42,11 +42,11 @@ const Sidebar: FC = () => {
                 <Dumbbell className="h-5 w-5 mr-3 text-gray-500" />
                 Workout Focus
             </Link>
-            <Link href="/workout-routines" className="flex items-center px-4 py-3 hover:bg-gray-100 rounded-lg font-medium text-[#fff7d4]">
+            <Link href="/workout-routines" className="flex items-center px-4 py-3 hover:bg-gray-100 rounded-lg font-semibold text-[#fff7d4]">
                 <Clipboard className="h-5 w-5 mr-3 text-gray-500" />
                 Workout Routines
             </Link>
-            <Link href="/workout-recommendations" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/workout-recommendations' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+            <Link href="/workout-recommendations" className="flex items-center px-4 py-3 rounded-lg font-medium text-[#fff7d4] bg-[#c9938f]">
                 <Dumbbell className="h-5 w-5 mr-3 text-gray-500" />
                 Workout Recommendations
             </Link>
