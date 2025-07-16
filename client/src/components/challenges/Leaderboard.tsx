@@ -66,7 +66,7 @@ const Leaderboard: FC<LeaderboardProps> = ({
 
   if (isLoading) {
     return (
-      <Card className={`w-full card-gradient border-purple-100 shadow-lg ${className}`}>
+      <Card className={`w-full card-gradient border-orange-100 shadow-lg ${className}`}>
         <CardHeader className="pb-2">
           <CardTitle className="text-xl flex items-center">
             <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
@@ -82,7 +82,7 @@ const Leaderboard: FC<LeaderboardProps> = ({
 
   if (error || !leaderboardData || leaderboardData.length === 0) {
     return (
-      <Card className={`w-full card-gradient border-purple-100 shadow-lg ${className}`}>
+      <Card className={`w-full card-gradient border-orange-100 shadow-lg ${className}`}>
         <CardHeader className="pb-2">
           <CardTitle className="text-xl flex items-center">
             <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
@@ -102,7 +102,7 @@ const Leaderboard: FC<LeaderboardProps> = ({
   const displayEntries = leaderboardData.slice(0, maxEntries);
 
   return (
-    <Card className={`w-full card-gradient border-purple-100 shadow-lg floating-element ${className}`}>
+    <Card className={`w-full card-gradient border-orange-100 shadow-lg floating-element ${className}`}>
       <CardHeader className="pb-2">
         <CardTitle className="text-xl flex items-center">
           <Trophy className="h-5 w-5 mr-2 text-yellow-500" />

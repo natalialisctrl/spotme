@@ -173,7 +173,7 @@ const FindPartners: FC = () => {
         </div>
       </section>
       
-      <div className="card-gradient rounded-xl shadow-lg p-6 border border-purple-100">
+      <div className="card-gradient rounded-xl shadow-lg p-6 border border-orange-100">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
           <h2 className="text-xl font-bold text-gradient mb-2 md:mb-0">Today's Workout Focus</h2>
           <Link href="/workout-focus">
@@ -193,7 +193,7 @@ const FindPartners: FC = () => {
           {user?.gymName ? (
             <GymTrafficCard gymName={user.gymName} />
           ) : (
-            <div className="glass-morphism rounded-xl shadow-lg p-6 h-full flex flex-col justify-center items-center text-center border border-purple-100">
+            <div className="glass-morphism rounded-xl shadow-lg p-6 h-full flex flex-col justify-center items-center text-center border border-orange-100">
               <h3 className="text-lg font-medium text-gradient mb-2">No Gym Selected</h3>
               <p className="text-gray-700 mb-4">Add your preferred gym in your profile to see traffic predictions.</p>
               <Link href="/profile">
@@ -211,7 +211,7 @@ const FindPartners: FC = () => {
               showAllLink={true}
             />
             
-            <div className="card-gradient rounded-xl shadow-lg p-6 border border-purple-100 floating-element">
+            <div className="card-gradient rounded-xl shadow-lg p-6 border border-orange-100 floating-element">
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-gradient flex items-center">
                   <Trophy className="h-5 w-5 mr-2 text-yellow-500" />

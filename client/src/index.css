@@ -52,8 +52,8 @@
 
 .psychedelic-bg {
   background: linear-gradient(-45deg, 
-    #6366F1, #8B5CF6, #EC4899, #F59E0B, 
-    #10B981, #3B82F6, #8B5CF6, #6366F1);
+    #F97316, #FBBF24, #FB7185, #F59E0B, 
+    #FDE047, #F97316, #FB7185, #FBBF24);
   background-size: 400% 400%;
   animation: gradient-shift 8s ease infinite;
 }
@@ -67,20 +67,20 @@
 }
 
 .glass-morphism {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.4);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(249, 115, 22, 0.2);
 }
 
 .card-gradient {
   background: linear-gradient(135deg, 
-    rgba(99, 102, 241, 0.1) 0%, 
-    rgba(139, 92, 246, 0.1) 50%, 
-    rgba(236, 72, 153, 0.1) 100%);
+    rgba(249, 115, 22, 0.1) 0%, 
+    rgba(251, 191, 36, 0.1) 50%, 
+    rgba(251, 113, 133, 0.1) 100%);
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, #6366F1, #8B5CF6, #EC4899);
+  background: linear-gradient(135deg, #F97316, #FBBF24, #FB7185);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -93,7 +93,7 @@
 
   body {
     @apply font-sans antialiased text-foreground;
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
     min-height: 100vh;
   }
 
@@ -109,9 +109,9 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 40% 80%, rgba(236, 72, 153, 0.1) 0%, transparent 50%);
+    background: radial-gradient(circle at 20% 50%, rgba(249, 115, 22, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(251, 191, 36, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(251, 113, 133, 0.1) 0%, transparent 50%);
     pointer-events: none;
     z-index: -1;
   }
