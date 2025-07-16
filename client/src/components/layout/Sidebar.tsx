@@ -31,7 +31,7 @@ const Sidebar: FC = () => {
       <div className="flex items-center justify-center px-6 py-4 h-16">
         <Logo size="md" showTagline={true} />
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto text-[#fafafa] bg-[#c98f8f]">
         <nav className="px-4 pt-4">
           <div className="space-y-1">
             <Link href="/" className={`flex items-center px-4 py-3 text-gray-700 hover-pulse ${location === '/' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium glow-effect' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
