@@ -27,14 +27,14 @@ const Sidebar: FC = () => {
   if (!user) return null;
 
   return (
-    <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-64 bg-white border-r border-gray-200 z-30">
+    <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-64 bg-white border-r border-gray-200 z-30 glow-effect-subtle">
       <div className="flex items-center justify-center px-6 py-4 h-16">
         <Logo size="md" showTagline={true} />
       </div>
       <div className="flex-1 overflow-y-auto">
         <nav className="px-4 pt-4">
           <div className="space-y-1">
-            <Link href="/" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+            <Link href="/" className={`flex items-center px-4 py-3 text-gray-700 hover-pulse ${location === '/' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium glow-effect' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <MapPin className="h-5 w-5 mr-3 text-primary" />
                 Find Gym Partners
             </Link>
@@ -54,7 +54,7 @@ const Sidebar: FC = () => {
                 <CalendarDays className="h-5 w-5 mr-3 text-gray-500" />
                 Scheduled Meetups
             </Link>
-            <Link href="/messages" className={`flex items-center px-4 py-3 text-gray-700 ${(location === '/messages' || location === '/connections') ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+            <Link href="/messages" className={`flex items-center px-4 py-3 text-gray-700 hover-pulse ${(location === '/messages' || location === '/connections') ? 'bg-gray-100 text-gray-900 rounded-lg font-medium glow-effect' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <MessageSquare className="h-5 w-5 mr-3 text-gray-500" />
                 Messages & Connections
             </Link>
@@ -98,7 +98,7 @@ const Sidebar: FC = () => {
         <Button 
           variant="outline" 
           size="sm" 
-          className="w-full justify-start text-red-600 mt-2" 
+          className="w-full justify-start text-red-600 mt-2 hover-glow" 
           onClick={() => logoutMutation.mutate()}
           disabled={logoutMutation.isPending}
         >

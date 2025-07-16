@@ -238,16 +238,16 @@ const Messages: FC = () => {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-18rem)]">
         {/* Connection list */}
-        <div className="md:col-span-1 bg-gray-50 rounded-xl border overflow-hidden">
+        <div className="md:col-span-1 bg-gray-50 rounded-xl border overflow-hidden glow-effect-subtle hover-lift">
           <div className="p-4 border-b bg-white">
-            <h2 className="text-lg font-semibold">Messages</h2>
+            <h2 className="text-lg font-semibold text-gradient">Messages</h2>
           </div>
           <ScrollArea className="h-[calc(100%-60px)]">
             {connections.map((connection) => (
               <div key={connection.id}>
                 <button
-                  className={`w-full flex items-center space-x-3 p-4 hover:bg-white text-left ${
-                    selectedConnection?.id === connection.id ? 'bg-white border-r-2 border-primary' : ''
+                  className={`w-full flex items-center space-x-3 p-4 hover:bg-white text-left hover-pulse ${
+                    selectedConnection?.id === connection.id ? 'bg-white border-r-2 border-primary glow-effect' : ''
                   }`}
                   onClick={() => setSelectedConnection(connection)}
                 >
@@ -284,7 +284,7 @@ const Messages: FC = () => {
           {selectedConnection ? (
             <ChatInterface connection={selectedConnection} />
           ) : (
-            <div className="flex items-center justify-center h-full bg-white rounded-xl border">
+            <div className="flex items-center justify-center h-full bg-white rounded-xl border glow-effect-subtle hover-lift">
               <div className="text-center p-4">
                 <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                 <h3 className="text-lg font-medium text-gray-700 mb-1">
@@ -305,17 +305,17 @@ const Messages: FC = () => {
     return (
       <div className="space-y-6">
         <Tabs defaultValue="active" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="active">Active Connections</TabsTrigger>
-            <TabsTrigger value="requests">Received Requests</TabsTrigger>
-            <TabsTrigger value="sent">Sent Requests</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 glow-effect-subtle">
+            <TabsTrigger value="active" className="hover-glow">Active Connections</TabsTrigger>
+            <TabsTrigger value="requests" className="hover-glow">Received Requests</TabsTrigger>
+            <TabsTrigger value="sent" className="hover-glow">Sent Requests</TabsTrigger>
           </TabsList>
 
           <TabsContent value="active" className="space-y-4">
             {connections && connections.length > 0 ? (
               <div className="grid gap-4">
                 {connections.map((connection) => (
-                  <Card key={connection.id}>
+                  <Card key={connection.id} className="glow-effect-subtle hover-lift">
                     <CardContent className="flex items-center justify-between p-4">
                       <div className="flex items-center space-x-3">
                         <Avatar className="h-10 w-10 bg-primary text-white">
@@ -332,6 +332,7 @@ const Messages: FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="hover-glow"
                           onClick={() => {
                             setSelectedConnection(connection);
                             setActiveTab("messages");
@@ -342,6 +343,7 @@ const Messages: FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="hover-glow"
                           onClick={() => handleOpenRatingDialog(connection.otherUser.id, connection.otherUser.name)}
                         >
                           <Star className="h-4 w-4 mr-1" />
@@ -369,7 +371,7 @@ const Messages: FC = () => {
             ) : receivedRequests && receivedRequests.length > 0 ? (
               <div className="grid gap-4">
                 {receivedRequests.map((request) => (
-                  <Card key={request.id}>
+                  <Card key={request.id} className="glow-effect-subtle hover-lift">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
@@ -509,24 +511,24 @@ const Messages: FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
-      <div className="bg-white rounded-xl shadow-sm border">
+      <div className="bg-white rounded-xl shadow-sm border glow-effect-subtle hover-lift">
         <div className="p-6 border-b">
-          <h1 className="text-2xl font-bold text-gray-900">Messages & Connections</h1>
+          <h1 className="text-2xl font-bold text-gray-900 text-gradient">Messages & Connections</h1>
           <p className="text-gray-600 mt-1">Chat with your gym partners and manage your connections</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="px-6 pt-6">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="messages" className="flex items-center gap-2">
+            <TabsList className="grid w-full grid-cols-3 glow-effect-subtle">
+              <TabsTrigger value="messages" className="flex items-center gap-2 hover-glow">
                 <MessageSquare className="h-4 w-4" />
                 Messages
               </TabsTrigger>
-              <TabsTrigger value="connections" className="flex items-center gap-2">
+              <TabsTrigger value="connections" className="flex items-center gap-2 hover-glow">
                 <Users className="h-4 w-4" />
                 Connections
               </TabsTrigger>
-              <TabsTrigger value="ratings" className="flex items-center gap-2">
+              <TabsTrigger value="ratings" className="flex items-center gap-2 hover-glow">
                 <Star className="h-4 w-4" />
                 Partner Ratings
               </TabsTrigger>

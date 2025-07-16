@@ -162,7 +162,7 @@ const PartnerCard: FC<PartnerCardProps> = ({ user, distance, currentUser }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden relative">
+    <div className="bg-white rounded-xl shadow-md overflow-hidden relative glow-effect-subtle hover-lift group">
       {/* One-tap connect button that appears on hover */}
       {!connectionSent && !isConnecting && (
         <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -172,7 +172,7 @@ const PartnerCard: FC<PartnerCardProps> = ({ user, distance, currentUser }) => {
                 <Button 
                   size="icon" 
                   variant="secondary"
-                  className="h-10 w-10 rounded-full shadow-md hover:shadow-lg transition-all duration-300"
+                  className="h-10 w-10 rounded-full shadow-md hover:shadow-lg transition-all duration-300 hover-glow"
                   onClick={handleOneTapConnect}
                 >
                   <UserPlus className="h-5 w-5" />
@@ -269,7 +269,7 @@ const PartnerCard: FC<PartnerCardProps> = ({ user, distance, currentUser }) => {
             </div>
             <div>
               <button
-                className={`inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm 
+                className={`inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm hover-glow
                   ${connectionSent 
                     ? 'bg-gray-400 cursor-not-allowed text-white' 
                     : 'text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary'}`}
