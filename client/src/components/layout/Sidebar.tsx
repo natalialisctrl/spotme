@@ -28,7 +28,7 @@ const Sidebar: FC = () => {
 
   return (
     <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-64 bg-white border-r border-gray-200 z-30 glow-effect-subtle">
-      <div className="flex items-center justify-center px-6 py-4 h-16">
+      <div className="flex items-center justify-center px-6 py-4 h-16 bg-[#c98f8f]">
         <Logo size="md" showTagline={true} />
       </div>
       <div className="flex-1 overflow-y-auto text-[#fafafa] bg-[#c98f8f]">
