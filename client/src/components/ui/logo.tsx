@@ -36,12 +36,7 @@ export function Logo({
           className={cn('rounded-lg', sizeClasses[size])}
         />
         <div className="flex flex-col">
-          <span className={cn('font-bold text-primary', {
-            'text-lg': size === 'sm',
-            'text-xl': size === 'md',
-            'text-2xl': size === 'lg',
-            'text-3xl': size === 'xl',
-          })}>
+          <span className="font-bold text-xl text-[#fc9468]">
             SpotMe
           </span>
           {showTagline && (

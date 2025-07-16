@@ -84,7 +84,7 @@ const Sidebar: FC = () => {
           </div>
         </nav>
       </div>
-      <div className="p-4 border-t border-[#e09980] bg-[#f5b5a0]">
+      <div className="p-4 border-t border-[#e09980] bg-[#fae6d9]">
         <div className="flex items-center mb-3">
           <div className="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center">
             <span className="font-bold text-sm">{user.name.split(' ').map(n => n[0]).join('')}</span>
