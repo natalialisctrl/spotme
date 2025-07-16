@@ -193,7 +193,7 @@ const FindPartners: FC = () => {
           {user?.gymName ? (
             <GymTrafficCard gymName={user.gymName} />
           ) : (
-            <div className="glass-morphism rounded-xl shadow-lg p-6 h-full flex flex-col justify-center items-center text-center border border-orange-100 hover-lift">
+            <div className="bg-white rounded-xl shadow-lg p-6 h-full flex flex-col justify-center items-center text-center border border-orange-100 hover-lift">
               <h3 className="text-lg font-medium text-gradient mb-2">No Gym Selected</h3>
               <p className="text-gray-700 mb-4">Add your preferred gym in your profile to see traffic predictions.</p>
               <Link href="/profile">
