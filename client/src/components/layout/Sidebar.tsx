@@ -38,7 +38,7 @@ const Sidebar: FC = () => {
                 <MapPin className="h-5 w-5 mr-3 text-primary" />
                 Find Gym Partners
             </Link>
-            <Link href="/workout-focus" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/workout-focus' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+            <Link href="/workout-focus" className="flex items-center px-4 py-3 hover:bg-gray-100 rounded-lg text-[#fff7d4] font-semibold">
                 <Dumbbell className="h-5 w-5 mr-3 text-gray-500" />
                 Workout Focus
             </Link>
