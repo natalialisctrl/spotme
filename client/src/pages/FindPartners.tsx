@@ -137,7 +137,7 @@ const FindPartners: FC = () => {
   // Main dashboard content
   return (
     <div className="space-y-6">
-      <section className="glass-morphism p-6 rounded-xl shadow-lg floating-element">
+      <section className="bg-white p-6 rounded-xl shadow-lg floating-element">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
           <div>
             <h1 className="text-3xl font-bold text-gradient mb-2">Welcome back, {user?.name}</h1>
