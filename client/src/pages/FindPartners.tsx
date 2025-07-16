@@ -211,7 +211,7 @@ const FindPartners: FC = () => {
               showAllLink={true}
             />
             
-            <div className="card-gradient rounded-xl shadow-lg p-6 border border-orange-100 floating-element glow-effect-subtle hover-lift">
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-orange-100 floating-element glow-effect-subtle hover-lift">
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-gradient flex items-center">
                   <Trophy className="h-5 w-5 mr-2 text-yellow-500" />
