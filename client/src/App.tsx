@@ -18,8 +18,7 @@ import WorkoutRoutines from "@/pages/WorkoutRoutines"; // Import workout routine
 import ScheduledMeetups from "@/pages/ScheduledMeetups"; // Import scheduled meetups page
 import Challenges from "@/pages/Challenges"; // Import challenges page
 import Achievements from "@/pages/Achievements"; // Import achievements page
-import MusicSharing from "@/pages/MusicSharing"; // Import music sharing page
-import SpotifyCallback from "@/pages/SpotifyCallback"; // Import Spotify callback page
+
 import PartnerRatings from "@/pages/PartnerRatings"; // Import partner ratings page
 import Notifications from "@/pages/Notifications"; // Import notifications page
 
@@ -34,12 +33,8 @@ function HomePage() {
   return <FindPartners />;
 }
 
-function MessagesPage() {
+function MessagesAndConnectionsPage() {
   return <Messages />;
-}
-
-function ConnectionsPage() {
-  return <Connections />;
 }
 
 function ProfilePage() {
@@ -83,9 +78,7 @@ function WorkoutRecommendationsPage() {
   return <WorkoutRecommendations />;
 }
 
-function MusicSharingPage() {
-  return <MusicSharing />;
-}
+
 
 
 function ChallengeDetailPage({ params }: { params: { id: string } }) {
@@ -145,8 +138,8 @@ function Router() {
     <AppShell>
       <Switch>
         <Route path="/" component={HomePage} />
-        <Route path="/messages" component={MessagesPage} />
-        <Route path="/connections" component={ConnectionsPage} />
+        <Route path="/messages" component={MessagesAndConnectionsPage} />
+        <Route path="/connections" component={MessagesAndConnectionsPage} />
         <Route path="/profile" component={ProfilePage} />
         <Route path="/profile-setup" component={ProfileSetupPage} />
         <Route path="/upload-profile-picture" component={UploadProfilePicture} />
@@ -157,12 +150,11 @@ function Router() {
         <Route path="/challenges" component={ChallengesPage} />
         <Route path="/challenges/:id" component={ChallengeDetailPage} />
         <Route path="/achievements" component={AchievementsPage} />
-        <Route path="/partner-ratings" component={PartnerRatingsPage} />
+
         <Route path="/notifications" component={Notifications} />
 
         <Route path="/workout-recommendations" component={WorkoutRecommendationsPage} />
-        <Route path="/music-sharing" component={MusicSharingPage} />
-        <Route path="/spotify-callback" component={SpotifyCallback} />
+
 
         <Route component={NotFound} />
       </Switch>

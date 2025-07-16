@@ -13,7 +13,6 @@ import {
   CalendarDays,
   Trophy,
   Award,
-  Music,
   Star
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -55,13 +54,9 @@ const Sidebar: FC = () => {
                 <CalendarDays className="h-5 w-5 mr-3 text-gray-500" />
                 Scheduled Meetups
             </Link>
-            <Link href="/messages" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/messages' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
+            <Link href="/messages" className={`flex items-center px-4 py-3 text-gray-700 ${(location === '/messages' || location === '/connections') ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <MessageSquare className="h-5 w-5 mr-3 text-gray-500" />
-                Messages
-            </Link>
-            <Link href="/connections" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/connections' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
-                <Users className="h-5 w-5 mr-3 text-gray-500" />
-                Connections
+                Messages & Connections
             </Link>
             <Link href="/challenges" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/challenges' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <Trophy className="h-5 w-5 mr-3 text-gray-500" />
@@ -71,15 +66,7 @@ const Sidebar: FC = () => {
                 <Award className="h-5 w-5 mr-3 text-gray-500" />
                 Achievements
             </Link>
-            <Link href="/music-sharing" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/music-sharing' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
-                <Music className="h-5 w-5 mr-3 text-gray-500" />
-                Music Sharing
-            </Link>
 
-            <Link href="/partner-ratings" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/partner-ratings' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
-                <Star className="h-5 w-5 mr-3 text-gray-500" />
-                Partner Ratings
-            </Link>
 
             <Link href="/profile" className={`flex items-center px-4 py-3 text-gray-700 ${location === '/profile' ? 'bg-gray-100 text-gray-900 rounded-lg font-medium' : 'hover:bg-gray-100 rounded-lg font-medium'}`}>
                 <User className="h-5 w-5 mr-3 text-gray-500" />
